@@ -6,18 +6,17 @@
 # All rights reserved. Published under the BSD-2 license in the LICENSE file.
 ################################################################################
 
-set(DISTRIBUTED_ALGORITHMS_IMPL
-  ${PROJECT_SOURCE_DIR}/external/dsss/string_sorting/distributed/merge_sort.cpp)
+add_subdirectory(tests)
 
-add_executable(dss
-  ${DISTRIBUTED_ALGORITHMS_IMPL}
-  dss_kurpicz.cpp)
+include_directories(./strings/)
+add_executable(dsss
+  dsss_kurpicz.cpp)
 
-target_link_libraries(dss
+target_link_libraries(dsss
   tlx
   dsss_string_sorting)
 
-target_compile_options(dss
+target_compile_options(dsss
   PRIVATE
   ${STRING_SORTING_FLAGS}
   $<$<CONFIG:Debug>:${STRING_SORTING_DEBUG_FLAGS}>

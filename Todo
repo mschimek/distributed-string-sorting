@@ -8,3 +8,13 @@
   Kurpicz Code Rechte - vor allem wenn Code teilweise geändert wird?
   Kurpicz Code: DSS hat bugs für kleine Eingaben. Korrigieren oder nicht?
   
+
+07.11.18:
+  shift_left/shift_right -> in thrill Predecessor
+  StringLcpPtr -> StringSet (a la StringShadowPtr) setLcp -> noop (wenn nicht verwendet)
+  MPI-Bindings -> StringLcpPtr
+  Kurpicz-Dist-sorter mit LCP erweitern
+  
+Fragen an Timo:
+14.11.18:
+  LcpStringPtr verwendet string* als Membervariable, das Headerfile selbst hat aber keinen include von stringtools.hpp in welchem string  definiert wird. Warum?

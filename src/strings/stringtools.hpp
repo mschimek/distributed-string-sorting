@@ -27,7 +27,7 @@
 #include <cassert>
 #include <tlx/logger.hpp>
 
-namespace stringtools {
+namespace dss_schimek {
 
 //! zero-terminated character strings
 typedef unsigned char* string;

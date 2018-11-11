@@ -43,7 +43,7 @@
 
 #include <tlx/logger.hpp>
 
-namespace parallel_string_sorting {
+namespace dss_schimek {
 
 typedef uintptr_t lcp_t;
 
@@ -300,6 +300,10 @@ public:
 
         return true;
     }
+
+    size_t get_lcp(size_t /*pos*/) { return 0; }
+
+    void set_lcp(size_t /*pos*/, size_t /*value*/) {}
 };
 
 /*----------------------------------------------------------------------------*/

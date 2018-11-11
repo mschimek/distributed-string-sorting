@@ -36,11 +36,7 @@ add_subdirectory(external/benchmark)
 add_subdirectory(external/external)
 add_subdirectory(external/tests)
 add_subdirectory(tlx)
-
-add_executable(main src/dsss_kurpicz.cpp)
-target_link_libraries(main
-  tlx
-  dsss_string_sorting)
+add_subdirectory(src)
 
 message(STATUS "Built Type: " ${CMAKE_BUILD_TYPE} )
 

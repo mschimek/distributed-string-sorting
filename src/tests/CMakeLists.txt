@@ -1,0 +1,4 @@
+
+add_executable(sorter_with_LcpStringPtr sorter_with_LcpStringPtr.cpp)
+
+target_link_libraries(sorter_with_LcpStringPtr tlx)
