@@ -8,18 +8,10 @@
 
 add_subdirectory(tests)
 
-include_directories(./strings/)
-add_executable(dsss
-  dsss_kurpicz.cpp)
-
-target_link_libraries(dsss
-  tlx
-  dsss_string_sorting)
-
-target_compile_options(dsss
-  PRIVATE
-  ${STRING_SORTING_FLAGS}
-  $<$<CONFIG:Debug>:${STRING_SORTING_DEBUG_FLAGS}>
-  $<$<CONFIG:Release>:${STRING_SORTING_RELEASE_FLAGS}>)
+#target_compile_options(dsss
+#  PRIVATE
+#  ${STRING_SORTING_FLAGS}
+#  $<$<CONFIG:Debug>:${STRING_SORTING_DEBUG_FLAGS}>
+#  $<$<CONFIG:Release>:${STRING_SORTING_RELEASE_FLAGS}>)
 
 ################################################################################

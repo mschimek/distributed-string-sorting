@@ -10,12 +10,12 @@
  * All rights reserved. Published under the Boost Software License, Version 1.0
  ******************************************************************************/
 #include <iostream>
-#include <tlx/sort/strings/insertion_sort.hpp>
-#include <tlx/sort/strings/insertion_sort_lcp.hpp>
-#include <tlx/sort/strings/multikey_quicksort.hpp>
-#include <tlx/sort/strings/multikey_quicksort_lcp.hpp>
-#include <tlx/sort/strings/radix_sort.hpp>
-#include <tlx/sort/strings/radix_sort_lcp.hpp>
+//#include <tlx/sort/strings/insertion_sort.hpp>
+//#include <tlx/sort/strings/insertion_sort_lcp.hpp>
+//#include <tlx/sort/strings/multikey_quicksort.hpp>
+//#include <tlx/sort/strings/multikey_quicksort_lcp.hpp>
+//#include <tlx/sort/strings/radix_sort.hpp>
+//#include <tlx/sort/strings/radix_sort_lcp.hpp>
 
 #include <tlx/sort/strings/insertion_sort_unified.hpp>
 #include <tlx/sort/strings/multikey_quicksort_unified.hpp>
@@ -29,6 +29,7 @@
 #include <random>
 
 #include "../strings/stringtools.hpp"
+#include "../strings/stringset.hpp"
 
 #if TLX_MORE_TESTS
 static const bool tlx_more_tests = true;
@@ -156,7 +157,6 @@ void TestLcpStringPtr(const char* name,
 
     dss_schimek::LcpStringPtr<unsigned char> ss(cstrings, cstrings + num_strings, lcp_values);
     sorter(ss, /* depth */ 0, /* memory */ 0);
-
     double ts2 = timestamp();
     LOG1 << "sorting took " << ts2 - ts1 << " seconds";
 
@@ -660,15 +660,15 @@ static const char* letters_alnum
 
 // use macro because one cannot pass template functions as template parameters:
 #define run_tests(func)                            \
-    TestUCharString<UCharStringSet, func>(         \
+    TestUCharString<UCharStringSet, mysorter::func>(         \
         #func, num_strings, 16, letters_alnum);    \
-    TestVectorStdString<StdStringSet, func>(       \
+    TestVectorStdString<StdStringSet, mysorter::func>(       \
         #func, num_strings, 16, letters_alnum);    \
-    TestUPtrStdString<UPtrStdStringSet, func>(     \
+    TestUPtrStdString<UPtrStdStringSet, mysorter::func>(     \
         #func, num_strings, 16, letters_alnum);    \
-    TestStringSuffixString<StringSuffixSet, func>( \
+    TestStringSuffixString<StringSuffixSet, mysorter::func>( \
         #func, num_strings, letters_alnum);        \
-
+/*
 #define run_lcp_tests(func)                                          \
  TestUCharString<UCharStringSet, std::vector<int>, func>(         \
         #func, num_strings, 16, letters_alnum);                      \
@@ -678,7 +678,7 @@ static const char* letters_alnum
         #func, num_strings, 16, letters_alnum);                      \
     TestStringSuffixString<StringSuffixSet, std::vector<int>, func>( \
         #func, num_strings, letters_alnum);                          \
-
+*/
 #define run_unified_tests(func)     \
     TestLcpStringPtr<dss_schimek::LcpStringPtr<unsigned char>, func>( \
         #func, num_strings, 16u, letters_alnum); 
@@ -707,6 +707,9 @@ void test_all_lcp_unified(const size_t num_strings) {
   run_unified_tests(mysorter::multikey_quicksort);
   run_unified_tests(mysorter::radixsort_CE0);
   run_unified_tests(mysorter::radixsort_CE2);
+  run_unified_tests(mysorter::radixsort_CE3);
+  run_unified_tests(mysorter::radixsort_CI2);
+  run_unified_tests(mysorter::radixsort_CI3);
 
   letters_alnum = "a";
   std::cout << "test string: " << letters_alnum << std::endl;
@@ -714,12 +717,18 @@ void test_all_lcp_unified(const size_t num_strings) {
   run_unified_tests(mysorter::multikey_quicksort);
   run_unified_tests(mysorter::radixsort_CE0);
   run_unified_tests(mysorter::radixsort_CE2);
+  run_unified_tests(mysorter::radixsort_CE3);
+  run_unified_tests(mysorter::radixsort_CI2);
+  run_unified_tests(mysorter::radixsort_CI3);
   letters_alnum = "abc";
   std::cout << "test string: " << letters_alnum << std::endl;
     
   run_unified_tests(mysorter::multikey_quicksort);
   run_unified_tests(mysorter::radixsort_CE0);
   run_unified_tests(mysorter::radixsort_CE2);
+  run_unified_tests(mysorter::radixsort_CE3);
+  run_unified_tests(mysorter::radixsort_CI2);
+  run_unified_tests(mysorter::radixsort_CI3);
 
   letters_alnum = "abcde";
   std::cout << "test string: " << letters_alnum << std::endl;
@@ -727,22 +736,25 @@ void test_all_lcp_unified(const size_t num_strings) {
   run_unified_tests(mysorter::multikey_quicksort);
   run_unified_tests(mysorter::radixsort_CE0);
   run_unified_tests(mysorter::radixsort_CE2);
+  run_unified_tests(mysorter::radixsort_CE3);
+  run_unified_tests(mysorter::radixsort_CI2);
+  run_unified_tests(mysorter::radixsort_CI3);
 
 }
-void test_all_lcp(const size_t num_strings) {
-  if (num_strings <= 1024) {
-   run_lcp_tests(insertion_sort);
-  }
+/*void test_all_lcp(const size_t num_strings) {
+  //if (num_strings <= 1024) {
+  // run_lcp_tests(insertion_sort);
+  //}
   letters_alnum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
       "\xE0\xE1\xE2\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEA\xEB\xEC\xED\xEE\xEF";
 
   std::cout << "original test string: " << letters_alnum << std::endl;
-  run_lcp_tests(multikey_quicksort);
-  run_lcp_tests(radixsort_CE0);
-  run_lcp_tests(radixsort_CE2);
-  run_lcp_tests(radixsort_CE3);
-  run_lcp_tests(radixsort_CI2);
-  run_lcp_tests(radixsort_CI3);
+  //run_lcp_tests(multikey_quicksort);
+  //run_lcp_tests(radixsort_CE0);
+  //run_lcp_tests(radixsort_CE2);
+  //run_lcp_tests(radixsort_CE3);
+  //run_lcp_tests(radixsort_CI2);
+  //run_lcp_tests(radixsort_CI3);
 
   letters_alnum = "a";
   std::cout << "test string: " << letters_alnum << std::endl;
@@ -751,22 +763,22 @@ void test_all_lcp(const size_t num_strings) {
   //run_lcp_tests(radixsort_CE2);
   //run_lcp_tests(radixsort_CE3);
   //run_lcp_tests(radixsort_CI2);
-  //run_lcp_tests(radixsort_CI3);
+  run_lcp_tests(radixsort_CI3);
 
   letters_alnum = "abc";
   std::cout << "test string: " << letters_alnum << std::endl;
-  run_lcp_tests(multikey_quicksort);
-  run_lcp_tests(radixsort_CE0);
-  run_lcp_tests(radixsort_CE2);
-  run_lcp_tests(radixsort_CE3);
-  run_lcp_tests(radixsort_CI2);
-  run_lcp_tests(radixsort_CI3);
+  //run_lcp_tests(multikey_quicksort);
+  //run_lcp_tests(radixsort_CE0);
+  //run_lcp_tests(radixsort_CE2);
+  //run_lcp_tests(radixsort_CE3);
+  //run_lcp_tests(radixsort_CI2);
+  //run_lcp_tests(radixsort_CI3);
   
-}
+}*/
 int main() {
-    //test_all(16);
-    //test_all(256);
-    //test_all(65550);
+    test_all(16);
+    test_all(256);
+    test_all(65550);
     //if (tlx_more_tests) {
     //    test_all(1024 * 1024);
     //    // test_all(16 * 1024 * 1024);

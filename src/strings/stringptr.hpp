@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <numa.h>
 #include "stringset.hpp"
+#include <iostream>
 
 namespace dss_schimek {
 
@@ -48,6 +49,97 @@ namespace dss_schimek {
 
   /******************************************************************************/
 
+  template <typename CharType>
+    class LcpStringContainer
+    {
+      public:
+        LcpStringContainer() = default;
+        LcpStringContainer(std::vector<CharType>&& raw_strings) : 
+          raw_strings(std::move(raw_strings))
+        {
+          update(); 
+        }
+        explicit LcpStringContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
+          raw_strings(std::move(raw_strings)) {
+
+              update();
+              lcp_values = std::move(lcp);
+              std::cout << "lcp_values: size: " << lcp_values.size() << " size: " << strings.size() << std::endl;
+              }
+        void print() const
+        {
+          for (size_t i = 0; i < raw_strings.size(); ++i)
+          {
+            LOG1 << static_cast<uint>(raw_strings[i]) << " " << raw_strings[i];
+          }
+          //auto charIterator = raw_strings.begin();
+          //while(charIterator < raw_strings.end())
+          //{
+          //    LOG1 << "[" << i++ << "] = " << &(*charIterator)
+          //     << " lcp: " << lcp_values[i];
+          //    while(charIterator < raw_strings.end() && *charIterator != 0) ++charIterator;
+          //    if(charIterator < raw_strings.end()) 
+          //      ++charIterator;
+          //}
+        }
+        void make_raw_strings_contiguous()
+        {
+
+          std::vector<CharType> tmp(raw_strings.size(), 0);
+          size_t offset = 0;
+          for (size_t i = 0; i < get_size(); ++i)
+          {
+            
+            auto& charIterator = strings[i];
+            bool eos = false;
+            bool is_set = false;
+            while(!eos) {
+              tmp.at(offset) = *(charIterator); 
+              eos = *charIterator == 0 ? true : false;
+              if(!is_set)
+              {
+                 is_set = true;
+                strings[i] = tmp.data() + offset;
+              }
+              ++charIterator;
+              ++offset;
+            } 
+            strings[i] = tmp.data() + offset;
+          }
+          raw_strings = std::move(tmp);
+        }
+        size_t get_size() const { return size; }
+        void update()
+        {
+          strings.clear();
+          strings.reserve(raw_strings.size() / approx_string_length);
+          for (auto char_iterator = raw_strings.begin(); char_iterator < raw_strings.end(); ++char_iterator)
+          {
+            strings.push_back(raw_strings.data() + (char_iterator - raw_strings.begin()));
+            while(*char_iterator != 0)
+            {
+              ++char_iterator;
+              assert(char_iterator < raw-strings.end()); //remove for performance
+            }
+            size = strings.size();
+            lcp_values.resize(size, 0);
+         }
+        }
+
+        void update(std::vector<CharType>&& raw_data)
+        {
+          raw_strings = std::move(raw_data); 
+          update();
+        }
+
+        static constexpr size_t approx_string_length = 10;
+        size_t size = 0;
+        std::vector<CharType> raw_strings;
+        std::vector<CharType*> strings;
+        std::vector<size_t> lcp_values;
+    };
+
+  using LcpStringContainerUChar = LcpStringContainer<unsigned char>;
 
   template <typename CharType>
     class LcpStringPtr 
@@ -64,11 +156,20 @@ namespace dss_schimek {
       typedef typename std::tuple<Iterator, size_t*, size_t> Container;
       typedef size_t LcpValue;
       typedef size_t* LcpIterator;
+      
+      LcpStringPtr() : begin_(nullptr), end_(nullptr), lcp_begin(nullptr) {}
 
       LcpStringPtr(Iterator begin, Iterator end, LcpIterator lcp_begin) 
         : begin_(begin), end_(end), lcp_begin(lcp_begin)
       {}
-      
+
+      LcpStringPtr(const LcpStringContainer<CharType>& lcp_string_container)
+      {
+        begin_ = const_cast<Iterator>(lcp_string_container.strings.data());
+        end_ =  const_cast<Iterator>(begin_ + lcp_string_container.size);
+        lcp_begin = const_cast<size_t*>(lcp_string_container.lcp_values.data());
+      }
+
       explicit LcpStringPtr(const Container& c)
         : begin_(std::get<0>(c)), end_(std::get<0>(c) + std::get<2>(c)), lcp_begin(std::get<1>(c)) {}
 
@@ -110,8 +211,7 @@ namespace dss_schimek {
 
       void set_lcp(size_t pos, size_t value) const
       {
-        if (pos >= (end_ - begin_))
-          std::cout << " !!!!!!!! pos too big !!!!!!!" << std::endl;
+        assert(pos >= (end_ -begin_));
         *(lcp_begin + pos) = value;
       }
       void print() const
@@ -120,14 +220,42 @@ namespace dss_schimek {
         for (Iterator pi = begin(); pi != end(); ++pi)
         {
           LOG1 << "[" << i++ << "] = " << *pi
-            << " = " << get_string(*pi, 0);
+            << " = " << get_string(*pi, 0) << " lcp: " << get_lcp(pi - begin_);
         }
+      }
+
+      std::vector<CharType> get_raw_strings()
+      {
+        std::vector<CharType> rawStrings;
+        rawStrings.reserve(end_ - begin_);
+        for(auto curStr = begin_; curStr < end_; ++curStr) {
+          CharIterator charIterator = get_chars(*curStr, 0);
+          while(!is_end(*curStr, charIterator))  
+            rawStrings.push_back(*(charIterator++));
+          rawStrings.push_back(0); // end of str
+        }
+        return rawStrings;
+      }
+
+      std::vector<size_t> get_lcp_vector()
+      {
+        return std::vector<size_t>(lcp_begin, lcp_begin + size());
+      }
+
+      size_t get_string_length(const String& str) const
+      {
+        CharIterator charIt = get_chars(str, 0);
+        size_t length = 0;
+        while(!is_end(str, charIt)) ++length;
+        return length;
       }
 
     protected:
       Iterator begin_, end_;
       LcpIterator lcp_begin;
   };
+  
+  using LcpStringPtrUChar = LcpStringPtr<unsigned char>;
 }
 #endif
 /******************************************************************************/

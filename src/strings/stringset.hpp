@@ -301,9 +301,9 @@ public:
         return true;
     }
 
-    size_t get_lcp(size_t /*pos*/) { return 0; }
+    size_t get_lcp(size_t /*pos*/) const { return 0; }
 
-    void set_lcp(size_t /*pos*/, size_t /*value*/) {}
+    void set_lcp(size_t /*pos*/, size_t /*value*/) const{}
 };
 
 /*----------------------------------------------------------------------------*/

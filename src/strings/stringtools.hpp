@@ -38,6 +38,14 @@ typedef unsigned char char_type;
 /// hacky gcc synthesised 128-bit datatype
 typedef unsigned int uint128_t __attribute__ ((mode(TI)));
 
+template<typename CharType>
+static inline size_t string_length(const CharType* str)
+{
+  size_t length = 0;
+  while(*(str++) != 0) ++length;
+  return length;
+}
+
 /// represent binary digits of large integer datatypes
 template <typename Type>
 static inline std::string toBinary(Type v, const int width = (1 << sizeof(Type)))
