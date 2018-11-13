@@ -20,6 +20,30 @@
 
 namespace dss_schimek {
   using namespace dss_schimek;
+
+  template <typename CharType>
+  class PrefixNumberLcpStringContainer : public LcpStringContainer<CharType>
+  {
+    public:
+    PrefixNumberLcpStringContainer(const size_t size, const CharType prefix)
+    {
+      std::vector<CharType> raw_string_data;
+      for(size_t i = 1; i <= size; ++i)
+      {
+        raw_string_data.emplace_back(prefix);
+        size_t number_to_print = i;
+        while(number_to_print > 0)
+        {
+          CharType last_digit = number_to_print % 10;
+          raw_string_data.emplace_back(48 + last_digit);
+          number_to_print /= 10;
+        }
+        raw_string_data.emplace_back(CharType(0));
+      }
+      this->update(std::move(raw_string_data));
+    }
+  };
+
   template <typename CharType>
   class RandomLcpStringContainer : public LcpStringContainer<CharType>
   {

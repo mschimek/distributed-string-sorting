@@ -42,6 +42,8 @@
 #include <numa.h>
 #include "stringset.hpp"
 #include <iostream>
+#include <tlx/logger.hpp>
+#include <algorithm>
 
 namespace dss_schimek {
 
@@ -53,90 +55,76 @@ namespace dss_schimek {
     class LcpStringContainer
     {
       public:
+        using String = CharType*;
         LcpStringContainer() = default;
         LcpStringContainer(std::vector<CharType>&& raw_strings) : 
-          raw_strings(std::move(raw_strings))
+          raw_strings_(std::move(raw_strings))
         {
-          update(); 
+          update_strings(); 
+          lcps_.resize(size(), 0);
         }
+
         explicit LcpStringContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
-          raw_strings(std::move(raw_strings)) {
+          raw_strings_(std::move(raw_strings)) {
 
-              update();
-              lcp_values = std::move(lcp);
-              std::cout << "lcp_values: size: " << lcp_values.size() << " size: " << strings.size() << std::endl;
-              }
-        void print() const
+              update_strings();
+              lcps_ = std::move(lcp);
+        } 
+
+        String operator[] (size_t i) { return strings_[i]; }
+        String front() { return strings_.front(); } 
+        String back() { return strings_.back(); }
+        String* strings() { return strings_.data();}
+        size_t size() const { return strings_.size(); }
+        size_t char_size() const { return raw_strings_.size(); }
+        std::vector<size_t>& lcps() { return lcps_; }
+        std::vector<CharType>& raw_strings() { return raw_strings_; }
+        
+        void set(std::vector<CharType>&& raw_strings) { raw_strings_ = std::move(raw_strings); }
+        void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
+
+        void update(std::vector<CharType>&& raw_strings)
         {
-          for (size_t i = 0; i < raw_strings.size(); ++i)
+          set(std::move(raw_strings));
+          update_strings(); 
+          if (lcps_.size() != size())
+            lcps_.resize(size(), 0);
+        }
+
+        bool is_consistent()
+        {
+          if (lcps_.size() != strings_.size()) 
           {
-            LOG1 << static_cast<uint>(raw_strings[i]) << " " << raw_strings[i];
+            LOG1 << "lcps.size() = " << lcps_.size() << " != " << strings_.size() << " = strings.size()";
+            return false;
           }
-          //auto charIterator = raw_strings.begin();
-          //while(charIterator < raw_strings.end())
-          //{
-          //    LOG1 << "[" << i++ << "] = " << &(*charIterator)
-          //     << " lcp: " << lcp_values[i];
-          //    while(charIterator < raw_strings.end() && *charIterator != 0) ++charIterator;
-          //    if(charIterator < raw_strings.end()) 
-          //      ++charIterator;
-          //}
-        }
-        void make_raw_strings_contiguous()
-        {
-
-          std::vector<CharType> tmp(raw_strings.size(), 0);
-          size_t offset = 0;
-          for (size_t i = 0; i < get_size(); ++i)
-          {
-            
-            auto& charIterator = strings[i];
-            bool eos = false;
-            bool is_set = false;
-            while(!eos) {
-              tmp.at(offset) = *(charIterator); 
-              eos = *charIterator == 0 ? true : false;
-              if(!is_set)
-              {
-                 is_set = true;
-                strings[i] = tmp.data() + offset;
-              }
-              ++charIterator;
-              ++offset;
-            } 
-            strings[i] = tmp.data() + offset;
-          }
-          raw_strings = std::move(tmp);
-        }
-        size_t get_size() const { return size; }
-        void update()
-        {
-          strings.clear();
-          strings.reserve(raw_strings.size() / approx_string_length);
-          for (auto char_iterator = raw_strings.begin(); char_iterator < raw_strings.end(); ++char_iterator)
-          {
-            strings.push_back(raw_strings.data() + (char_iterator - raw_strings.begin()));
-            while(*char_iterator != 0)
-            {
-              ++char_iterator;
-              assert(char_iterator < raw-strings.end()); //remove for performance
-            }
-            size = strings.size();
-            lcp_values.resize(size, 0);
-         }
+          
+          return std::all_of(strings_.begin(), strings_.end(), [this](const String str) -> bool {
+                if (str < raw_strings_.data() || str > raw_strings_.data() + raw_strings_.size())
+                  return false;
+                if (str == raw_strings_.data())
+                  return true;
+                return *(str - 1) == 0;
+              });
         }
 
-        void update(std::vector<CharType>&& raw_data)
-        {
-          raw_strings = std::move(raw_data); 
-          update();
-        }
-
+  protected:
         static constexpr size_t approx_string_length = 10;
-        size_t size = 0;
-        std::vector<CharType> raw_strings;
-        std::vector<CharType*> strings;
-        std::vector<size_t> lcp_values;
+        std::vector<CharType> raw_strings_;
+        std::vector<String> strings_;
+        std::vector<size_t> lcps_;
+
+        void update_strings()
+        {
+          strings_.clear();
+          size_t approx_string_size = raw_strings_.size() / approx_string_length;
+          strings_.reserve(approx_string_size);
+          for (size_t i = 0; i < raw_strings_.size(); ++i)
+          {
+            strings_.emplace_back(raw_strings_.data() + i);
+            while(raw_strings_[i] != 0) ++i;
+          }
+        }
     };
 
   using LcpStringContainerUChar = LcpStringContainer<unsigned char>;
@@ -163,11 +151,11 @@ namespace dss_schimek {
         : begin_(begin), end_(end), lcp_begin(lcp_begin)
       {}
 
-      LcpStringPtr(const LcpStringContainer<CharType>& lcp_string_container)
+      LcpStringPtr(LcpStringContainer<CharType>& lcp_string_container)
       {
-        begin_ = const_cast<Iterator>(lcp_string_container.strings.data());
-        end_ =  const_cast<Iterator>(begin_ + lcp_string_container.size);
-        lcp_begin = const_cast<size_t*>(lcp_string_container.lcp_values.data());
+        begin_ = lcp_string_container.strings();
+        end_ =  begin_ + lcp_string_container.size();
+        lcp_begin = lcp_string_container.lcps().data();
       }
 
       explicit LcpStringPtr(const Container& c)

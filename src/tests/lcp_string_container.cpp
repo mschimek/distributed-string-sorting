@@ -7,8 +7,9 @@ using namespace dss_schimek;
 int main() {
   dsss::mpi::environment env;
 
-  RandomLcpStringContainer<unsigned char> rand_container(10, 10, 10);
+  PrefixNumberLcpStringContainer<unsigned char> rand_container(10, env.rank() + 65);
   LcpStringPtr<unsigned char> rand_string_set(rand_container);
+  rand_string_set.print();
   
   mysorter::insertion_sort(rand_string_set, 0, 0);
   for(size_t i = 0; i < env.size(); ++i)
@@ -24,9 +25,9 @@ int main() {
   env.barrier();
   LcpStringContainer<unsigned char> recv;
   if (env.rank() == 0)
-    recv = dsss::mpi::alltoallv(rand_container, {2, 4}, env);
+    recv = dsss::mpi::alltoallv(rand_container, {2, 8}, env);
   else
-    recv = dsss::mpi::alltoallv(rand_container, {1, 0}, env);
+    recv = dsss::mpi::alltoallv(rand_container, {10, 0}, env);
 
   LcpStringPtr<unsigned char> receivedSet(recv);
   for(size_t i = 0; i < env.size(); ++i)

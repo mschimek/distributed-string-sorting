@@ -228,43 +228,36 @@ inline dsss::indexed_string_set<IndexType> alltoallv_indexed_strings(
     std::move(receive_data_indices));
 }
 
-// Assumption send_data.raw_data contains chars to send in contiguous format
 dss_schimek::LcpStringContainerUChar alltoallv(
     dss_schimek::LcpStringContainerUChar& send_data,
     const std::vector<size_t>& send_counts,
     environment env = environment()){
-  
+
   using namespace dss_schimek;
-  if (send_data.get_size() == 0)
+  if (send_data.size() == 0)
     return LcpStringContainerUChar();
 
   std::vector<unsigned char> receive_buffer_char;
   std::vector<size_t> receive_buffer_lcp;
   std::vector<size_t> send_counts_lcp(send_counts);
-
   std::vector<size_t> send_counts_char(env.size());
 
   std::vector<unsigned char> send_buffer;
-  send_buffer.reserve(send_data.raw_strings.size());
- std::cout << "size: " << send_data.get_size() << std::endl;
+  send_buffer.reserve(send_data.char_size());
   for (size_t interval = 0, offset = 0; interval < send_counts.size(); ++interval) {
-    // We cannot be sure that the pointers are ordered anymore (i.e., the memory
-    // positions are not monotone Increasing)
     for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
-
-      const size_t string_length = dss_schimek::string_length(send_data.strings[j]) + 1;
-
+      const size_t string_length = dss_schimek::string_length(send_data[j]) + 1;
       send_counts_char[interval] += string_length;
-      std::copy_n(send_data.strings[j], string_length, std::back_inserter(send_buffer));
-       }
+      std::copy_n(send_data[j], string_length, std::back_inserter(send_buffer));
+    }
     offset += send_counts[interval];
   }
   for (size_t i = 0; i < send_counts.size(); ++i)
     std::cout << i << " counts: " << send_counts_char[i] << std::endl;
-  
+
   receive_buffer_char = alltoallv(send_buffer, send_counts_char, env);
-  receive_buffer_lcp = alltoallv(send_data.lcp_values, send_counts_lcp, env);
-  
+  receive_buffer_lcp = alltoallv(send_data.lcps(), send_counts_lcp, env);
+
   return LcpStringContainerUChar(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
