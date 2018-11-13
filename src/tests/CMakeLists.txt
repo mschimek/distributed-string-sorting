@@ -7,3 +7,6 @@ target_link_libraries(allgather_simple_test ${MPI_LIBRARIES} tlx)
 
 add_executable(lcp_string_container lcp_string_container.cpp ../mpi/environment.cpp)
 target_link_libraries(lcp_string_container ${MPI_LIBRARIES} tlx)
+
+add_executable(shift_test shift_test.cpp ../mpi/environment.cpp)
+target_link_libraries(shift_test ${MPI_LIBRARIES} tlx)

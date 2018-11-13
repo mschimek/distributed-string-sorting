@@ -37,7 +37,7 @@ inline std::vector<DataType> alltoall(std::vector<DataType>& send_data,
   std::vector<DataType> receive_data(send_data.size(), 0);
   data_type_mapper<DataType> dtm;
   MPI_Alltoall(send_data.data(),
-               send_data.size() / env.size(),
+              send_data.size() / env.size(),
                dtm.get_mpi_type(),
                receive_data.data(),
                send_data.size() / env.size(),
