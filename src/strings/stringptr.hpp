@@ -40,94 +40,15 @@
 #include <cassert>
 #include <stdint.h>
 #include <numa.h>
-#include "stringset.hpp"
 #include <iostream>
 #include <tlx/logger.hpp>
 #include <algorithm>
+#include "stringset.hpp"
+#include "stringcontainer.hpp"
 
 namespace dss_schimek {
 
-  typedef uintptr_t lcp_t;
-
-  /******************************************************************************/
-
-  template <typename CharType>
-    class LcpStringContainer
-    {
-      public:
-        using String = CharType*;
-        LcpStringContainer() = default;
-        LcpStringContainer(std::vector<CharType>&& raw_strings) : 
-          raw_strings_(std::move(raw_strings))
-        {
-          update_strings(); 
-          lcps_.resize(size(), 0);
-        }
-
-        explicit LcpStringContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
-          raw_strings_(std::move(raw_strings)) {
-
-              update_strings();
-              lcps_ = std::move(lcp);
-        } 
-
-        String operator[] (size_t i) { return strings_[i]; }
-        String front() { return strings_.front(); } 
-        String back() { return strings_.back(); }
-        String* strings() { return strings_.data();}
-        size_t size() const { return strings_.size(); }
-        size_t char_size() const { return raw_strings_.size(); }
-        std::vector<size_t>& lcps() { return lcps_; }
-        std::vector<CharType>& raw_strings() { return raw_strings_; }
-        
-        void set(std::vector<CharType>&& raw_strings) { raw_strings_ = std::move(raw_strings); }
-        void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
-
-        void update(std::vector<CharType>&& raw_strings)
-        {
-          set(std::move(raw_strings));
-          update_strings(); 
-          if (lcps_.size() != size())
-            lcps_.resize(size(), 0);
-        }
-
-        bool is_consistent()
-        {
-          if (lcps_.size() != strings_.size()) 
-          {
-            LOG1 << "lcps.size() = " << lcps_.size() << " != " << strings_.size() << " = strings.size()";
-            return false;
-          }
-          
-          return std::all_of(strings_.begin(), strings_.end(), [this](const String str) -> bool {
-                if (str < raw_strings_.data() || str > raw_strings_.data() + raw_strings_.size())
-                  return false;
-                if (str == raw_strings_.data())
-                  return true;
-                return *(str - 1) == 0;
-              });
-        }
-
-  protected:
-        static constexpr size_t approx_string_length = 10;
-        std::vector<CharType> raw_strings_;
-        std::vector<String> strings_;
-        std::vector<size_t> lcps_;
-
-        void update_strings()
-        {
-          strings_.clear();
-          size_t approx_string_size = raw_strings_.size() / approx_string_length;
-          strings_.reserve(approx_string_size);
-          for (size_t i = 0; i < raw_strings_.size(); ++i)
-          {
-            strings_.emplace_back(raw_strings_.data() + i);
-            while(raw_strings_[i] != 0) ++i;
-          }
-        }
-    };
-
-  using LcpStringContainerUChar = LcpStringContainer<unsigned char>;
+  using LcpType = size_t;
 
   template <typename CharType>
     class LcpStringPtr 
@@ -148,8 +69,7 @@ namespace dss_schimek {
       LcpStringPtr() : begin_(nullptr), end_(nullptr), lcp_begin(nullptr) {}
 
       LcpStringPtr(Iterator begin, Iterator end, LcpIterator lcp_begin) 
-        : begin_(begin), end_(end), lcp_begin(lcp_begin)
-      {}
+        : begin_(begin), end_(end), lcp_begin(lcp_begin) {}
 
       LcpStringPtr(LcpStringContainer<CharType>& lcp_string_container)
       {
@@ -173,19 +93,25 @@ namespace dss_schimek {
       {
         return std::make_tuple(new String[n], new size_t[n], n);
       }
+
       static void deallocate(Container& c)
       {
         delete[] std::get<0>(c); delete[] std::get<1>(c);
         std::get<0>(c) = NULL; std::get<1>(c) = NULL;
       }
+
       CharIterator get_chars(const String& s, size_t depth) const
       { return s + depth; }
 
       bool is_end(const String&, const CharIterator& i) const
-      { return (*i == 0); }
+      { 
+        return (*i == 0); 
+      }
 
       std::string get_string(const String& s, size_t depth = 0) const
-      { return std::string(reinterpret_cast<const char*>(s) + depth); }
+      { 
+        return std::string(reinterpret_cast<const char*>(s) + depth); 
+      }
 
       LcpStringPtr sub(Iterator begin, Iterator end) const
       {
@@ -199,7 +125,6 @@ namespace dss_schimek {
 
       void set_lcp(size_t pos, size_t value) const
       {
-        assert(pos >= (end_ -begin_));
         *(lcp_begin + pos) = value;
       }
       void print() const
@@ -210,24 +135,6 @@ namespace dss_schimek {
           LOG1 << "[" << i++ << "] = " << *pi
             << " = " << get_string(*pi, 0) << " lcp: " << get_lcp(pi - begin_);
         }
-      }
-
-      std::vector<CharType> get_raw_strings()
-      {
-        std::vector<CharType> rawStrings;
-        rawStrings.reserve(end_ - begin_);
-        for(auto curStr = begin_; curStr < end_; ++curStr) {
-          CharIterator charIterator = get_chars(*curStr, 0);
-          while(!is_end(*curStr, charIterator))  
-            rawStrings.push_back(*(charIterator++));
-          rawStrings.push_back(0); // end of str
-        }
-        return rawStrings;
-      }
-
-      std::vector<size_t> get_lcp_vector()
-      {
-        return std::vector<size_t>(lcp_begin, lcp_begin + size());
       }
 
       size_t get_string_length(const String& str) const
@@ -244,6 +151,365 @@ namespace dss_schimek {
   };
   
   using LcpStringPtrUChar = LcpStringPtr<unsigned char>;
+//! Objectified string array pointer and shadow pointer array for out-of-place
+//! swapping of pointers.
+template <typename _StringSet>
+class StringPtr
+{
+public:
+    typedef _StringSet StringSet;
+    typedef typename StringSet::String String;
+
+protected:
+    //! strings (front) and temporary shadow (back) array
+    StringSet active_;
+
+public:
+    //! constructor specifying all attributes
+    StringPtr(const StringSet& ss)
+        : active_(ss)
+    { }
+
+    //! return currently active array
+    const StringSet & active() const { return active_; }
+
+    //! return valid length
+    size_t size() const { return active_.size(); }
+
+    //! Advance (both) pointers by given offset, return sub-array
+    StringPtr sub(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringPtr(active_.subi(offset, offset + _size));
+    }
+
+    //! check sorted order of strings
+    bool check() const
+    {
+        assert(output().check_order());
+        return true;
+    }
+
+    //! Return i-th string pointer from active_
+    String & str(size_t i) const
+    {
+        assert(i < size());
+        return active_.at(i);
+    }
+
+    //! if we want to save the LCPs
+    static const bool with_lcp = false;
+
+    //! return reference to the i-th lcp
+    LcpType & lcp(size_t /* i */) const
+    {
+        abort();
+    }
+
+    //! set the i-th lcp to v and check its value
+    void set_lcp(size_t /* i */, const LcpType& /* v */) const { }
+
+    //! Fill whole LCP array with n times the value v, ! excluding the first
+    //! LCP[0] position
+    void fill_lcp(LcpType /* v */) { }
+
+    //! set the i-th distinguishing cache charater to c
+
+    //! Return pointer to LCP array
+    LcpType * lcparray() const
+    {
+        abort();
+    }
+
+};
+
+template <typename _StringSet>
+class StringLcpPtr_
+{
+public:
+    typedef _StringSet StringSet;
+    typedef typename StringSet::String String;
+
+protected:
+    //! strings (front) and temporary shadow (back) array
+    StringSet active_;
+    LcpType* lcp_;
+
+public:
+    //! constructor specifying all attributes
+    StringLcpPtr_(const StringSet& ss, LcpType* lcp_begin)
+        : active_(ss), lcp_(lcp_begin)
+    { }
+
+    //! return currently active array
+    const StringSet & active() const { return active_; }
+
+    //! return valid length
+    size_t size() const { return active_.size(); }
+
+    //! Advance (both) pointers by given offset, return sub-array
+    StringLcpPtr_ sub(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringLcpPtr_(active_.subi(offset, offset + _size), lcp_ + offset);
+    }
+
+    //! check sorted order of strings
+    bool check() const
+    {
+        assert(output().check_order());
+        return true;
+    }
+
+    //! Return i-th string pointer from active_
+    String & str(size_t i) const
+    {
+        assert(i < size());
+        return active_.at(i);
+    }
+
+    //! return reference to the i-th lcp
+    LcpType& lcp(size_t i) const
+    {
+      return lcp_[i];
+    }
+
+    //! set the i-th lcp to v and check its value
+    void set_lcp(size_t i, const LcpType& v) const 
+    { 
+      assert(i < size());
+      if (i >= size())
+        std::cout << " lcp out of bounds " << std::endl;
+      lcp_[i] = v;
+    }
+
+    //! Fill whole LCP array with n times the value v, ! excluding the first
+    //! LCP[0] position
+    void fill_lcp(LcpType v)
+    {
+      std::fill_n(lcp_ + 1, size() - 1, v);
+    }
+};
+
+/******************************************************************************/
+
+//! Objectified string array pointer and shadow pointer array for out-of-place
+//! swapping of pointers.
+template <typename _StringSet>
+class StringShadowPtr
+{
+public:
+    typedef _StringSet StringSet;
+    typedef typename StringSet::String String;
+
+protected:
+    //! strings (front) and temporary shadow (back) array
+    StringSet active_, shadow_;
+
+    //! false if active_ is original, true if shadow_ is original
+    bool flipped_;
+
+public:
+    //! constructor specifying all attributes
+    StringShadowPtr(const StringSet& original, const StringSet& shadow,
+                    bool flipped = false)
+        : active_(original), shadow_(shadow), flipped_(flipped)
+    { }
+
+    //! true if flipped to back array
+    bool flipped() const { return flipped_; }
+
+    //! return currently active array
+    const StringSet & active() const { return active_; }
+
+    //! return current shadow array
+    const StringSet & shadow() const { return shadow_; }
+
+    //! return valid length
+    size_t size() const { return active_.size(); }
+
+    //! Advance (both) pointers by given offset, return sub-array
+    StringShadowPtr sub(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringShadowPtr(active_.subi(offset, offset + _size),
+                               shadow_.subi(offset, offset + _size), flipped_);
+    }
+
+    //! construct a StringShadowPtr object specifying a sub-array with flipping
+    //! to other array.
+    StringShadowPtr flip(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringShadowPtr(shadow_.subi(offset, offset + _size),
+                               active_.subi(offset, offset + _size), !flipped_);
+    }
+
+    //! construct a StringShadowPtr object specifying a sub-array with flipping
+    //! to other array.
+    StringShadowPtr flip() const
+    {
+        return StringShadowPtr(shadow_, active_, !flipped_);
+    }
+
+    //! Return the original for this StringShadowPtr for LCP calculation
+    StringShadowPtr original() const
+    {
+        return flipped_ ? flip() : *this;
+    }
+
+    //! return subarray pointer to n strings in original array, might copy from
+    //! shadow before returning.
+    StringShadowPtr copy_back() const
+    {
+        if (!flipped_) {
+            return *this;
+        }
+        else {
+            std::move(active_.begin(), active_.end(), shadow_.begin());
+            return flip();
+        }
+    }
+
+    //! check sorted order of strings
+    bool check() const
+    {
+        return true;
+    }
+
+    //! Return i-th string pointer from active_
+    String & str(size_t i) const
+    {
+        assert(i < size());
+        return active_.at(i);
+    }
+
+    //! return reference to the i-th lcp
+    LcpType & lcp(size_t /* i */) const
+    {
+      static LcpType default_lcp_value = 0;
+      return default_lcp_value;
+    }
+
+    //! set the i-th lcp to v and check its value
+    void set_lcp(size_t /* i */, const LcpType& /* v */) const { }
+
+    //! Fill whole LCP array with n times the value v, ! excluding the first
+    //! LCP[0] position
+    void fill_lcp(LcpType /* v */) { }
+};
+
+//! Objectified string array pointer and shadow pointer array for out-of-place
+//! swapping of pointers.
+template <typename _StringSet>
+class StringShadowLcpPtr
+{
+public:
+    typedef _StringSet StringSet;
+    typedef typename StringSet::String String;
+
+protected:
+    //! strings (front) and temporary shadow (back) array
+    StringSet active_, shadow_;
+    LcpType* lcp_;
+
+    //! false if active_ is original, true if shadow_ is original
+    bool flipped_;
+
+public:
+    //! constructor specifying all attributes
+    StringShadowLcpPtr(const StringSet& original, const StringSet& shadow,
+                    LcpType* lcp, bool flipped = false)
+        : active_(original), shadow_(shadow), lcp_(lcp), flipped_(flipped)
+    { }
+
+    //! true if flipped to back array
+    bool flipped() const { return flipped_; }
+
+    //! return currently active array
+    const StringSet & active() const { return active_; }
+
+    //! return current shadow array
+    const StringSet & shadow() const { return shadow_; }
+
+    //! return valid length
+    size_t size() const { return active_.size(); }
+
+    //! Advance (both) pointers by given offset, return sub-array
+    StringShadowLcpPtr sub(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringShadowLcpPtr(active_.subi(offset, offset + _size),
+                               shadow_.subi(offset, offset + _size), lcp_ + offset, flipped_);
+    }
+
+    //! construct a StringShadowPtr object specifying a sub-array with flipping
+    //! to other array.
+    StringShadowLcpPtr flip(size_t offset, size_t _size) const
+    {
+        assert(offset + _size <= size());
+        return StringShadowLcpPtr(shadow_.subi(offset, offset + _size),
+                               active_.subi(offset, offset + _size), lcp_ + offset, !flipped_);
+    }
+
+    //! construct a StringShadowPtr object specifying a sub-array with flipping
+    //! to other array.
+    StringShadowLcpPtr flip() const
+    {
+        return StringShadowLcpPtr(shadow_, active_, lcp_, !flipped_);
+    }
+
+    //! Return the original for this StringShadowPtr for LCP calculation
+    StringShadowLcpPtr original() const
+    {
+        return flipped_ ? flip() : *this;
+    }
+
+    //! return subarray pointer to n strings in original array, might copy from
+    //! shadow before returning.
+    StringShadowLcpPtr copy_back() const
+    {
+        if (!flipped_) {
+            return *this;
+        }
+        else {
+            std::move(active_.begin(), active_.end(), shadow_.begin());
+            return flip();
+        }
+    }
+
+    //! check sorted order of strings
+    bool check() const
+    {
+        return true;
+    }
+
+    //! Return i-th string pointer from active_
+    String & str(size_t i) const
+    {
+        assert(i < size());
+        return active_.at(i);
+    }
+
+    //! return reference to the i-th lcp
+    LcpType & lcp(size_t i) const
+    {
+      return lcp_[i];
+    }
+
+    //! set the i-th lcp to v and check its value
+    void set_lcp(size_t i, const LcpType& v) const 
+    { 
+      lcp_[i] = v;
+    }
+
+    //! Fill whole LCP array with n times the value v, ! excluding the first
+    //! LCP[0] position
+    void fill_lcp(LcpType v)
+    { 
+      std::fill_n(lcp_ + 1, size() - 1, v);
+    }
+};
 }
 #endif
 /******************************************************************************/

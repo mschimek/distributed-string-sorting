@@ -4,7 +4,7 @@
   Strings generieren verteilt
   Sequentielle sorter aufrufen, Splitting gedanken machen
  
-07.11.18:
+07.11.18 - Fragen an Timo:
   Kurpicz Code Rechte - vor allem wenn Code teilweise geändert wird?
   Kurpicz Code: DSS hat bugs für kleine Eingaben. Korrigieren oder nicht?
   
@@ -14,6 +14,13 @@
   StringLcpPtr -> StringSet (a la StringShadowPtr) setLcp -> noop (wenn nicht verwendet)
   MPI-Bindings -> StringLcpPtr
   
+14.11.18 - Fragen an Timo:
+  Berechnungen auf Sanders-Server laufen lassen
+  Berechnungen auf Cluster laufen lassen
+  MPI Blocking/Non-Blocking was ist schneller? (oder keine allgemeine Regel)
+
 14.11.18:
-  Vernünftige Tests/Testframe work schreiben
+  Vernünftige Tests/Testframework schreiben / Catch verwenden
+  StringLcpPtr
   Kurpicz-Dist-sorter mit LCP erweitern
+  MPI -> LCP + CHAR zusammensenden

@@ -12,22 +12,23 @@ int main() {
   rand_string_set.print();
   
   mysorter::insertion_sort(rand_string_set, 0, 0);
-  for(size_t i = 0; i < env.size(); ++i)
-  {
-    env.barrier();
-    if (i == env.rank())
-    {
-      std::cout << "sorted rank: " << i << std::endl;
-      rand_string_set.print();
-    }
-  }
+  //for(size_t i = 0; i < env.size(); ++i)
+  //{
+  //  env.barrier();
+  //  if (i == env.rank())
+  //  {
+  //    std::cout << "sorted rank: " << i << std::endl;
+  //    rand_string_set.print();
+  //  }
+  //}
   
   env.barrier();
   LcpStringContainer<unsigned char> recv;
+  
   if (env.rank() == 0)
-    recv = dsss::mpi::alltoallv(rand_container, {2, 8}, env);
+    recv = dsss::mpi::alltoallv(rand_container, {1, 1, 1, 1, 1}, env);
   else
-    recv = dsss::mpi::alltoallv(rand_container, {10, 0}, env);
+    recv = dsss::mpi::alltoallv(rand_container, {10, 0, 0, 0 , 0}, env);
 
   LcpStringPtr<unsigned char> receivedSet(recv);
   for(size_t i = 0; i < env.size(); ++i)

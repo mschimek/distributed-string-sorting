@@ -10,3 +10,9 @@ target_link_libraries(lcp_string_container ${MPI_LIBRARIES} tlx)
 
 add_executable(shift_test shift_test.cpp ../mpi/environment.cpp)
 target_link_libraries(shift_test ${MPI_LIBRARIES} tlx)
+
+add_executable(distributed_sorter distributed_sorter.cpp ../mpi/environment.cpp)
+target_link_libraries(distributed_sorter ${MPI_LIBRARIES} tlx)
+
+add_executable(local_sorter local_sorter.cpp ../mpi/environment.cpp)
+target_link_libraries(local_sorter ${MPI_LIBRARIES} tlx)

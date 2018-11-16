@@ -228,5 +228,25 @@
   "directory": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/build/src/tests",
   "command": "/usr/bin/c++   -isystem /usr/include/openmpi-x86_64 -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/tlx  -O2 -DNDEBUG   -std=gnu++1z -o CMakeFiles/sorter_with_LcpStringPtr.dir/sorter_with_LcpStringPtr.cpp.o -c /home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/sorter_with_LcpStringPtr.cpp",
   "file": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/sorter_with_LcpStringPtr.cpp"
+},
+{
+  "directory": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/build/src/tests",
+  "command": "/usr/bin/c++   -isystem /usr/include/openmpi-x86_64 -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/tlx  -O2 -DNDEBUG   -std=gnu++1z -o CMakeFiles/shift_test.dir/shift_test.cpp.o -c /home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/shift_test.cpp",
+  "file": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/shift_test.cpp"
+},
+{
+  "directory": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/build/src/tests",
+  "command": "/usr/bin/c++   -isystem /usr/include/openmpi-x86_64 -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/tlx  -O2 -DNDEBUG   -std=gnu++1z -o CMakeFiles/shift_test.dir/__/mpi/environment.cpp.o -c /home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/mpi/environment.cpp",
+  "file": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/mpi/environment.cpp"
+},
+{
+  "directory": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/build/src/tests",
+  "command": "/usr/bin/c++   -isystem /usr/include/openmpi-x86_64 -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/tlx  -O2 -DNDEBUG   -std=gnu++1z -o CMakeFiles/lcp_string_container.dir/lcp_string_container.cpp.o -c /home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/lcp_string_container.cpp",
+  "file": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/tests/lcp_string_container.cpp"
+},
+{
+  "directory": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/build/src/tests",
+  "command": "/usr/bin/c++   -isystem /usr/include/openmpi-x86_64 -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src -I/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/tlx  -O2 -DNDEBUG   -std=gnu++1z -o CMakeFiles/lcp_string_container.dir/__/mpi/environment.cpp.o -c /home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/mpi/environment.cpp",
+  "file": "/home/matthias/Dokumente/Studium_Karlsruhe/Semester11/Masterarbeit/DistributedStringSorting/distributed-string-sorting/src/mpi/environment.cpp"
 }
 ]
