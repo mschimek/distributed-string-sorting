@@ -12,6 +12,7 @@
 #include <iostream>
 #include "sorter/local/strings/insertion_sort_unified.hpp"
 #include "sorter/local/strings/multikey_quicksort_unified.hpp"
+#include "sorter/local/strings/radix_sort_unified.hpp"
 #include "strings/stringset.hpp" 
 #include "strings/stringptr.hpp"
 
@@ -46,7 +47,10 @@ bool check_lcps(const StringSet& sorted_strings, const LCPContainer& lcp_to_be_t
   size_t n = sorted_strings.size();
 
   if(sorted_strings.size() > 0 && lcp_to_be_tested[0] != 0)
+  {
+    std::cout << "i: " << 0 << " lcp_value: " << lcp_to_be_tested[0] << std::endl;
     return false;
+  }
   
   for(Iterator i = begin + 1; --n > 0; ++i)
   {
@@ -107,6 +111,8 @@ void TestUCharString(const char* name,
 
     dss_schimek::UCharStringSet ss(cstrings, cstrings + num_strings);
     dss_schimek::LcpType* lcps = new dss_schimek::LcpType[ss.size()];
+    if (ss.size() > 0)
+      lcps[0] = 0;
     dss_schimek::StringLcpPtr_ strptr(ss, lcps);
     sorter(strptr, /* depth */ 0, /* memory */ 0);
     if (0) ss.print();
@@ -154,15 +160,25 @@ void test_all_lcp(const size_t num_strings) {
 
   std::cout << "original test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
-
+   run_lcp_tests(dss_schimek::radixsort_CE0);
+   run_lcp_tests(dss_schimek::radixsort_CE2);
   letters_alnum = "a";
   std::cout << "test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
+   run_lcp_tests(dss_schimek::radixsort_CE0);
+   run_lcp_tests(dss_schimek::radixsort_CE2);
 
   letters_alnum = "abc";
   std::cout << "test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
- 
+   run_lcp_tests(dss_schimek::radixsort_CE0);
+   run_lcp_tests(dss_schimek::radixsort_CE2);
+ letters_alnum = "acbef";
+  std::cout << "test string: " << letters_alnum << std::endl;
+   run_lcp_tests(dss_schimek::multikey_quicksort);
+   run_lcp_tests(dss_schimek::radixsort_CE0);
+   run_lcp_tests(dss_schimek::radixsort_CE2);
+
 }
 int main() {
     //test_all(16);
@@ -182,6 +198,8 @@ int main() {
    test_all_lcp(16);
     test_all_lcp(256);
     test_all_lcp(65550);
+    test_all_lcp(655550);
+    test_all_lcp(6555550);
     
     //std::vector<std::string> strings = {"aaabbabbbbbabcbbaac", "aaabbbabbcaacbbcb", "aaabbccaccaaccbc", "aaacabaabcbbaacba", "aaacabcbacaccccaa", "aaacccbacabcccbca", "aababcabbaacacbcab"} ;
     //StdStringSet ss(strings.data(), strings.data() + strings.size());

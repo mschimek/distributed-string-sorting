@@ -289,6 +289,11 @@ public:
     {
       std::fill_n(lcp_ + 1, size() - 1, v);
     }
+
+    LcpType* lcp_array() const
+    {
+      return lcp_;
+    }
 };
 
 /******************************************************************************/
@@ -509,6 +514,7 @@ public:
     { 
       std::fill_n(lcp_ + 1, size() - 1, v);
     }
+    LcpType * lcp_array() const { return lcp_; }
 };
 }
 #endif
