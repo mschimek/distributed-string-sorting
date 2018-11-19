@@ -31,6 +31,8 @@
         // this stores the begin iterator and size n, making the loops faster
         
         const typename StringPtr::StringSet& ss = strptr.active();
+        if (ss.size() == 0)
+          return;
         const Iterator begin = ss.begin();
         Iterator j;
         size_t n = ss.size();

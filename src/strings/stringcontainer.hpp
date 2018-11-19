@@ -11,19 +11,19 @@
 namespace dss_schimek {
 
   template <typename CharType>
-    class LcpStringContainer
+    class StringLcpContainer
     {
       public:
         using String = CharType*;
-        LcpStringContainer() = default;
-        LcpStringContainer(std::vector<CharType>&& raw_strings) : 
+        StringLcpContainer() = default;
+        StringLcpContainer(std::vector<CharType>&& raw_strings) : 
           raw_strings_(std::move(raw_strings))
       {
         update_strings(); 
         lcps_.resize(size(), 0);
       }
 
-        explicit LcpStringContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
+        explicit StringLcpContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
           raw_strings_(std::move(raw_strings)) {
 
             update_strings();
@@ -37,6 +37,7 @@ namespace dss_schimek {
         size_t size() const { return strings_.size(); }
         size_t char_size() const { return raw_strings_.size(); }
         std::vector<size_t>& lcps() { return lcps_; }
+        size_t* lcp_array() { return lcps_.data(); }
         std::vector<CharType>& raw_strings() { return raw_strings_; }
 
         void set(std::vector<CharType>&& raw_strings) { raw_strings_ = std::move(raw_strings); }
@@ -86,8 +87,7 @@ namespace dss_schimek {
         }
     };
 
-  using LcpStringContainerUChar = LcpStringContainer<unsigned char>;
+  using StringLcpContainerUChar = StringLcpContainer<unsigned char>;
 
 
 }
-

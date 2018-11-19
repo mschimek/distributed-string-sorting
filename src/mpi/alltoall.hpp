@@ -228,19 +228,19 @@ inline dsss::indexed_string_set<IndexType> alltoallv_indexed_strings(
     std::move(receive_data_indices));
 }
 
-dss_schimek::LcpStringContainerUChar alltoallv(
-    dss_schimek::LcpStringContainerUChar& send_data,
+dss_schimek::StringLcpContainerUChar alltoallv(
+    dss_schimek::StringLcpContainerUChar& send_data,
     const std::vector<size_t>& send_counts,
     environment env = environment()){
 
   using namespace dss_schimek;
   if (send_data.size() == 0)
-    return LcpStringContainerUChar();
+    return StringLcpContainerUChar();
 
   std::vector<unsigned char> receive_buffer_char;
   std::vector<size_t> receive_buffer_lcp;
   std::vector<size_t> send_counts_lcp(send_counts);
-  std::vector<size_t> send_counts_char(env.size());
+  std::vector<size_t> send_counts_char(send_counts.size(), 0);
 
   std::vector<unsigned char> send_buffer;
   send_buffer.reserve(send_data.char_size());
@@ -258,7 +258,7 @@ dss_schimek::LcpStringContainerUChar alltoallv(
   receive_buffer_char = alltoallv(send_buffer, send_counts_char, env);
   receive_buffer_lcp = alltoallv(send_data.lcps(), send_counts_lcp, env);
 
-  return LcpStringContainerUChar(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+  return StringLcpContainerUChar(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
 } // namespace dsss::mpi

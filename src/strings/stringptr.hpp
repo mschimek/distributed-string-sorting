@@ -51,8 +51,8 @@ namespace dss_schimek {
   using LcpType = size_t;
 
   template <typename CharType>
-    class LcpStringPtr 
-    : public dss_schimek::StringSetBase<LcpStringPtr<CharType>,
+    class LcpStringPtr__ 
+    : public dss_schimek::StringSetBase<LcpStringPtr__<CharType>,
     dss_schimek::GenericCharStringSetTraits<CharType> >
   {
     public:
@@ -66,19 +66,19 @@ namespace dss_schimek {
       typedef size_t LcpValue;
       typedef size_t* LcpIterator;
       
-      LcpStringPtr() : begin_(nullptr), end_(nullptr), lcp_begin(nullptr) {}
+      LcpStringPtr__() : begin_(nullptr), end_(nullptr), lcp_begin(nullptr) {}
 
-      LcpStringPtr(Iterator begin, Iterator end, LcpIterator lcp_begin) 
+      LcpStringPtr__(Iterator begin, Iterator end, LcpIterator lcp_begin) 
         : begin_(begin), end_(end), lcp_begin(lcp_begin) {}
 
-      LcpStringPtr(LcpStringContainer<CharType>& lcp_string_container)
+      LcpStringPtr__(StringLcpContainer<CharType>& lcp_string_container)
       {
         begin_ = lcp_string_container.strings();
         end_ =  begin_ + lcp_string_container.size();
         lcp_begin = lcp_string_container.lcps().data();
       }
 
-      explicit LcpStringPtr(const Container& c)
+      explicit LcpStringPtr__(const Container& c)
         : begin_(std::get<0>(c)), end_(std::get<0>(c) + std::get<2>(c)), lcp_begin(std::get<1>(c)) {}
 
       size_t size() const { return end_ - begin_; }
@@ -113,7 +113,7 @@ namespace dss_schimek {
         return std::string(reinterpret_cast<const char*>(s) + depth); 
       }
 
-      LcpStringPtr sub(Iterator begin, Iterator end) const
+      LcpStringPtr__ sub(Iterator begin, Iterator end) const
       {
         return LcpStringPtr(begin, end, lcp_begin + (begin - begin_));
       }
@@ -150,7 +150,7 @@ namespace dss_schimek {
       LcpIterator lcp_begin;
   };
   
-  using LcpStringPtrUChar = LcpStringPtr<unsigned char>;
+  using LcpStringPtrUChar__ = LcpStringPtr__<unsigned char>;
 //! Objectified string array pointer and shadow pointer array for out-of-place
 //! swapping of pointers.
 template <typename _StringSet>
@@ -224,7 +224,7 @@ public:
 };
 
 template <typename _StringSet>
-class StringLcpPtr_
+class StringLcpPtr
 {
 public:
     typedef _StringSet StringSet;
@@ -236,8 +236,9 @@ protected:
     LcpType* lcp_;
 
 public:
+
     //! constructor specifying all attributes
-    StringLcpPtr_(const StringSet& ss, LcpType* lcp_begin)
+    StringLcpPtr(const StringSet& ss, LcpType* lcp_begin)
         : active_(ss), lcp_(lcp_begin)
     { }
 
@@ -248,10 +249,10 @@ public:
     size_t size() const { return active_.size(); }
 
     //! Advance (both) pointers by given offset, return sub-array
-    StringLcpPtr_ sub(size_t offset, size_t _size) const
+    StringLcpPtr sub(size_t offset, size_t _size) const
     {
         assert(offset + _size <= size());
-        return StringLcpPtr_(active_.subi(offset, offset + _size), lcp_ + offset);
+        return StringLcpPtr(active_.subi(offset, offset + _size), lcp_ + offset);
     }
 
     //! check sorted order of strings

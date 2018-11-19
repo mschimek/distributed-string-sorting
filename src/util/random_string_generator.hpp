@@ -22,10 +22,10 @@ namespace dss_schimek {
   using namespace dss_schimek;
 
   template <typename CharType>
-  class PrefixNumberLcpStringContainer : public LcpStringContainer<CharType>
+  class PrefixNumberStringLcpContainer : public StringLcpContainer<CharType>
   {
     public:
-    PrefixNumberLcpStringContainer(const size_t size, const CharType prefix)
+    PrefixNumberStringLcpContainer(const size_t size, const CharType prefix)
     {
       std::vector<CharType> raw_string_data;
       for(size_t i = 1; i <= size; ++i)
@@ -45,10 +45,10 @@ namespace dss_schimek {
   };
 
   template <typename CharType>
-  class RandomLcpStringContainer : public LcpStringContainer<CharType>
+  class RandomStringLcpContainer : public StringLcpContainer<CharType>
   {
     public:
-    RandomLcpStringContainer(const size_t size,
+    RandomStringLcpContainer(const size_t size,
           const size_t min_length = 10,
           const size_t max_length = 20)
     {
@@ -82,8 +82,7 @@ public:
     const size_t max_length);
 
   random_string_set(random_string_set&&) = default;
-  random_string_set& operator =(random_string_set&&) = default;
-
+  random_string_set& operator =(random_string_set&&) = default; 
   random_string_set(const random_string_set&) = delete;
   random_string_set& operator =(const random_string_set&) = delete;
 

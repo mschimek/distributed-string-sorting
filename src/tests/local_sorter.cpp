@@ -30,7 +30,7 @@ static const bool tlx_more_tests = false;
 static const size_t seed = 1234567;
 
 template <typename Set>
-using StringSorter_ = void (*)(const dss_schimek::StringLcpPtr_<Set>&, size_t, size_t );
+using StringSorter_ = void (*)(const dss_schimek::StringLcpPtr<Set>&, size_t, size_t );
 template <typename Set>
 using StringSorter = void (*)(const Set&, size_t, size_t);
 template <typename Set, typename LcpIterator>
@@ -113,7 +113,7 @@ void TestUCharString(const char* name,
     dss_schimek::LcpType* lcps = new dss_schimek::LcpType[ss.size()];
     if (ss.size() > 0)
       lcps[0] = 0;
-    dss_schimek::StringLcpPtr_ strptr(ss, lcps);
+    dss_schimek::StringLcpPtr strptr(ss, lcps);
     sorter(strptr, /* depth */ 0, /* memory */ 0);
     if (0) ss.print();
 

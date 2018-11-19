@@ -335,19 +335,22 @@ namespace dss_schimek::mpi {
      return {recv_data, false};
    }
 
- template <typename DataType>
- static inline ShiftCounts<DataType> get_shift_left_recv_counts(
-     const DataType& send_data, 
-       environment env = environment(), 
-       bool is_empty = false) {
-   return get_shift_recv_counts<DataType, true>(send_data, env, is_empty);
- } 
+ //template <typename DataType>
+ //static inline ShiftCounts<DataType> get_shift_left_recv_counts(
+ //    const DataType& send_data, 
+ //      environment env = environment(), 
+ //      bool is_empty = false) {
+ //  return get_shift_recv_counts<DataType, true>(send_data, env, is_empty);
+ //} 
 
  template<bool is_left_shift>
  static inline std::vector<unsigned char> shift_string(
      unsigned char* send_data, environment env = environment()) {
 
+   constexpr bool debug = 1;
    std::size_t string_length = dss_schimek::string_length(send_data);
+   if constexpr(debug)
+   std::cout << "rank: " << env.rank() << " string_length: " << string_length << std::endl;
    std::size_t send_length = string_length + 1;
    std::vector<char_type> real_send_data;
    std::copy_n(send_data, send_length, std::back_inserter(real_send_data));
@@ -371,8 +374,7 @@ namespace dss_schimek::mpi {
 
    std::vector<unsigned char> receive_data(recv_length); 
    data_type_mapper<unsigned char> dtm;
-   MPI_Request send_request;
-   MPI_Request recv_request;
+   std::vector<MPI_Request> requests(2);
 
    if (string_length > 0)
    {
@@ -383,7 +385,7 @@ namespace dss_schimek::mpi {
          adress.destination,
          42, 
          env.communicator(),
-         &send_request);
+         &requests.data()[0]);
      MPI_Irecv(
          receive_data.data(),
          recv_length,
@@ -391,9 +393,8 @@ namespace dss_schimek::mpi {
          adress.source,
          MPI_ANY_TAG,
          env.communicator(),
-         &recv_request);
-     MPI_Wait(&send_request, MPI_STATUS_IGNORE); // WAIT_All!!
-     MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
+         &requests.data()[1]);
+     MPI_Waitall(2, requests.data(), MPI_STATUSES_IGNORE);
    } else {
      MPI_Recv(
          receive_data.data(),

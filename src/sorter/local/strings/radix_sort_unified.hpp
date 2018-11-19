@@ -137,13 +137,13 @@ radixsort_CE0(const StringShadowPtr<StringSet>& str_shadow_ptr, size_t depth, si
  */
 template <typename StringSet>
 static inline void
-radixsort_CE0(const dss_schimek::StringLcpPtr_<StringSet>& strptr, size_t depth, size_t memory) {
+radixsort_CE0(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory) {
 
     const StringSet& ss = strptr.active();
     if (ss.size() < g_inssort_threshold)
         return dss_schimek::insertion_sort(strptr, depth, memory);
 
-    typedef RadixStep_CE0<dss_schimek::StringLcpPtr_<StringSet>> RadixStep;
+    typedef RadixStep_CE0<dss_schimek::StringShadowLcpPtr<StringSet>> RadixStep;
 
     // try to estimate the amount of memory used
     size_t memory_use =
@@ -276,7 +276,7 @@ radixsort_CE2(const StringShadowPtr<StringSet>& strptr,
 
 template <typename StringSet>
 static inline void
-radixsort_CE2(const dss_schimek::StringLcpPtr_<StringSet>& strptr, size_t depth, size_t memory) {
+radixsort_CE2(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory) {
 
     const StringSet& ss = strptr.active();
     if (ss.size() < g_inssort_threshold)

@@ -1,7 +1,4 @@
 
-add_executable(sorter_with_LcpStringPtr sorter_with_LcpStringPtr.cpp)
-target_link_libraries(sorter_with_LcpStringPtr tlx)
-
 add_executable(allgather_simple_test allgather_simple_test.cpp ../mpi/environment.cpp)
 target_link_libraries(allgather_simple_test ${MPI_LIBRARIES} tlx)
 
@@ -16,3 +13,6 @@ target_link_libraries(distributed_sorter ${MPI_LIBRARIES} tlx)
 
 add_executable(local_sorter local_sorter.cpp ../mpi/environment.cpp)
 target_link_libraries(local_sorter ${MPI_LIBRARIES} tlx)
+
+add_executable(is_sorted is_sorted.cpp ../mpi/environment.cpp)
+target_link_libraries(is_sorted ${MPI_LIBRARIES} tlx)

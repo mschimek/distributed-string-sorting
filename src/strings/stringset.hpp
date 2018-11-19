@@ -290,6 +290,8 @@ public:
     bool check_order() const
     {
         const StringSet& ss = *static_cast<const StringSet*>(this);
+        if (ss.size() == 0)
+          return true;
 
         for (typename Traits::Iterator pi = ss.begin() + 1;
              pi != ss.end(); ++pi)
@@ -300,10 +302,6 @@ public:
 
         return true;
     }
-
-    size_t get_lcp(size_t /*pos*/) const { return 0; }
-
-    void set_lcp(size_t /*pos*/, size_t /*value*/) const{}
 };
 
 /*----------------------------------------------------------------------------*/
@@ -502,6 +500,12 @@ public:
             LOG1 << "[" << i++ << "] = " << *pi
                  << " = " << get_string(*pi, 0);
         }
+    }
+
+    static String empty_string()
+    {
+      static Char zero = 0; 
+      return &zero;
     }
 
 protected:
