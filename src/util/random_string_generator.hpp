@@ -18,6 +18,8 @@
 
 #include "strings/stringptr.hpp"
 
+#include "mpi/environment.hpp"
+
 namespace dss_schimek {
   using namespace dss_schimek;
 
@@ -54,7 +56,7 @@ namespace dss_schimek {
     {
       std::vector<CharType> random_raw_string_data;
       std::random_device rand_seed;
-      std::mt19937 rand_gen(rand_seed());
+      std::mt19937 rand_gen(dsss::mpi::environment().rank());
       std::uniform_int_distribution<CharType> char_dis(65, 90);
       
       std::uniform_int_distribution<size_t> length_dis(min_length, max_length);

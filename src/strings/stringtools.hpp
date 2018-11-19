@@ -39,6 +39,24 @@ typedef unsigned char char_type;
 typedef unsigned int uint128_t __attribute__ ((mode(TI)));
 
 template<typename CharType>
+static inline size_t string_length(const CharType* str);
+
+template<typename CharType>
+static inline void print(const CharType* raw_strings, size_t size)
+{
+  for (size_t i = 0, offset = 0; offset < size; ++i)
+  {
+    LOG1 << i << ": " << raw_strings + offset;
+    offset += string_length(raw_strings + offset) + 1;
+  }
+}
+
+template <typename CharType>
+static inline void print(const std::vector<CharType>& raw_strings)
+{
+  print(raw_strings.data(), raw_strings.size());
+}
+template<typename CharType>
 static inline size_t string_length(const CharType* str)
 {
   size_t length = 0;
@@ -58,6 +76,8 @@ static inline std::string toBinary(Type v, const int width = (1 << sizeof(Type))
     }
     return binstr;
 }
+
+
 
 /// compare strings by scanning
 static inline int scmp(const string _s1, const string _s2)
@@ -80,6 +100,15 @@ scmp(const string _s1, const string _s2, size_t& lcp)
     return (*s1 - *s2);
 }
 
+/// compare strings by scanning
+static inline bool leq(const string _s1, const string _s2)
+{
+    string s1 = _s1, s2 = _s2;
+
+    while (*s1 != 0 && *s1 == *s2)
+        s1++, s2++;
+    return (*s1 - *s2) <= 0;
+}
 /// calculate lcp by scanning
 static inline unsigned int calc_lcp(const string _s1, const string _s2)
 {

@@ -122,4 +122,13 @@ static inline dsss::string_set allgather_strings(
 
 } // namespace dsss::mpi
 
+namespace dss_schimek::mpi {
+  template <typename Char> static inline std::vector<Char> allgather_strings(
+  std::vector<Char>& raw_string_data,
+  dsss::mpi::environment env = dsss::mpi::environment()) {
+
+  auto receiving_data = dsss::mpi::allgatherv(raw_string_data, env);
+  return std::vector(std::move(receiving_data));
+}
+}
 /******************************************************************************/
