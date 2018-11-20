@@ -252,8 +252,8 @@ dss_schimek::StringLcpContainerUChar alltoallv(
     }
     offset += send_counts[interval];
   }
-  for (size_t i = 0; i < send_counts.size(); ++i)
-    std::cout << i << " counts: " << send_counts_char[i] << std::endl;
+  //for (size_t i = 0; i < send_counts.size(); ++i)
+  //  std::cout << i << " counts: " << send_counts_char[i] << std::endl;
 
   receive_buffer_char = alltoallv(send_buffer, send_counts_char, env);
   receive_buffer_lcp = alltoallv(send_data.lcps(), send_counts_lcp, env);

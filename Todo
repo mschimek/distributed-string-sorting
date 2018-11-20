@@ -24,3 +24,6 @@
   StringLcpPtr
   Kurpicz-Dist-sorter mit LCP erweitern
   MPI -> LCP + CHAR zusammensenden
+
+21.11.18:
+  Was mache ich mit LcpLoserTree? -> Compiletimekonstante

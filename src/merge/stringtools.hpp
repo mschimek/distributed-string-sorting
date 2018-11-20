@@ -20,14 +20,12 @@
  * You should have received a copy of the GNU General Public License along with
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
-
-#ifndef PSS_SRC_TOOLS_STRINGTOOLS_HEADER
-#define PSS_SRC_TOOLS_STRINGTOOLS_HEADER
+#pragma once
 
 #include <cassert>
 #include <tlx/logger.hpp>
 
-namespace dss_schimek {
+namespace stringtools {
 
 //! zero-terminated character strings
 typedef unsigned char* string;
@@ -37,39 +35,6 @@ typedef unsigned char char_type;
 
 /// hacky gcc synthesised 128-bit datatype
 typedef unsigned int uint128_t __attribute__ ((mode(TI)));
-
-template<typename CharType>
-static inline size_t string_length(const CharType* str);
-
-static inline void print_str(unsigned char** strings, size_t size)
-{
-  LOG1 << "string versions";
-  for (size_t i = 0; i  < size; ++i)
-    LOG1 << i << ": " << strings[i];
-}
-
-template<typename CharType>
-static inline void print(const CharType* raw_strings, size_t size)
-{
-  for (size_t i = 0, offset = 0; offset < size; ++i)
-  {
-    LOG1 << i << ": " << raw_strings + offset;
-    offset += string_length(raw_strings + offset) + 1;
-  }
-}
-
-template <typename CharType>
-static inline void print(const std::vector<CharType>& raw_strings)
-{
-  print(raw_strings.data(), raw_strings.size());
-}
-template<typename CharType>
-static inline size_t string_length(const CharType* str)
-{
-  size_t length = 0;
-  while(*(str++) != 0) ++length;
-  return length;
-}
 
 /// represent binary digits of large integer datatypes
 template <typename Type>
@@ -83,8 +48,6 @@ static inline std::string toBinary(Type v, const int width = (1 << sizeof(Type))
     }
     return binstr;
 }
-
-
 
 /// compare strings by scanning
 static inline int scmp(const string _s1, const string _s2)
@@ -107,15 +70,6 @@ scmp(const string _s1, const string _s2, size_t& lcp)
     return (*s1 - *s2);
 }
 
-/// compare strings by scanning
-static inline bool leq(const string _s1, const string _s2)
-{
-    string s1 = _s1, s2 = _s2;
-
-    while (*s1 != 0 && *s1 == *s2)
-        s1++, s2++;
-    return (*s1 - *s2) <= 0;
-}
 /// calculate lcp by scanning
 static inline unsigned int calc_lcp(const string _s1, const string _s2)
 {
@@ -474,6 +428,5 @@ static inline void self_verify_tree_calculations()
 
 #include "stringptr.hpp"
 
-#endif // !PSS_SRC_TOOLS_STRINGTOOLS_HEADER
 
 /******************************************************************************/
