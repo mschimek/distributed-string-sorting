@@ -14,7 +14,7 @@
 #include "merge/bingmann-lcp_losertree.hpp"
 
 template <typename StringSet>
-std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+static inline std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
     dsss::mpi::environment env = dsss::mpi::environment()) {
 
   using Char = typename StringSet::Char;
@@ -33,6 +33,36 @@ std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
   return raw_splitters; 
 }
 
+template <typename StringLcpContainer, typename StringSet>
+static inline StringLcpContainer choose_splitters(const StringSet& ss, 
+    std::vector<typename StringSet::Char>& all_splitters,
+    dsss::mpi::environment env = dsss::mpi::environment())
+{
+  using Char = typename StringSet::Char;
+  using String = typename StringSet::String;
+
+  //TODO find a more convenient way to get a StrPtr out of an raw_string vector
+  StringLcpContainer all_splitters_cont(std::move(all_splitters));
+  const auto start = all_splitters_cont.strings();
+  StringSet all_splitters_set(start, start + all_splitters_cont.size());
+  dss_schimek::StringLcpPtr all_splitters_strptr(all_splitters_set,
+      all_splitters_cont.lcp_array());
+
+  insertion_sort(all_splitters_strptr, 0, 0);
+
+  const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
+  const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
+
+  std::vector<Char> raw_chosen_splitters;
+  for (std::size_t i = 1; i <= nr_splitters; ++i) {
+    const auto begin = all_splitters_set.begin();
+    const String splitter = all_splitters_set[begin + i * splitter_dist];
+    std::copy_n(splitter, dss_schimek::string_length(splitter) + 1,
+        std::back_inserter(raw_chosen_splitters));
+  }
+  
+  return StringLcpContainer(std::move(raw_chosen_splitters));
+}
 
 
 template<typename StringPtr>
@@ -83,49 +113,50 @@ static inline void merge_sort(StringPtr& local_string_ptr, dss_schimek::StringLc
   std::vector<Char> splitters =
     dss_schimek::mpi::allgather_strings(raw_splitters, env);
 
-  if constexpr (debug) {
-    if (env.rank() == 0) { std::cout << "Received all splitters char_length: " << splitters.size() << std::endl; 
-      dss_schimek::print(splitters);
-    }
+  //if constexpr (debug) {
+  //  if (env.rank() == 0) { std::cout << "Received all splitters char_length: " << splitters.size() << std::endl; 
+  //    dss_schimek::print(splitters);
+  //  }
 
-    env.barrier();
-  }
+  //  env.barrier();
+  //}
 
-  dss_schimek::StringLcpContainer<Char> splitter_container(std::move(splitters));
-  StringSet splitter_set(splitter_container.strings(), splitter_container.strings() + splitter_container.size());
-  dss_schimek::StringLcpPtr splitter_strptr(splitter_set, splitter_container.lcp_array());
-  insertion_sort(splitter_strptr, 0, 0);
+  //dss_schimek::StringLcpContainer<Char> splitter_container(std::move(splitters));
+  //StringSet splitter_set(splitter_container.strings(), splitter_container.strings() + splitter_container.size());
+  //dss_schimek::StringLcpPtr splitter_strptr(splitter_set, splitter_container.lcp_array());
+  //insertion_sort(splitter_strptr, 0, 0);
 
-  if (debug) {
-    if(env.rank() == 0) {
-      splitter_set.print();
-    }
-  }
+  //if (debug) {
+  //  if(env.rank() == 0) {
+  //    splitter_set.print();
+  //  }
+  //}
 
 
-  nr_splitters = std::min<std::size_t>(env.size() - 1, splitter_set.size());
-  splitter_dist = splitter_set.size() / (nr_splitters + 1);
-  raw_splitters.clear();
-  if (debug) {
-    if (env.rank() == 0)
-    {
-      std::cout << "splitter_dist " << splitter_dist << std::endl;
-    }
-  }
-  for (std::size_t i = 1; i <= nr_splitters; ++i) {
-    const auto splitter = splitter_set[splitter_set.begin() + i * splitter_dist];
-    std::copy_n(splitter, dss_schimek::string_length(splitter) + 1,
-        std::back_inserter(raw_splitters));
-  }
+  //nr_splitters = std::min<std::size_t>(env.size() - 1, splitter_set.size());
+  //splitter_dist = splitter_set.size() / (nr_splitters + 1);
+  //raw_splitters.clear();
+  //if (debug) {
+  //  if (env.rank() == 0)
+  //  {
+  //    std::cout << "splitter_dist " << splitter_dist << std::endl;
+  //  }
+  //}
+  //for (std::size_t i = 1; i <= nr_splitters; ++i) {
+  //  const auto splitter = splitter_set[splitter_set.begin() + i * splitter_dist];
+  //  std::copy_n(splitter, dss_schimek::string_length(splitter) + 1,
+  //      std::back_inserter(raw_splitters));
+  //}
 
-  if (debug){
-    if (env.rank() == 0) {
-      std::cout << " selected splitter " << std::endl;
-      dss_schimek::print(raw_splitters);
-    }
-  }
-  splitter_container = dss_schimek::StringLcpContainer(std::move(raw_splitters));
+  //if (debug){
+  //  if (env.rank() == 0) {
+  //    std::cout << " selected splitter " << std::endl;
+  //    dss_schimek::print(raw_splitters);
+  //  }
+  //}
+  //splitter_container = dss_schimek::StringLcpContainer(std::move(raw_splitters));
 
+  dss_schimek::StringLcpContainer splitter_container = choose_splitters<dss_schimek::StringLcpContainer<unsigned char>>(ss, splitters);
 
   if constexpr (debug) {
     if (env.rank() == 0) { std::cout << "global splitters " << splitter_container.size() << std::endl; 
@@ -306,7 +337,7 @@ static inline void merge_sort(StringPtr& local_string_ptr, dss_schimek::StringLc
 
   stringtools::LcpStringPtr total(recv_container.strings(), recv_container.lcp_array(), num_recv_elems);
   //dss_schimek::print_str(total.strings, num_recv_elems);
-  const size_t KWAY = 16;
+  const size_t KWAY = 8;
 
 
   env.barrier();

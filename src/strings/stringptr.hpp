@@ -231,7 +231,6 @@ public:
     typedef typename StringSet::String String;
 
 protected:
-    //! strings (front) and temporary shadow (back) array
     StringSet active_;
     LcpType* lcp_;
 
