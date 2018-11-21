@@ -16,7 +16,7 @@ int main() {
       ss.print();
       }, env);
   env.barrier();
-   merge_sort(rand_string_ptr, rand_container);
+  dss_schimek::merge_sort(rand_string_ptr, rand_container);
 
   env.finalize();
 }
