@@ -67,6 +67,7 @@ namespace dss_schimek {
           random_raw_string_data.emplace_back(char_dis(rand_gen));
         random_raw_string_data.emplace_back(CharType(0));
       }
+      std::cout << "hallo" << std::endl;
       this->update(std::move(random_raw_string_data));
     }
   };

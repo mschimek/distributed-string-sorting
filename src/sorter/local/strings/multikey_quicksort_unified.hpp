@@ -57,8 +57,9 @@ static inline typename StringSet::Iterator med3func(
 template <typename StringPtr>
 static inline void multikey_quicksort(
     const StringPtr& strptr, size_t depth, size_t memory) {
-    typedef typename StringPtr::StringSet StringSet;
-    typedef typename StringSet::Iterator Iterator;
+
+    using StringSet = typename StringPtr::StringSet;
+    using Iterator = typename StringSet::Iterator;
 
     const StringSet& ss = strptr.active();
     const Iterator a = ss.begin();
@@ -121,7 +122,7 @@ static inline void multikey_quicksort(
     }
     r = pb - pa;
     if (r > 0){
-        strptr.set_lcp(a - ss.begin() + r, depth);//lcp_it[a - ss.begin() + r] = depth;
+        strptr.set_lcp(a - ss.begin() + r, depth);
     }
     if (r > 1)
         dss_schimek::multikey_quicksort(strptr.sub(a - ss.begin(),  r), depth, memory - memory_use);
@@ -130,7 +131,7 @@ static inline void multikey_quicksort(
                            depth + 1, memory - memory_use);
     r = pd - pc;
     if (r > 0){
-      strptr.set_lcp(a - ss.begin() + n - r, depth); //lcp_it[a - ss.begin() + n - r] = depth;
+      strptr.set_lcp(a - ss.begin() + n - r, depth);
     }
     if ((r = pd - pc) > 1)
         dss_schimek::multikey_quicksort(strptr.sub(a - ss.begin() + n - r,  r),

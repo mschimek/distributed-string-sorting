@@ -81,11 +81,11 @@ struct RadixStep_CE0 {
     }
 };
 
-template<typename StringSet, template <typename> typename StringShadowPtr>
+template<typename StringShadowPtr>
 static inline void
-radixsort_CE0(const StringShadowPtr<StringSet>& str_shadow_ptr, size_t depth, size_t memory) {
+radixsort_CE0(const StringShadowPtr& str_shadow_ptr, size_t depth, size_t memory) {
 
-    typedef RadixStep_CE0<StringShadowPtr<StringSet>> RadixStep;
+    typedef RadixStep_CE0<StringShadowPtr> RadixStep;
 
     std::stack<RadixStep, std::vector<RadixStep> > radixstack;
     radixstack.emplace(str_shadow_ptr, depth);
@@ -156,7 +156,7 @@ radixsort_CE0(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, 
 
     typename StringSet::Container shadow = ss.allocate(ss.size());
     dss_schimek::StringShadowLcpPtr<StringSet> str_shadow_lcp_ptr(ss, StringSet(shadow), strptr.lcp_array());
-    dss_schimek::radixsort_CE0<StringSet>(str_shadow_lcp_ptr, depth, memory);
+    dss_schimek::radixsort_CE0(str_shadow_lcp_ptr, depth, memory);
 
     StringSet::deallocate(shadow);
 }

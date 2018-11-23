@@ -136,7 +136,7 @@ private:
     }
 
 public:
-    LcpStringLoserTree(const LcpStringPtr& input, std::pair<size_t, size_t>* ranges,
+    LcpStringLoserTree(const LcpStringPtr& input, const std::pair<size_t, size_t>* ranges,
                        lcp_t knownCommonLcp = 0)
     {
         for (size_t i = 1; i <= K; i++)

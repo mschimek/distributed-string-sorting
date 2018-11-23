@@ -158,6 +158,24 @@ namespace dss_schimek {
       return ranges;
     }
 
+  template<size_t K, typename StringLcpContainer>
+    static inline StringLcpContainer merge(StringLcpContainer&& recv_string_cont,
+        const std::vector<std::pair<size_t, size_t>>& ranges,
+        const size_t num_recv_elems) {
+
+      stringtools::LcpStringPtr lt_all_strings(recv_string_cont.strings(),
+          recv_string_cont.lcp_array(),
+          recv_string_cont.size());
+
+      StringLcpContainer sorted_string_cont(std::move(recv_string_cont));
+      bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
+      stringtools::LcpStringPtr out_(sorted_string_cont.strings(), 
+          sorted_string_cont.lcp_array(),
+          num_recv_elems);
+      loser_tree_.writeElementsToStream(out_, num_recv_elems);
+
+      return sorted_string_cont;
+    }
   template<typename StringPtr>
     static inline void merge_sort(StringPtr& local_string_ptr,
         dss_schimek::StringLcpContainer<unsigned char>& local_string_container, 
@@ -178,29 +196,16 @@ namespace dss_schimek {
         return;
 
 
-      if constexpr (debug) {
-        if (env.rank() == 0) { std::cout << "Begin sampling" << std::endl; }
-        env.barrier();
-      }
-
       std::vector<Char> raw_splitters = sample_splitters(ss);
-      size_t nr_splitters = std::min<size_t>(env.size() - 1, ss.size());
-      size_t splitter_dist = ss.size() / (nr_splitters + 1);
-      // Gather all splitters and sort them to determine the final splitters
       std::vector<Char> splitters =
         dss_schimek::mpi::allgather_strings(raw_splitters, env);
-
-
       dss_schimek::StringLcpContainer chosen_splitters_cont = 
         choose_splitters<dss_schimek::StringLcpContainer<unsigned char>>(ss, splitters);
+
 
       const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
           chosen_splitters_cont.strings() + chosen_splitters_cont.size());
 
-      // Now we need to split the local strings using the splitters
-      // The size is given by the NUMBER of strings, not their lengths. The number
-      // of characters that must be send to other PEs is computed in the alltoall-
-      // function.
       std::vector<std::size_t> interval_sizes = compute_interval_sizes(ss, chosen_splitters_set);
       std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
       print_interval_sizes(interval_sizes, receiving_interval_sizes);
@@ -222,16 +227,21 @@ namespace dss_schimek {
           recv_string_cont.size());
 
       //TODO refactor
-      constexpr size_t KWAY = 16;
-      bingmann::LcpStringLoserTree<KWAY> loser_tree_(lt_all_strings, ranges.data());
-      std::vector<Char*> sortedStrings_(num_recv_elems);
-      std::vector<size_t> sortedLcp_(num_recv_elems);
-      stringtools::LcpStringPtr out_(sortedStrings_.data(), sortedLcp_.data(), num_recv_elems);
-      loser_tree_.writeElementsToStream(out_, num_recv_elems);
-      asm volatile("": : : "memory");
-      dss_schimek::UCharStringSet ss_res(sortedStrings_.data(), sortedStrings_.data() + num_recv_elems);
-      StringPtr strptr_res(ss_res, sortedLcp_.data());
+      //bingmann::LcpStringLoserTree<KWAY> loser_tree_(lt_all_strings, ranges.data());
+      //std::vector<Char*> sortedStrings_(num_recv_elems);
+      //std::vector<size_t> sortedLcp_(num_recv_elems);
+      //stringtools::LcpStringPtr out_(sortedStrings_.data(), sortedLcp_.data(), num_recv_elems);
+      //loser_tree_.writeElementsToStream(out_, num_recv_elems);
+      //asm volatile("": : : "memory");
+      //dss_schimek::UCharStringSet ss_res(sortedStrings_.data(), sortedStrings_.data() + num_recv_elems);
+      StringLcpContainer sorted_strings_cont = merge<8>(std::move(recv_string_cont), ranges, num_recv_elems);
+      
+
+      UCharStringSet sorted_strings_set(sorted_strings_cont.strings(),
+          sorted_strings_cont.strings() + num_recv_elems);
+      StringPtr strptr_res(sorted_strings_set, sorted_strings_cont.lcp_array());
       const bool is_sorted = dss_schimek::is_sorted(strptr_res);
+
 
       std::cout << "res: " << is_sorted << std::endl;
     }
