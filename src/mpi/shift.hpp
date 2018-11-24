@@ -347,7 +347,7 @@ namespace dss_schimek::mpi {
  static inline std::vector<unsigned char> shift_string(
      unsigned char* send_data, environment env = environment()) {
 
-   constexpr bool debug = 1;
+   constexpr bool debug = false;
    std::size_t string_length = dss_schimek::string_length(send_data);
    if constexpr(debug)
    std::cout << "rank: " << env.rank() << " string_length: " << string_length << std::endl;

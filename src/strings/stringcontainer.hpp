@@ -124,6 +124,7 @@ namespace dss_schimek {
         
 
         void set(std::vector<CharType>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
+        void set(std::vector<String>&& strings) { strings_ = std::move(strings);  }
         void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
 
         void update(std::vector<CharType>&& raw_strings)

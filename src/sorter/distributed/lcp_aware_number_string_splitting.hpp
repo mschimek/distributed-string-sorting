@@ -167,13 +167,18 @@ namespace dss_schimek {
           recv_string_cont.lcp_array(),
           recv_string_cont.size());
 
-      StringLcpContainer sorted_string_cont(std::move(recv_string_cont));
+      std::vector<unsigned char*> sorted_string(recv_string_cont.size());
+      std::vector<size_t> sorted_lcp(recv_string_cont.size());
       bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
-      stringtools::LcpStringPtr out_(sorted_string_cont.strings(), 
-          sorted_string_cont.lcp_array(),
+      stringtools::LcpStringPtr out_(sorted_string.data(),
+          sorted_lcp.data(),
           num_recv_elems);
       loser_tree_.writeElementsToStream(out_, num_recv_elems);
 
+      StringLcpContainer sorted_string_cont;
+      sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
+      sorted_string_cont.set(std::move(sorted_string));
+      sorted_string_cont.set(std::move(sorted_lcp));
       return sorted_string_cont;
     }
   
@@ -214,13 +219,18 @@ namespace dss_schimek {
       case 512 : return merge<512>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-      default : abort();
+      default : std::cout << "ich nehm den branch" << std::endl;
+                return merge<2>(std::move(recv_string_cont),
+                   ranges,
+                   num_recv_elems);
+
     }
     return StringLcpContainer();
   }
   template<typename StringPtr>
-    static inline void merge_sort(StringPtr& local_string_ptr,
-        dss_schimek::StringLcpContainer<unsigned char>& local_string_container, 
+    static inline dss_schimek::StringLcpContainer<unsigned char>
+    merge_sort(StringPtr& local_string_ptr,
+        dss_schimek::StringLcpContainer<unsigned char>&& local_string_container, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
       constexpr bool debug = false;
@@ -235,7 +245,7 @@ namespace dss_schimek {
 
       // There is only one PE, hence there is no need for distributed sorting 
       if (env.size() == 1)
-        return;
+        return dss_schimek::StringLcpContainer<unsigned char>(std::move(local_string_container));
 
 
       std::vector<Char> raw_splitters = sample_splitters(ss);
@@ -264,6 +274,13 @@ namespace dss_schimek {
         compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont, receiving_interval_sizes);
 
 
+      UCharStringSet sorted_strings_set(recv_string_cont.strings(),
+      recv_string_cont.strings() + recv_string_cont.size());
+      dss_schimek::mpi::execute_in_order([&](){
+      for (volatile size_t i = 0; i < 1000000; ++i);
+      std::cout << "rank " << env.rank()  << " received: "<< std::endl;
+      sorted_strings_set.print();
+      });
            //TODO refactor
       //bingmann::LcpStringLoserTree<KWAY> loser_tree_(lt_all_strings, ranges.data());
       //std::vector<Char*> sortedStrings_(num_recv_elems);
@@ -273,17 +290,6 @@ namespace dss_schimek {
       //asm volatile("": : : "memory");
       //dss_schimek::UCharStringSet ss_res(sortedStrings_.data(), sortedStrings_.data() + num_recv_elems);
 
-      StringLcpContainer<unsigned char> sorted_strings_cont = choose_merge(std::move(recv_string_cont),
-          ranges,
-          num_recv_elems);
-      
-      
-      UCharStringSet sorted_strings_set(sorted_strings_cont.strings(),
-          sorted_strings_cont.strings() + num_recv_elems);
-      StringPtr strptr_res(sorted_strings_set, sorted_strings_cont.lcp_array());
-      const bool is_sorted = dss_schimek::is_sorted(strptr_res);
-
-
-      std::cout << "res: " << is_sorted << std::endl;
-    }
+      return choose_merge(std::move(recv_string_cont), ranges, num_recv_elems);
+          }
 }

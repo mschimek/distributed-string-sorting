@@ -281,7 +281,7 @@ public:
         while (ss.is_equal(s1, c1, s2, c2))
             ++c1, ++c2;
 
-        if (!ss.is_leq(s1, c2, s2, c2))
+        if (!ss.is_leq(s1, c1, s2, c2))
             return false;
 
         return true;

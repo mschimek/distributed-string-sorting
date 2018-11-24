@@ -14,16 +14,14 @@ namespace dss_schimek {
     using StringSet = typename StringPtr::StringSet;
     const StringSet& ss = strptr.active();
     using String = UCharStringSet::Char*;
-    std::cout << "rank: " << env.rank() << " init" << std::endl;
+    std::cout << "env.rank " << env.rank() << " size: " << ss.size() << std::endl;
     bool is_locally_sorted = ss.check_order();
 
-    std::cout << "rank: " << env.rank() << " is_locally_sorted: " << is_locally_sorted << std::endl;
     if (env.size() == 1)
       return is_locally_sorted;
     
     size_t has_strings = ss.size() > 0;
     size_t number_PE_with_data = dsss::mpi::allreduce_sum(has_strings);
-    std::cout << "rank: " << env.rank() << " number_PE_with_data: " << number_PE_with_data << std::endl;
 
     if (number_PE_with_data <= 1)
       return is_locally_sorted;
@@ -32,8 +30,6 @@ namespace dss_schimek {
     int own_max_number = has_strings ? env.rank() : -1;
     int min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
     int max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
-    std::cout << "rank: " << env.rank() << " min_PE_with_data: " << min_PE_with_data << std::endl;
-    std::cout << "rank: " << env.rank() << " max_PE_with_data: " << max_PE_with_data << std::endl;
     const bool is_left_shift = true;
     const String front = has_strings ? *ss.begin() : ss.empty_string();
     const String back = has_strings ? *(ss.end() - 1) : ss.empty_string();
@@ -45,10 +41,6 @@ namespace dss_schimek {
         ); 
 
 
-    std::cout << "rank: " << env.rank() << " greater_string: " << greater_string.data() << " back: " << back <<  
-      " smaller_string: " << smaller_string.data()  << " front: " << front << std::endl;
-
-    std::cout << "rank " << env.rank() << " smaller vs front " << dss_schimek::scmp(smaller_string.data(), front) << std::endl;
     bool is_overall_sorted = is_locally_sorted;
     if (!has_strings)
       return dsss::mpi::allreduce_and(is_overall_sorted, env);
@@ -59,5 +51,32 @@ namespace dss_schimek {
       is_overall_sorted &= dss_schimek::scmp(back, greater_string.data()) <= 0;
 
     return dsss::mpi::allreduce_and(is_overall_sorted, env);
+  }
+
+  template<typename StringPtr>
+  bool is_complete_and_sorted(const StringPtr& strptr,
+      size_t initial_local_num_chars,
+      size_t current_local_num_chars,
+      size_t initial_local_num_strings,
+      size_t current_local_num_strings,
+      dsss::mpi::environment env = dsss::mpi::environment())
+  {
+      const size_t initial_total_num_chars = dsss::mpi::allreduce_sum(initial_local_num_chars);
+      const size_t initial_total_num_strings = dsss::mpi::allreduce_sum(initial_local_num_strings);
+
+      const size_t current_total_num_chars = dsss::mpi::allreduce_sum(current_local_num_chars);
+      const size_t current_total_num_strings = dsss::mpi::allreduce_sum(current_local_num_strings);
+
+      if (initial_total_num_chars != current_total_num_chars) {
+        std::cout << "initial total num chars: " << initial_total_num_chars <<
+           " current_total_num_chars: " << current_total_num_chars << std::endl;
+        std::cout << "We've lost some chars" << std::endl;
+        return false;
+      }
+      if (initial_total_num_strings != current_total_num_strings) {
+        std::cout << "We've lost some strings" << std::endl;
+        return false;
+      }
+      return is_sorted(strptr);
   }
 }
