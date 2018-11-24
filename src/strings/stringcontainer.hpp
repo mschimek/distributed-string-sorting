@@ -8,6 +8,7 @@
 #include <iostream>
 #include <tlx/logger.hpp>
 #include <algorithm>
+#include "strings/stringptr.hpp"
 #include "strings/stringtools.hpp"
 
 namespace dss_schimek {
@@ -41,6 +42,8 @@ namespace dss_schimek {
         std::vector<size_t>& lcps() { return lcps_; }
         size_t* lcp_array() { return lcps_.data(); }
         std::vector<CharType>& raw_strings() { return raw_strings_; }
+
+               
 
         void set(std::vector<CharType>&& raw_strings) { raw_strings_ = std::move(raw_strings); }
         void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
@@ -121,7 +124,22 @@ namespace dss_schimek {
         std::vector<size_t>& lcps() { return lcps_; }
         size_t* lcp_array() { return lcps_.data(); }
         std::vector<CharType>& raw_strings() { return *raw_strings_; }
-        
+
+        template <typename StringSet>
+          StringSet make_string_set() {
+            return StringSet(strings(), strings() + size());
+          }
+
+        template <typename StringSet>
+          dss_schimek::StringPtr<StringSet> make_string_ptr() {
+            return dss_schimek::StringPtr(make_string_set<StringSet>());
+          }
+
+        template <typename StringSet>
+          dss_schimek::StringLcpPtr<StringSet> make_string_lcp_ptr() {
+            return dss_schimek::StringLcpPtr(make_string_set<StringSet>(), lcp_array());
+          }
+
 
         void set(std::vector<CharType>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
         void set(std::vector<String>&& strings) { strings_ = std::move(strings);  }

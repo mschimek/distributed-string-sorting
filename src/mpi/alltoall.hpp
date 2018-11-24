@@ -25,6 +25,7 @@
 #include "util/string_set.hpp"
 
 #include "strings/stringptr.hpp"
+#include "strings/stringcontainer.hpp"
 #include "strings/stringtools.hpp"
 
 namespace dsss::mpi {

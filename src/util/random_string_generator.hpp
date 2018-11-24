@@ -17,6 +17,7 @@
 #include "util/string_set.hpp"
 
 #include "strings/stringptr.hpp"
+#include "strings/stringcontainer.hpp"
 
 #include "mpi/environment.hpp"
 

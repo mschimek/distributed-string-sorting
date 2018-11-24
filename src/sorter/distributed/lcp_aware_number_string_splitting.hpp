@@ -181,52 +181,52 @@ namespace dss_schimek {
       sorted_string_cont.set(std::move(sorted_lcp));
       return sorted_string_cont;
     }
-  
+
   template<typename StringLcpContainer>
-  static inline StringLcpContainer choose_merge(StringLcpContainer&& recv_string_cont,
-      std::vector<std::pair<size_t, size_t>> ranges,
-      size_t num_recv_elems,
-      dsss::mpi::environment env = dsss::mpi::environment()) {
+    static inline StringLcpContainer choose_merge(StringLcpContainer&& recv_string_cont,
+        std::vector<std::pair<size_t, size_t>> ranges,
+        size_t num_recv_elems,
+        dsss::mpi::environment env = dsss::mpi::environment()) {
 
-    switch (env.size()) {
-      case 1 :  return merge<1>(std::move(recv_string_cont),
-                   ranges,
-                   num_recv_elems);
-      case 2 : return merge<2>(std::move(recv_string_cont),
-                   ranges,
-                   num_recv_elems);
-      case 4 : return merge<4>(std::move(recv_string_cont),
-                   ranges,
-                   num_recv_elems);
-      case 8 : return merge<8>(std::move(recv_string_cont),
-                   ranges,
-                   num_recv_elems);
-      case 16 : return merge<16>(std::move(recv_string_cont),
-                    ranges,
-                    num_recv_elems);
-      case 32 : return merge<32>(std::move(recv_string_cont),
-                    ranges,
-                    num_recv_elems);
-      case 64 : return merge<64>(std::move(recv_string_cont),
-                    ranges,
-                    num_recv_elems);
-      case 128 : return merge<128>(std::move(recv_string_cont),
+      switch (env.size()) {
+        case 1 :  return merge<1>(std::move(recv_string_cont),
+                      ranges,
+                      num_recv_elems);
+        case 2 : return merge<2>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-      case 264 : return merge<264>(std::move(recv_string_cont),
+        case 4 : return merge<4>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-      case 512 : return merge<512>(std::move(recv_string_cont),
+        case 8 : return merge<8>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-      default : std::cout << "ich nehm den branch" << std::endl;
-                return merge<2>(std::move(recv_string_cont),
-                   ranges,
-                   num_recv_elems);
+        case 16 : return merge<16>(std::move(recv_string_cont),
+                      ranges,
+                      num_recv_elems);
+        case 32 : return merge<32>(std::move(recv_string_cont),
+                      ranges,
+                      num_recv_elems);
+        case 64 : return merge<64>(std::move(recv_string_cont),
+                      ranges,
+                      num_recv_elems);
+        case 128 : return merge<128>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 264 : return merge<264>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 512 : return merge<512>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        default : std::cout << "ich nehm den branch" << std::endl;
+                  return merge<2>(std::move(recv_string_cont),
+                      ranges,
+                      num_recv_elems);
 
+      }
+      return StringLcpContainer();
     }
-    return StringLcpContainer();
-  }
   template<typename StringPtr>
     static inline dss_schimek::StringLcpContainer<unsigned char>
     merge_sort(StringPtr& local_string_ptr,
@@ -274,22 +274,6 @@ namespace dss_schimek {
         compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont, receiving_interval_sizes);
 
 
-      UCharStringSet sorted_strings_set(recv_string_cont.strings(),
-      recv_string_cont.strings() + recv_string_cont.size());
-      dss_schimek::mpi::execute_in_order([&](){
-      for (volatile size_t i = 0; i < 1000000; ++i);
-      std::cout << "rank " << env.rank()  << " received: "<< std::endl;
-      sorted_strings_set.print();
-      });
-           //TODO refactor
-      //bingmann::LcpStringLoserTree<KWAY> loser_tree_(lt_all_strings, ranges.data());
-      //std::vector<Char*> sortedStrings_(num_recv_elems);
-      //std::vector<size_t> sortedLcp_(num_recv_elems);
-      //stringtools::LcpStringPtr out_(sortedStrings_.data(), sortedLcp_.data(), num_recv_elems);
-      //loser_tree_.writeElementsToStream(out_, num_recv_elems);
-      //asm volatile("": : : "memory");
-      //dss_schimek::UCharStringSet ss_res(sortedStrings_.data(), sortedStrings_.data() + num_recv_elems);
-
       return choose_merge(std::move(recv_string_cont), ranges, num_recv_elems);
-          }
+    }
 }
