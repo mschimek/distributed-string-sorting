@@ -1,0 +1,2 @@
+add_executable(catch_test string_set_tests.cpp)
+set_target_properties(catch_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
