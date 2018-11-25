@@ -227,10 +227,11 @@ namespace dss_schimek {
       }
       return StringLcpContainer();
     }
+
   template<typename StringPtr>
-    static inline dss_schimek::StringLcpContainer<unsigned char>
+    static inline dss_schimek::StringLcpContainer<typename StringPtr::StringSet>
     merge_sort(StringPtr& local_string_ptr,
-        dss_schimek::StringLcpContainer<unsigned char>&& local_string_container, 
+        dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&& local_string_container, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
       constexpr bool debug = false;
@@ -245,14 +246,14 @@ namespace dss_schimek {
 
       // There is only one PE, hence there is no need for distributed sorting 
       if (env.size() == 1)
-        return dss_schimek::StringLcpContainer<unsigned char>(std::move(local_string_container));
+        return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
 
 
       std::vector<Char> raw_splitters = sample_splitters(ss);
       std::vector<Char> splitters =
         dss_schimek::mpi::allgather_strings(raw_splitters, env);
       dss_schimek::StringLcpContainer chosen_splitters_cont = 
-        choose_splitters<dss_schimek::StringLcpContainer<unsigned char>>(ss, splitters);
+        choose_splitters<dss_schimek::StringLcpContainer<StringSet>>(ss, splitters);
 
 
       const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
@@ -262,7 +263,7 @@ namespace dss_schimek {
       std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
       print_interval_sizes(interval_sizes, receiving_interval_sizes);
 
-      dss_schimek::StringLcpContainer<Char> recv_string_cont = 
+      dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
         dsss::mpi::alltoallv(local_string_container, interval_sizes);
 
       size_t num_recv_elems = 

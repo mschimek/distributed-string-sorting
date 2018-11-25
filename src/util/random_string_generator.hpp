@@ -24,41 +24,43 @@
 namespace dss_schimek {
   using namespace dss_schimek;
 
-  template <typename CharType>
-  class PrefixNumberStringLcpContainer : public StringLcpContainer<CharType>
+  template <typename StringSet>
+  class PrefixNumberStringLcpContainer : public StringLcpContainer<StringSet>
   {
+    using Char = typename StringSet::Char;
     public:
-    PrefixNumberStringLcpContainer(const size_t size, const CharType prefix)
+    PrefixNumberStringLcpContainer(const size_t size, const Char prefix)
     {
-      std::vector<CharType> raw_string_data;
+      std::vector<Char> raw_string_data;
       for(size_t i = 1; i <= size; ++i)
       {
         raw_string_data.emplace_back(prefix);
         size_t number_to_print = i;
         while(number_to_print > 0)
         {
-          CharType last_digit = number_to_print % 10;
+          Char last_digit = number_to_print % 10;
           raw_string_data.emplace_back(48 + last_digit);
           number_to_print /= 10;
         }
-        raw_string_data.emplace_back(CharType(0));
+        raw_string_data.emplace_back(Char(0));
       }
       this->update(std::move(raw_string_data));
     }
   };
 
-  template <typename CharType>
-  class RandomStringLcpContainer : public StringLcpContainer<CharType>
+  template <typename StringSet>
+  class RandomStringLcpContainer : public StringLcpContainer<StringSet>
   {
+    using Char = typename StringSet::Char;
     public:
     RandomStringLcpContainer(const size_t size,
           const size_t min_length = 10,
           const size_t max_length = 20)
     {
-      std::vector<CharType> random_raw_string_data;
+      std::vector<Char> random_raw_string_data;
       std::random_device rand_seed;
       std::mt19937 rand_gen(dsss::mpi::environment().rank());
-      std::uniform_int_distribution<CharType> char_dis(65, 90);
+      std::uniform_int_distribution<Char> char_dis(65, 90);
       
       std::uniform_int_distribution<size_t> length_dis(min_length, max_length);
       random_raw_string_data.reserve(size + 1);
@@ -66,7 +68,7 @@ namespace dss_schimek {
         size_t length = length_dis(rand_gen);
         for (size_t j = 0; j < length; ++j)
           random_raw_string_data.emplace_back(char_dis(rand_gen));
-        random_raw_string_data.emplace_back(CharType(0));
+        random_raw_string_data.emplace_back(Char(0));
       }
       this->update(std::move(random_raw_string_data));
     }

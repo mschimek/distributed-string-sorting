@@ -8,7 +8,7 @@ using namespace dss_schimek;
 int main() {
   dsss::mpi::environment env;
 
-  PrefixNumberStringLcpContainer<unsigned char> rand_container(10, env.rank() + 65);
+  PrefixNumberStringLcpContainer<UCharStringSet> rand_container(10, env.rank() + 65);
   UCharStringSet ss(rand_container.strings(), rand_container.strings() + rand_container.size()); 
   StringLcpPtr<UCharStringSet> rand_string_ptr(ss, rand_container.lcp_array());
   rand_string_ptr.active().print();
@@ -25,7 +25,7 @@ int main() {
   }
   
   env.barrier();
-  StringLcpContainer<unsigned char> recv;
+  StringLcpContainer<UCharStringSet > recv;
   
   if (env.rank() == 0)
     recv = dsss::mpi::alltoallv(rand_container, {1, 1, 1, 1, 1}, env);

@@ -8,7 +8,7 @@
 int main() {
   using namespace dss_schimek;
   size_t num_strings = 10;
-  RandomStringLcpContainer<unsigned char> rand_container(num_strings);
+  RandomStringLcpContainer<UCharStringSet> rand_container(num_strings);
   UCharStringSet ss(rand_container.strings(), rand_container.strings() + rand_container.size()); 
   StringLcpPtr<UCharStringSet> rand_string_ptr(ss, rand_container.lcp_array());
 

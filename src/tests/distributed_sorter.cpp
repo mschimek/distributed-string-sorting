@@ -7,9 +7,9 @@ int main() {
   using namespace dss_schimek;
 
   dsss::mpi::environment env;
-  RandomStringLcpContainer<unsigned char> rand_container(10);
+  RandomStringLcpContainer<UCharStringSet> rand_container(10);
   StringLcpPtr<UCharStringSet> rand_string_ptr = 
-    rand_container.make_string_lcp_ptr<UCharStringSet>();
+    rand_container.make_string_lcp_ptr();
 
   dss_schimek::mpi::execute_in_order([&](){
       for (volatile size_t i = 0; i < 1000000; ++i);
@@ -18,12 +18,12 @@ int main() {
       });
   env.barrier();
 
-  StringLcpContainer<unsigned char> sorted_string_cont = 
+  StringLcpContainer<UCharStringSet> sorted_string_cont = 
     merge_sort(rand_string_ptr, std::move(rand_container));
 
 
   StringLcpPtr<UCharStringSet> sorted_strptr = 
-    sorted_string_cont.make_string_lcp_ptr<UCharStringSet>();
+    sorted_string_cont.make_string_lcp_ptr();
 
   const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
       rand_container.char_size(),

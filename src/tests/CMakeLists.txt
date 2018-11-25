@@ -1,3 +1,4 @@
+add_subdirectory(catch)
 
 add_executable(allgather_simple_test allgather_simple_test.cpp ../mpi/environment.cpp)
 target_link_libraries(allgather_simple_test ${MPI_LIBRARIES} tlx)

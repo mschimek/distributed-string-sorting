@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <memory>
 #include <numa.h>
-#include "stringset.hpp"
+#include "strings/stringset.hpp"
 #include <iostream>
 #include <tlx/logger.hpp>
 #include <algorithm>
@@ -93,23 +93,24 @@ namespace dss_schimek {
     };
 
 
-  template <typename CharType>
+  template <typename StringSet>
     class StringLcpContainer
     {
       public:
-        using String = CharType*;
-        StringLcpContainer() : raw_strings_(std::make_unique<std::vector<CharType>>()),
+        using Char = typename StringSet::Char; 
+        using String = typename StringSet::String;
+        StringLcpContainer() : raw_strings_(std::make_unique<std::vector<Char>>()),
           strings_(),
           lcps_() {}
-        StringLcpContainer(std::vector<CharType>&& raw_strings) : 
-          raw_strings_(std::make_unique<std::vector<CharType>>(std::move(raw_strings)))
+        StringLcpContainer(std::vector<Char>&& raw_strings) : 
+          raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings)))
       {
         update_strings(); 
         lcps_.resize(size(), 0);
       }
 
-        explicit StringLcpContainer(std::vector<CharType>&& raw_strings, std::vector<size_t>&& lcp) : 
-          raw_strings_(std::make_unique<std::vector<CharType>>(std::move(raw_strings))) {
+        explicit StringLcpContainer(std::vector<Char>&& raw_strings, std::vector<size_t>&& lcp) : 
+          raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
 
             update_strings();
             lcps_ = std::move(lcp);
@@ -123,29 +124,26 @@ namespace dss_schimek {
         size_t char_size() const { return raw_strings_->size(); }
         std::vector<size_t>& lcps() { return lcps_; }
         size_t* lcp_array() { return lcps_.data(); }
-        std::vector<CharType>& raw_strings() { return *raw_strings_; }
+        std::vector<Char>& raw_strings() { return *raw_strings_; }
 
-        template <typename StringSet>
-          StringSet make_string_set() {
-            return StringSet(strings(), strings() + size());
-          }
+        StringSet make_string_set() {
+          return StringSet(strings(), strings() + size());
+        }
 
-        template <typename StringSet>
-          dss_schimek::StringPtr<StringSet> make_string_ptr() {
-            return dss_schimek::StringPtr(make_string_set<StringSet>());
-          }
+        dss_schimek::StringPtr<StringSet> make_string_ptr() {
+          return dss_schimek::StringPtr(make_string_set());
+        }
 
-        template <typename StringSet>
-          dss_schimek::StringLcpPtr<StringSet> make_string_lcp_ptr() {
-            return dss_schimek::StringLcpPtr(make_string_set<StringSet>(), lcp_array());
-          }
+        dss_schimek::StringLcpPtr<StringSet> make_string_lcp_ptr() {
+          return dss_schimek::StringLcpPtr(make_string_set(), lcp_array());
+        }
 
 
-        void set(std::vector<CharType>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
+        void set(std::vector<Char>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
         void set(std::vector<String>&& strings) { strings_ = std::move(strings);  }
         void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
 
-        void update(std::vector<CharType>&& raw_strings)
+        void update(std::vector<Char>&& raw_strings)
         {
           set(std::move(raw_strings));
           update_strings(); 
@@ -172,7 +170,7 @@ namespace dss_schimek {
 
       protected:
         static constexpr size_t approx_string_length = 10;
-        std::unique_ptr<std::vector<CharType>> raw_strings_;
+        std::unique_ptr<std::vector<Char>> raw_strings_;
         std::vector<String> strings_;
         std::vector<size_t> lcps_;
 
@@ -189,5 +187,5 @@ namespace dss_schimek {
         }
     };
 
-  using StringLcpContainerUChar = StringLcpContainer<unsigned char>;
+  using StringLcpContainerUChar = StringLcpContainer<UCharStringSet>;
 }
