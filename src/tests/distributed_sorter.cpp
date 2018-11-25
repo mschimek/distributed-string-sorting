@@ -6,9 +6,11 @@
 int main() {
   using namespace dss_schimek;
 
+  using StringSet = UCharStringSet;
+
   dsss::mpi::environment env;
-  RandomStringLcpContainer<UCharStringSet> rand_container(10);
-  StringLcpPtr<UCharStringSet> rand_string_ptr = 
+  RandomStringLcpContainer<StringSet> rand_container(100);
+  StringLcpPtr<StringSet> rand_string_ptr = 
     rand_container.make_string_lcp_ptr();
 
   dss_schimek::mpi::execute_in_order([&](){
@@ -18,11 +20,12 @@ int main() {
       });
   env.barrier();
 
-  StringLcpContainer<UCharStringSet> sorted_string_cont = 
-    merge_sort(rand_string_ptr, std::move(rand_container));
+  DistributedMergeSort<StringLcpPtr<StringSet>> sorter;
+  StringLcpContainer<StringSet> sorted_string_cont = 
+    sorter.sort(rand_string_ptr, std::move(rand_container));
 
 
-  StringLcpPtr<UCharStringSet> sorted_strptr = 
+  StringLcpPtr<StringSet> sorted_strptr = 
     sorted_string_cont.make_string_lcp_ptr();
 
   const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,

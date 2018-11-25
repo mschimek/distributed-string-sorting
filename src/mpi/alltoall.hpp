@@ -229,8 +229,9 @@ inline dsss::indexed_string_set<IndexType> alltoallv_indexed_strings(
     std::move(receive_data_indices));
 }
 
-dss_schimek::StringLcpContainerUChar alltoallv(
-    dss_schimek::StringLcpContainerUChar& send_data,
+template <typename StringLcpContainer>
+StringLcpContainer alltoallv(
+    StringLcpContainer& send_data,
     const std::vector<size_t>& send_counts,
     environment env = environment()){
 
@@ -259,7 +260,7 @@ dss_schimek::StringLcpContainerUChar alltoallv(
   receive_buffer_char = alltoallv(send_buffer, send_counts_char, env);
   receive_buffer_lcp = alltoallv(send_data.lcps(), send_counts_lcp, env);
 
-  return StringLcpContainerUChar(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+  return StringLcpContainer(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
 } // namespace dsss::mpi

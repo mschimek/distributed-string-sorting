@@ -667,7 +667,7 @@ public:
 
     static String empty_string()
     {
-      static Char zero = 0; 
+      static String zero(0, 0); 
       return &zero;
     }
 
