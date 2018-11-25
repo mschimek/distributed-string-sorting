@@ -236,8 +236,9 @@ StringLcpContainer alltoallv(
     environment env = environment()){
 
   using namespace dss_schimek;
+  using StringSet = typename StringLcpContainer::StringSet;
   if (send_data.size() == 0)
-    return StringLcpContainerUChar();
+    return StringLcpContainer();
 
   std::vector<unsigned char> receive_buffer_char;
   std::vector<size_t> receive_buffer_lcp;
@@ -248,8 +249,15 @@ StringLcpContainer alltoallv(
   send_buffer.reserve(send_data.char_size());
   for (size_t interval = 0, offset = 0; interval < send_counts.size(); ++interval) {
     for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
-      const size_t string_length = dss_schimek::string_length(send_data[j]) + 1;
+      size_t string_length; 
+      if constexpr(std::is_same<StringSet, UCharLengthStringSet>::value)
+       string_length = dss_schimek::string_length(send_data[j].string) + 1;
+      else
+        string_length = dss_schimek::string_length(send_data[j]) + 1;
       send_counts_char[interval] += string_length;
+      if constexpr(std::is_same<StringSet, UCharLengthStringSet>::value)
+      std::copy_n(send_data[j].string, string_length, std::back_inserter(send_buffer));
+      else
       std::copy_n(send_data[j], string_length, std::back_inserter(send_buffer));
     }
     offset += send_counts[interval];

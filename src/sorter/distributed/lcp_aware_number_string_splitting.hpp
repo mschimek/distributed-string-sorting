@@ -67,7 +67,72 @@ namespace dss_schimek {
     }
   };
   
-  
+  template <typename StringSet>
+    class ChooseSplittersPolicy
+    {
+      protected:
+        StringLcpContainer<StringSet> choose_splitters(
+            const StringSet& ss, 
+            std::vector<typename StringSet::Char>& all_splitters,
+            dsss::mpi::environment env = dsss::mpi::environment())
+        {
+          using Char = typename StringSet::Char;
+          using String = typename StringSet::String;
+
+          StringLcpContainer<StringSet> all_splitters_cont(std::move(all_splitters));
+          dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
+          const StringSet& all_splitters_set = all_splitters_strptr.active();
+
+          insertion_sort(all_splitters_strptr, 0, 0);
+
+          const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
+          const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
+
+          std::vector<Char> raw_chosen_splitters;
+          for (std::size_t i = 1; i <= nr_splitters; ++i) {
+            const auto begin = all_splitters_set.begin();
+            const String splitter = all_splitters_set[begin + i * splitter_dist];
+            std::copy_n(splitter, dss_schimek::string_length(splitter) + 1,
+                std::back_inserter(raw_chosen_splitters));
+          }
+
+          return StringLcpContainer<StringSet>(std::move(raw_chosen_splitters));
+        }
+    };
+    template <>
+    class ChooseSplittersPolicy<UCharLengthStringSet>
+    {
+      using StringSet = UCharLengthStringSet;
+
+      protected:
+        StringLcpContainer<StringSet> choose_splitters(
+            const StringSet& ss, 
+            std::vector<typename StringSet::Char>& all_splitters,
+            dsss::mpi::environment env = dsss::mpi::environment())
+        {
+          using Char = typename StringSet::Char;
+          using String = typename StringSet::String;
+
+          StringLcpContainer<StringSet> all_splitters_cont(std::move(all_splitters));
+          dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
+          const StringSet& all_splitters_set = all_splitters_strptr.active();
+
+          insertion_sort(all_splitters_strptr, 0, 0);
+
+          const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
+          const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
+
+          std::vector<Char> raw_chosen_splitters;
+          for (std::size_t i = 1; i <= nr_splitters; ++i) {
+            const auto begin = all_splitters_set.begin();
+            const String splitter = all_splitters_set[begin + i * splitter_dist];
+            std::copy_n(splitter.string, dss_schimek::string_length(splitter.string) + 1,
+                std::back_inserter(raw_chosen_splitters));
+          }
+
+          return StringLcpContainer<StringSet>(std::move(raw_chosen_splitters));
+        }
+    };
   template <typename StringLcpContainer, typename StringSet>
     static inline StringLcpContainer choose_splitters(const StringSet& ss, 
         std::vector<typename StringSet::Char>& all_splitters,
@@ -100,7 +165,7 @@ namespace dss_schimek {
     }
 
   template <typename StringSet>
-    static inline std::vector<size_t> compute_interval_sizes(const StringSet& ss, 
+     inline std::vector<size_t> compute_interval_sizes(const StringSet& ss, 
         const StringSet& splitters,
         dsss::mpi::environment env = dsss::mpi::environment())
     {
@@ -117,6 +182,40 @@ namespace dss_schimek {
               ss[ss.begin() + element_pos], splitters[splitters.begin() + i])) { --element_pos; }
         while (element_pos < ss.size() && dss_schimek::leq(
               ss[ss.begin() + element_pos], splitters[splitters.begin() + i])) { ++element_pos; }
+        interval_sizes.emplace_back(element_pos);
+      }
+      interval_sizes.emplace_back(ss.size());
+      for (std::size_t i = interval_sizes.size() - 1; i > 0; --i) {
+        interval_sizes[i] -= interval_sizes[i - 1];
+      }
+      return interval_sizes;
+    }
+  
+  template <>
+    inline std::vector<size_t> compute_interval_sizes(const UCharLengthStringSet& ss, 
+        const UCharLengthStringSet& splitters,
+        dsss::mpi::environment env)
+    {
+      std::vector<size_t> interval_sizes;
+      interval_sizes.reserve(splitters.size());
+
+      size_t nr_splitters = std::min<size_t>(env.size() - 1, ss.size());
+      size_t splitter_dist = ss.size() / (nr_splitters + 1);
+      size_t element_pos = 0;
+
+      for (std::size_t i = 0; i < splitters.size(); ++i) {
+        element_pos = (i + 1) * splitter_dist;
+
+        while(element_pos > 0 && !dss_schimek::leq(
+              ss[ss.begin() + element_pos].string, 
+              splitters[splitters.begin() + i].string)) 
+        { --element_pos; }
+
+        while (element_pos < ss.size() && dss_schimek::leq(
+              ss[ss.begin() + element_pos].string, 
+              splitters[splitters.begin() + i].string)) 
+        { ++element_pos; }
+
         interval_sizes.emplace_back(element_pos);
       }
       interval_sizes.emplace_back(ss.size());
@@ -188,9 +287,39 @@ namespace dss_schimek {
 
       return ranges;
     }
+template<size_t K>
+    static inline StringLcpContainer<UCharLengthStringSet> merge(dss_schimek::StringLcpContainer<UCharLengthStringSet>&& recv_string_cont,
+        const std::vector<std::pair<size_t, size_t>>& ranges,
+        const size_t num_recv_elems) {
 
-  template<size_t K, typename StringLcpContainer>
-    static inline StringLcpContainer merge(StringLcpContainer&& recv_string_cont,
+      std::vector<unsigned char*> strings(num_recv_elems);
+      for (size_t i = 0; i < num_recv_elems; ++i)
+        strings[i] = recv_string_cont[i].string;
+
+      stringtools::LcpStringPtr lt_all_strings(strings.data(),
+          recv_string_cont.lcp_array(),
+          recv_string_cont.size());
+
+      std::vector<unsigned char*> sorted_string(recv_string_cont.size());
+      std::vector<size_t> sorted_lcp(recv_string_cont.size());
+      bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
+      stringtools::LcpStringPtr out_(sorted_string.data(),
+          sorted_lcp.data(),
+          num_recv_elems);
+      loser_tree_.writeElementsToStream(out_, num_recv_elems);
+
+      StringLcpContainer<UCharLengthStringSet> sorted_string_cont;
+      sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
+      using String = typename UCharLengthStringSet::String;
+      std::vector<String> tmp(num_recv_elems, String(0,0));
+      for (size_t i = 0; i < num_recv_elems; ++i)
+        tmp[i].string = sorted_string[i];
+      sorted_string_cont.set(std::move(tmp));
+      sorted_string_cont.set(std::move(sorted_lcp));
+      return sorted_string_cont;
+    }
+  template<size_t K, typename StringSet>
+    static inline StringLcpContainer<StringSet> merge(dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
         const std::vector<std::pair<size_t, size_t>>& ranges,
         const size_t num_recv_elems) {
 
@@ -206,7 +335,7 @@ namespace dss_schimek {
           num_recv_elems);
       loser_tree_.writeElementsToStream(out_, num_recv_elems);
 
-      StringLcpContainer sorted_string_cont;
+      StringLcpContainer<StringSet> sorted_string_cont;
       sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
       sorted_string_cont.set(std::move(sorted_string));
       sorted_string_cont.set(std::move(sorted_lcp));
@@ -260,7 +389,8 @@ namespace dss_schimek {
     }
 
   template<typename StringPtr>
-    class DistributedMergeSort : private SampleSplittersPolicy<typename StringPtr::StringSet>
+    class DistributedMergeSort : private SampleSplittersPolicy<typename StringPtr::StringSet>,
+                                 private ChooseSplittersPolicy<typename StringPtr::StringSet>
     {
       public:
       dss_schimek::StringLcpContainer<typename StringPtr::StringSet>
@@ -284,10 +414,12 @@ namespace dss_schimek {
 
 
           std::vector<Char> raw_splitters = SampleSplittersPolicy<StringSet>::sample_splitters(ss);
+          
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
+
           dss_schimek::StringLcpContainer chosen_splitters_cont = 
-            choose_splitters<dss_schimek::StringLcpContainer<StringSet>>(ss, splitters);
+            ChooseSplittersPolicy<StringSet>::choose_splitters(ss, splitters);
 
 
           const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),

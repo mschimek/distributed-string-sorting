@@ -58,10 +58,11 @@ namespace dss_schimek {
       }
     };
 
-  template <typename StringSet>
-    class StringLcpContainer : private InitPolicy<StringSet>
+  template <typename StringSet_>
+    class StringLcpContainer : private InitPolicy<StringSet_>
   {
     public:
+      using StringSet = StringSet_;
       using Char = typename StringSet::Char; 
       using String = typename StringSet::String;
 

@@ -6,7 +6,7 @@
 int main() {
   using namespace dss_schimek;
 
-  using StringSet = UCharStringSet;
+  using StringSet = UCharLengthStringSet;
 
   dsss::mpi::environment env;
   RandomStringLcpContainer<StringSet> rand_container(100);

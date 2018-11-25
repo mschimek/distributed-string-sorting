@@ -668,7 +668,7 @@ public:
     static String empty_string()
     {
       static String zero(0, 0); 
-      return &zero;
+      return zero;
     }
 
 protected:

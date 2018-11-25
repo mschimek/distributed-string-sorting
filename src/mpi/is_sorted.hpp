@@ -12,8 +12,8 @@ namespace dss_schimek {
   bool is_sorted(const StringPtr& strptr, dsss::mpi::environment env = dsss::mpi::environment())
   {
     using StringSet = typename StringPtr::StringSet;
+    using String = typename StringSet::String;
     const StringSet& ss = strptr.active();
-    using String = UCharStringSet::Char*;
     std::cout << "env.rank " << env.rank() << " size: " << ss.size() << std::endl;
     bool is_locally_sorted = ss.check_order();
 
@@ -31,14 +31,29 @@ namespace dss_schimek {
     int min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
     int max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
     const bool is_left_shift = true;
-    const String front = has_strings ? *ss.begin() : ss.empty_string();
-    const String back = has_strings ? *(ss.end() - 1) : ss.empty_string();
-    std::vector<unsigned char> greater_string = dss_schimek::mpi::shift_string<is_left_shift>(
-        front, env
-        ); 
-    std::vector<unsigned char> smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
-        back, env
-        ); 
+    std::vector<unsigned char> greater_string;
+    std::vector<unsigned char> smaller_string; 
+    unsigned char* front;
+    unsigned char* back;
+    if constexpr (std::is_same<StringSet, UCharLengthStringSet>::value) {
+      front = has_strings ? (*ss.begin()).string : ss.empty_string().string;
+      back = has_strings ? (*(ss.end() - 1)).string : ss.empty_string().string;
+      greater_string = dss_schimek::mpi::shift_string<is_left_shift>(
+          front, env
+          ); 
+      smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
+          back, env
+          ); 
+    } else {
+      front = has_strings ? *ss.begin() : ss.empty_string();
+      back = has_strings ? *(ss.end() - 1) : ss.empty_string();
+      greater_string = dss_schimek::mpi::shift_string<is_left_shift>(
+          front, env
+          ); 
+      smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
+          back, env
+          );
+    }
 
 
     bool is_overall_sorted = is_locally_sorted;
