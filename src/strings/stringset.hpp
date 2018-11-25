@@ -521,10 +521,15 @@ typedef GenericCharStringSet<unsigned char> UCharStringSet;
 template <typename String, typename Length = size_t>
 struct StringLength
 {
+  StringLength(const String string, const Length length) : string(string), length(length) {}
   String string;
   Length length;
 };
 
+template <typename String, typename Length>
+std::ostream& operator<<(std::ostream& out, const StringLength<String, Length>& str_length) {
+  return out << "[" << str_length.string << "," << str_length.length << "]";
+}
 /*!
  * Traits class implementing StringSet concept for char* and unsigned char*
  * strings with additional length attribute.
@@ -559,7 +564,7 @@ class GenericCharLengthStringSet
                            GenericCharLengthStringSetTraits<CharType> >
 {
 public:
-    typedef GenericCharStringSetTraits<CharType> Traits;
+    typedef GenericCharLengthStringSetTraits<CharType> Traits;
 
     typedef typename Traits::Char Char;
     typedef typename Traits::String String;
@@ -598,7 +603,7 @@ public:
 
     //! Return complete string (for debugging purposes)
     std::string get_string(const String& s, size_t depth = 0) const
-    { return std::string(reinterpret_cast<const char*>(s) + depth); }
+    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
 
     //! Subset this string set using iterator range.
     GenericCharLengthStringSet sub(Iterator begin, Iterator end) const
@@ -655,7 +660,7 @@ public:
         size_t i = 0;
         for (Iterator pi = begin(); pi != end(); ++pi)
         {
-            LOG1 << "[" << i++ << "] = " << *pi
+            LOG1 << "[" << i++ << "] = " << (*pi)
                  << " = " << get_string(*pi, 0);
         }
     }
@@ -670,6 +675,11 @@ protected:
     //! array of string pointers
     Iterator begin_, end_;
 };
+
+typedef GenericCharLengthStringSet<char> CharLengthStringSet;
+typedef GenericCharLengthStringSet<unsigned char> UCharLengthStringSet;
+
+
 /*!
  * Class implementing StringSet concept for a std::vector containing std::string
  * objects.
