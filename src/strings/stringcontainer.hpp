@@ -44,7 +44,6 @@ namespace dss_schimek {
       static constexpr size_t approx_string_length = 10;
       public: 
       std::vector<String> init_strings(std::vector<Char>& raw_strings) {
-        std::cout << "length init" << std::endl;
         std::vector<String> strings;
         size_t approx_string_size = raw_strings.size() / approx_string_length;
         strings.reserve(approx_string_size);

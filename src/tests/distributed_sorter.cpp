@@ -9,7 +9,7 @@ int main() {
   using StringSet = UCharLengthStringSet;
 
   dsss::mpi::environment env;
-  constexpr size_t size = 2000000;
+  constexpr size_t size = 20000000;
   RandomStringLcpContainer<StringSet> rand_container(size);
   StringLcpPtr<StringSet> rand_string_ptr = 
     rand_container.make_string_lcp_ptr();
@@ -21,7 +21,6 @@ int main() {
   //    });
 
   env.barrier();
-  std::cout << "start_sorting " << std::endl;
   double start_time = MPI_Wtime();
   DistributedMergeSort<StringLcpPtr<StringSet>> sorter;
   StringLcpContainer<StringSet> sorted_string_cont = 
@@ -39,6 +38,7 @@ int main() {
   dss_schimek::multikey_quicksort(rand_string_ptr_2, 0, 0);
   double end = MPI_Wtime();
 
+  if (env.rank() == 0)
   std::cout << "local sort " << end - start << std::endl;
 
   StringLcpPtr<StringSet> sorted_strptr = 
