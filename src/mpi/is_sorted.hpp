@@ -14,7 +14,6 @@ namespace dss_schimek {
     using StringSet = typename StringPtr::StringSet;
     using String = typename StringSet::String;
     const StringSet& ss = strptr.active();
-    std::cout << "env.rank " << env.rank() << " size: " << ss.size() << std::endl;
     bool is_locally_sorted = ss.check_order();
 
     if (env.size() == 1)
