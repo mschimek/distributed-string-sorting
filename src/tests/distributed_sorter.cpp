@@ -9,11 +9,13 @@ int main() {
   using StringSet = UCharLengthStringSet;
 
   dsss::mpi::environment env;
-  constexpr size_t size = 20000000;
+  constexpr size_t size = 200000;
   RandomStringLcpContainer<StringSet> rand_container(size);
   StringLcpPtr<StringSet> rand_string_ptr = 
     rand_container.make_string_lcp_ptr();
 
+  const size_t rand_container_size = size;
+  const size_t rand_container_char_size = rand_container.char_size();
   //dss_schimek::mpi::execute_in_order([&](){
   //    for (volatile size_t i = 0; i < 1000000; ++i);
   //    std::cout << "rank " << env.rank() << std::endl;
@@ -45,11 +47,11 @@ int main() {
     sorted_string_cont.make_string_lcp_ptr();
 
   const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-      rand_container.char_size(),
+      rand_container_char_size,
       sorted_string_cont.char_size(),
-      rand_container.size(),
+      rand_container_size,
       sorted_string_cont.size()); 
-
+  
   //dss_schimek::mpi::execute_in_order([&](){
   //    for (volatile size_t i = 0; i < 1000000; ++i);
   //    std::cout << "rank " << env.rank() << std::endl;
