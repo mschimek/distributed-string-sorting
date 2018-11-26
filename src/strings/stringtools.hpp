@@ -108,9 +108,10 @@ scmp(const string _s1, const string _s2, size_t& lcp)
 }
 
 /// compare strings by scanning
-static inline bool leq(const string _s1, const string _s2)
+template <typename CharIterator>
+static inline bool leq(CharIterator _s1, CharIterator _s2)
 {
-    string s1 = _s1, s2 = _s2;
+    CharIterator s1 = _s1, s2 = _s2;
 
     while (*s1 != 0 && *s1 == *s2)
         s1++, s2++;

@@ -5,6 +5,51 @@
 #include "strings/stringset.hpp"
 #include "strings/stringcontainer.hpp"
 
+TEST_CASE( "check get length method") {
+  using namespace dss_schimek;
+  SECTION("") {
+    using StringSet = UCharStringSet;
+    std::vector<typename StringSet::Char> raw_strings = {
+      'A', 'A', 'B', 'C', 'A', 0,
+      'B', 'A', 0,
+      'B', 'A', 'B', 0,
+      0,
+      'C', 'C', 'C', 0,
+      'C', 'C', 'D', 0
+    };
+    StringLcpContainer<StringSet> container(std::move(raw_strings));
+    const StringSet ss = container.make_string_set();
+    auto i = ss.begin();
+    REQUIRE(ss.get_length(ss[i++]) == 5);
+    REQUIRE(ss.get_length(ss[i++]) == 2);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+    REQUIRE(ss.get_length(ss[i++]) == 0);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+
+  }
+  SECTION("") {
+    using StringSet = UCharLengthStringSet;
+    std::vector<typename StringSet::Char> raw_strings = {
+      'A', 'A', 'B', 'C', 'A', 0,
+      'B', 'A', 0,
+      'B', 'A', 'B', 0,
+      0,
+      'C', 'C', 'C', 0,
+      'C', 'C', 'D', 0
+    };
+    StringLcpContainer<StringSet> container(std::move(raw_strings));
+    const StringSet ss = container.make_string_set();
+    auto i = ss.begin();
+    REQUIRE(ss.get_length(ss[i++]) == 5);
+    REQUIRE(ss.get_length(ss[i++]) == 2);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+    REQUIRE(ss.get_length(ss[i++]) == 0);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+    REQUIRE(ss.get_length(ss[i++]) == 3);
+
+  }
+}
 TEST_CASE( "check length property") {
   using namespace dss_schimek;
   using StringSet = UCharLengthStringSet;

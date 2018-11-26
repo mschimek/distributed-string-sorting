@@ -502,6 +502,16 @@ public:
         }
     }
 
+    size_t get_length(const String& str) const {
+      size_t length = 0;
+      CharIterator it = get_chars(str, 0);
+      while(*it != 0) {
+        ++length;
+        ++it;
+      }
+      return length;
+    }
+
     static String empty_string()
     {
       static Char zero = 0; 
@@ -669,6 +679,10 @@ public:
     {
       static String zero(0, 0); 
       return zero;
+    }
+
+    size_t get_length(const String& str) const {
+      return str.length;
     }
 
 protected:
