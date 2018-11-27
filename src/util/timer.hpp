@@ -10,6 +10,8 @@
 #include <numeric>
 #include <tuple>
 
+#include "mpi/allreduce.hpp"
+
 namespace dss_schimek {
   class Timer {
     using Clock = std::chrono::high_resolution_clock;
@@ -74,7 +76,6 @@ namespace dss_schimek {
       }
 
       void print() const {
-        //todo change to map
         std::vector<std::string> descriptions;
         for (auto [description, not_used] : descriptionToTime)
           descriptions.push_back(description);
@@ -92,10 +93,53 @@ namespace dss_schimek {
         }
         print_n(50, "-");
       }
+
+      void print_synchronized(dsss::mpi::environment env = dsss::mpi::environment()) {
+         std::vector<std::string> descriptions;
+        for (auto [description, not_used] : descriptionToSynchronizedTime)
+          descriptions.push_back(description);
+        size_t max_description_length = get_max_string_length(descriptions);
+
+        
+        print_n(50, "-");
+        std::cout << "synchronized" << std::endl;
+        print_n(50, "-");
+        for (auto [description, interval_length] : descriptionToSynchronizedTime) {
+          std::cout << prefix
+                    << std::setw(max_description_length + 2) 
+                    << description 
+                    << std::setw(12) 
+                    << interval_length
+                    << std::endl;
+        }
+        print_n(50, "-");
+
+      }
+      void synchronize(dsss::mpi::environment env = dsss::mpi::environment()) {
+        descriptionToSynchronizedTime.clear();
+        for (auto [description, interval_length] : descriptionToTime) {
+          size_t global_max_interval_length = dsss::mpi::allreduce_max(interval_length);
+          descriptionToSynchronizedTime.emplace(description, global_max_interval_length);
+        }
+      }
+
+
+      //size_t synchronize(const std::string& description, 
+      //    dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      //  auto itToPair = descriptionToTime.find(description);
+      //  if (descriptionToTime.find(description) == descriptionToTime.end())  
+      //    std::abort();
+
+      //  size_t interval_length = itToPair->second;
+      //  return dsss::mpi::allreduce_max(interval_length);
+
+      //}
     private:
       std::string prefix;
       std::map<std::string, PointInTime> descriptionToStart;
       std::map<std::string, size_t> descriptionToTime;
+      std::map<std::string, size_t> descriptionToSynchronizedTime;
 
       size_t get_max_string_length(const std::vector<std::string>& strings) const {
         size_t maxStringLength = 0;

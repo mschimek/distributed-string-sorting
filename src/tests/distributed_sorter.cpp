@@ -38,12 +38,18 @@ void execute_sorter(const size_t numOfStrings, const bool checkInput,
       numOfStrings,
       sorted_string_cont.size()); 
 
-  dss_schimek::mpi::execute_in_order([&]() {
-    std::cout << "rank " << env.rank() << std::endl;
-    std::cout << "res: " << is_complete_and_sorted << std::endl;
+  timer.synchronize();
+  if (env.rank() == 0) {
     timer.print();
-    //timer.print_sum({"sort locally", "sample splitters", "allgather splitters", "choose splitters", "compute interval sizes", "all-to-all strings", "compute ranges", "merge ranges"});
-  });
+    timer.print_synchronized();
+  }
+  //dss_schimek::mpi::execute_in_order([&]() {
+  //  std::cout << "rank " << env.rank() << std::endl;
+  //  std::cout << "res: " << is_complete_and_sorted << std::endl;
+  //  timer.print();
+  //  timer.print_synchronized();
+  //  //timer.print_sum({"sort locally", "sample splitters", "allgather splitters", "choose splitters", "compute interval sizes", "all-to-all strings", "compute ranges", "merge ranges"});
+  //});
 }
 
 int main(std::int32_t argc, char const *argv[]) {
