@@ -11,7 +11,7 @@ int main() {
 
   Timer timer;
   dsss::mpi::environment env;
-  constexpr size_t size = 200000;
+  constexpr size_t size = 2000000;
   timer.start("random strings construction");
   SkewedRandomStringLcpContainer<StringSet> rand_container(size, 10, 20);
   timer.end("random strings construction");
@@ -28,8 +28,8 @@ int main() {
 
   env.barrier();
   double start_time = MPI_Wtime();
-  timer.start("sorting overall");
   DistributedMergeSort<StringLcpPtr<StringSet>> sorter;
+  timer.start("sorting overall");
   StringLcpContainer<StringSet> sorted_string_cont = 
     sorter.sort(rand_string_ptr, std::move(rand_container), timer);
   timer.end("sorting overall");
@@ -55,8 +55,8 @@ int main() {
   if (env.rank() == 0) {
     std::cout << "res: " << is_complete_and_sorted << std::endl;
     std::cout << "time in seconds: " << overall_res << std::endl;
-    std::cout << "\n************************************************+\n";
     timer.print();
+    timer.print_sum({"sort locally", "sample splitters", "allgather splitters", "choose splitters", "compute interval sizes", "all-to-all strings", "compute ranges", "merge ranges"});
   }
   env.finalize();
 }

@@ -302,10 +302,7 @@ namespace dss_schimek {
         case 512 : return merge<512>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        default : std::cout << "ich nehm den branch" << std::endl;
-                  return merge<2>(std::move(recv_string_cont),
-                      ranges,
-                      num_recv_elems);
+        default : std::abort();
       }
       return StringLcpContainer();
     }
@@ -321,6 +318,7 @@ namespace dss_schimek {
             Timer& timer,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
+          timer.start("time in sort function");
           constexpr bool debug = false;
 
           using StringSet = typename StringPtr::StringSet;
@@ -382,6 +380,7 @@ namespace dss_schimek {
           timer.start("merge ranges");
           auto sorted_container = choose_merge(std::move(recv_string_cont), ranges, num_recv_elems);
           timer.end("merge ranges");
+          timer.end("time in sort function");
           return sorted_container;
         }
   };
