@@ -21,7 +21,7 @@ namespace dss_schimek {
   static constexpr bool debug = false;
 
   template <typename StringSet>
-    class  SampleSplittersPolicy
+    class  SampleSplittersNumStringsPolicy
     {
       protected:
         std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
@@ -45,7 +45,7 @@ namespace dss_schimek {
     };
 
   template <typename StringSet>
-  class  SampleSplittersCharLengthPolicy
+  class  SampleSplittersNumCharsPolicy
   {
      protected:
         std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
@@ -80,39 +80,36 @@ namespace dss_schimek {
         }
   };
 
+  
   template <typename StringSet>
-    class ChooseSplittersPolicy
+    StringLcpContainer<StringSet> choose_splitters(
+        const StringSet& ss, 
+        std::vector<typename StringSet::Char>& all_splitters,
+        dsss::mpi::environment env = dsss::mpi::environment())
     {
-      protected:
-        StringLcpContainer<StringSet> choose_splitters(
-            const StringSet& ss, 
-            std::vector<typename StringSet::Char>& all_splitters,
-            dsss::mpi::environment env = dsss::mpi::environment())
-        {
-          using Char = typename StringSet::Char;
-          using String = typename StringSet::String;
+      using Char = typename StringSet::Char;
+      using String = typename StringSet::String;
 
-          StringLcpContainer<StringSet> all_splitters_cont(std::move(all_splitters));
-          dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
-          const StringSet& all_splitters_set = all_splitters_strptr.active();
+      StringLcpContainer<StringSet> all_splitters_cont(std::move(all_splitters));
+      dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
+      const StringSet& all_splitters_set = all_splitters_strptr.active();
 
-          insertion_sort(all_splitters_strptr, 0, 0);
+      insertion_sort(all_splitters_strptr, 0, 0);
 
-          const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
-          const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
+      const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
+      const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
 
-          std::vector<Char> raw_chosen_splitters;
-          for (std::size_t i = 1; i <= nr_splitters; ++i) {
-            const auto begin = all_splitters_set.begin();
-            const String splitter = all_splitters_set[begin + i * splitter_dist];
-            std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
-                std::back_inserter(raw_chosen_splitters));
-          }
-          return StringLcpContainer<StringSet>(std::move(raw_chosen_splitters));
-        }
-    };
+      std::vector<Char> raw_chosen_splitters;
+      for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const auto begin = all_splitters_set.begin();
+        const String splitter = all_splitters_set[begin + i * splitter_dist];
+        std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
+            std::back_inserter(raw_chosen_splitters));
+      }
+      return StringLcpContainer<StringSet>(std::move(raw_chosen_splitters));
+    }
 
-    template <typename StringSet>
+  template <typename StringSet>
     inline std::vector<size_t> compute_interval_sizes(const StringSet& ss, 
         const StringSet& splitters,
         dsss::mpi::environment env = dsss::mpi::environment())
@@ -307,9 +304,8 @@ namespace dss_schimek {
       return StringLcpContainer();
     }
 
-  template<typename StringPtr>
-    class DistributedMergeSort : private SampleSplittersCharLengthPolicy<typename StringPtr::StringSet>,
-    private ChooseSplittersPolicy<typename StringPtr::StringSet>
+  template<typename StringPtr, typename SampleSplittersPolicy>
+    class DistributedMergeSort : private SampleSplittersPolicy
   {
     public:
       dss_schimek::StringLcpContainer<typename StringPtr::StringSet>
@@ -318,7 +314,6 @@ namespace dss_schimek {
             Timer& timer,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
-          timer.start("time in sort function");
           constexpr bool debug = false;
 
           using StringSet = typename StringPtr::StringSet;
@@ -336,7 +331,7 @@ namespace dss_schimek {
             return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
 
           timer.start("sample splitters");
-          std::vector<Char> raw_splitters = SampleSplittersCharLengthPolicy<StringSet>::sample_splitters(ss);
+          std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample splitters");
 
           timer.start("allgather splitters");
@@ -345,8 +340,7 @@ namespace dss_schimek {
           timer.end("allgather splitters");
 
           timer.start("choose splitters");
-          dss_schimek::StringLcpContainer chosen_splitters_cont = 
-            ChooseSplittersPolicy<StringSet>::choose_splitters(ss, splitters);
+          dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
           timer.end("choose splitters");
 
 
@@ -380,7 +374,6 @@ namespace dss_schimek {
           timer.start("merge ranges");
           auto sorted_container = choose_merge(std::move(recv_string_cont), ranges, num_recv_elems);
           timer.end("merge ranges");
-          timer.end("time in sort function");
           return sorted_container;
         }
   };

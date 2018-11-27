@@ -16,6 +16,7 @@ namespace dss_schimek {
     using PointInTime = std::chrono::time_point<Clock>;
 
     public:
+      Timer(const std::string& prefix) : prefix(prefix) {};
       void start(const std::string& description) {
         if (descriptionToStart.find(description) != descriptionToStart.end())
           std::abort();
@@ -52,12 +53,14 @@ namespace dss_schimek {
         print_n(50, "-");
         size_t max_description_length = get_max_string_length(containedDescriptions);
         for (const std::string& description : containedDescriptions) {
-            std::cout << std::setw(max_description_length + 2)
+            std::cout << prefix 
+                      << std::setw(max_description_length + 2)
                       << description
                       << std::endl;
         }
         print_n(50, "-");
-        std::cout << std::setw(max_description_length + 2)
+        std::cout << prefix
+                  << std::setw(max_description_length + 2)
                   << "result: "
                   << std::setw(12)
                   << overall_time 
@@ -80,7 +83,8 @@ namespace dss_schimek {
         
         print_n(50, "-");
         for (auto [description, interval_length] : descriptionToTime) {
-          std::cout << std::setw(max_description_length + 2) 
+          std::cout << prefix
+                    << std::setw(max_description_length + 2) 
                     << description 
                     << std::setw(12) 
                     << interval_length
@@ -89,11 +93,9 @@ namespace dss_schimek {
         print_n(50, "-");
       }
     private:
+      std::string prefix;
       std::map<std::string, PointInTime> descriptionToStart;
       std::map<std::string, size_t> descriptionToTime;
-      std::vector<std::pair<PointInTime, std::string>> interval_start;
-      std::vector<size_t> interval_time;
-      std::vector<std::string> interval_description;
 
       size_t get_max_string_length(const std::vector<std::string>& strings) const {
         size_t maxStringLength = 0;
