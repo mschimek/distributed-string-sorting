@@ -138,7 +138,7 @@ namespace dss_schimek {
         buffer <<  prefix
           << std::setw(alignmentLong)  << ("operation=" + description)
           << std::setw(alignmentSmall) << ("type=" + type)
-          << std::setw(alignmentSmall) << ("time=" + std::to_string(time))
+          << std::setw(alignmentLong) << ("time=" + std::to_string(time))
           << std::endl;;
       }
 
