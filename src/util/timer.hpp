@@ -53,8 +53,9 @@ namespace dss_schimek {
 
         env.barrier();
 
+        const PointInTime endPointAfterBarrier = Clock::now();
         TimeIntervalDataType elapsedTotalTime =
-          std::chrono::duration_cast<TimeUnit>(endPoint - startPoint).count();
+          std::chrono::duration_cast<TimeUnit>(endPointAfterBarrier - startPoint).count();
         descriptionToTotalTime.emplace(description, elapsedTotalTime);
       }
 
