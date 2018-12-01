@@ -8,14 +8,19 @@
 
 template <typename StringSet, typename StringGenerator, typename SampleSplittersPolicy>
 void execute_sorter(const size_t numOfStrings, const bool checkInput,
-                    dsss::mpi::environment env = dsss::mpi::environment()) {
-
+                    dsss::mpi::environment env = dsss::mpi::environment()) { 
   using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
   using namespace dss_schimek;
   static size_t iteration = 0;
   ++iteration;
 
-  Timer timer("rank: " + std::to_string(env.rank()) + " iter: " + std::to_string(iteration));
+  std::string prefix = std::string("RESULT") +
+                       " numberProcessors=" + std::to_string(env.size()) +
+                       " samplePolicy=" + SampleSplittersPolicy::getName() +
+                       " iteration=" + std::to_string(iteration) +
+                       " size=" + std::to_string(numOfStrings);
+                       
+  Timer timer(prefix);
 
   StringGenerator rand_container(numOfStrings);
   StringLcpPtr rand_string_ptr = 
@@ -23,13 +28,13 @@ void execute_sorter(const size_t numOfStrings, const bool checkInput,
 
   const size_t numGeneratedChars = rand_container.char_size();
 
-  timer.start("sorting overall");
+  timer.start("sorting_overall");
 
   DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy> sorter;
   StringLcpContainer<StringSet> sorted_string_cont = 
     sorter.sort(rand_string_ptr, std::move(rand_container), timer);
 
-  timer.end("sorting overall");
+  timer.end("sorting_overall");
 
   const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
   const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
@@ -38,18 +43,11 @@ void execute_sorter(const size_t numOfStrings, const bool checkInput,
       numOfStrings,
       sorted_string_cont.size()); 
 
-  timer.synchronize();
+  std::stringstream buffer;
+  timer.writeToStream(buffer);
   if (env.rank() == 0) {
-    timer.print();
-    timer.print_synchronized();
+    std::cout << buffer.str() << std::endl;
   }
-  //dss_schimek::mpi::execute_in_order([&]() {
-  //  std::cout << "rank " << env.rank() << std::endl;
-  //  std::cout << "res: " << is_complete_and_sorted << std::endl;
-  //  timer.print();
-  //  timer.print_synchronized();
-  //  //timer.print_sum({"sort locally", "sample splitters", "allgather splitters", "choose splitters", "compute interval sizes", "all-to-all strings", "compute ranges", "merge ranges"});
-  //});
 }
 
 int main(std::int32_t argc, char const *argv[]) {
