@@ -46,6 +46,10 @@ namespace dss_schimek {
       }
       this->update(std::move(raw_string_data));
     }
+
+    static std::string getName() {
+      return "PrefixStringGenerator";
+    }
   };
 
   template <typename StringSet>
@@ -71,6 +75,10 @@ namespace dss_schimek {
         random_raw_string_data.emplace_back(Char(0));
       }
       this->update(std::move(random_raw_string_data));
+    }
+
+    static std::string getName() {
+      return "RandomStringGenerator";
     }
   };
 
@@ -106,6 +114,10 @@ namespace dss_schimek {
         random_raw_string_data.emplace_back(Char(0));
       }
       this->update(std::move(random_raw_string_data));
+    }
+
+    static std::string getName() {
+      return "SkewedStringGenerator";
     }
   };
 }

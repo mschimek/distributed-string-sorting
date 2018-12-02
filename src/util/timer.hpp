@@ -136,9 +136,9 @@ namespace dss_schimek {
           const TimeIntervalDataType time) {
 
         buffer <<  prefix
-          << std::setw(alignmentLong)  << ("operation=" + description)
-          << std::setw(alignmentSmall) << ("type=" + type)
-          << std::setw(alignmentLong) << ("time=" + std::to_string(time))
+          << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
+          << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
+          << " "/*std::setw(alignmentLong) */<< ("time=" + std::to_string(time))
           << std::endl;;
       }
 
@@ -250,8 +250,7 @@ namespace dss_schimek {
 
 
     private:
-      const size_t alignmentLong = 40;
-      const size_t alignmentSmall = 15;
+      //const size_t alignment = 40;
       std::string prefix;
       std::map<std::string, PointInTime> descriptionToStart;
       std::map<std::string, TimeIntervalDataType> descriptionToTime;

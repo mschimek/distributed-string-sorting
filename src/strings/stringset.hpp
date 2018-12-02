@@ -518,6 +518,10 @@ public:
       return &zero;
     }
 
+    static std::string getName() {
+      return "GenericCharStringSet";
+    }
+
 protected:
     //! array of string pointers
     Iterator begin_, end_;
@@ -683,6 +687,10 @@ public:
 
     size_t get_length(const String& str) const {
       return str.length;
+    }
+
+    static std::string getName() {
+      return "GenericCharLengthStringSet"; 
     }
 
 protected:

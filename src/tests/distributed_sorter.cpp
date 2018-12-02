@@ -17,6 +17,8 @@ void execute_sorter(const size_t numOfStrings, const bool checkInput,
   std::string prefix = std::string("RESULT") +
                        " numberProcessors=" + std::to_string(env.size()) +
                        " samplePolicy=" + SampleSplittersPolicy::getName() +
+                       " StringGenerator=" + StringGenerator::getName() +
+                       " StringSet=" + StringSet::getName() + 
                        " iteration=" + std::to_string(iteration) +
                        " size=" + std::to_string(numOfStrings);
                        
