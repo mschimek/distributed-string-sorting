@@ -386,6 +386,72 @@ struct RadixStep_CE3_lcp {
 // * Out-of-place adaptive radix-sort with character caching which starts with
 // * 16-bit radix sort and then switching to 8-bit for smaller string sets.
 // */
+template <typename StringShadowPtr>
+static inline void
+radixsort_CE3(const StringShadowPtr& strptr, uint16_t* charcache,  size_t depth, size_t memory) {
+    enum { RADIX = 0x10000 };
+
+    typedef RadixStep_CE3_lcp<StringShadowPtr> RadixStep;
+     typedef std::stack<RadixStep, std::vector<RadixStep> > radixstack_type;
+    radixstack_type radixstack;
+    radixstack.emplace(strptr, depth, charcache);
+
+    while (TLX_LIKELY(!radixstack.empty()))
+    {
+        while (TLX_LIKELY(radixstack.top().idx < RADIX - 1))
+        {
+            RadixStep& rs = radixstack.top(); 
+
+            // process the bucket rs.idx
+            size_t bkt_size = rs.bkt_size[++rs.idx];
+            if (TLX_UNLIKELY(bkt_size == 0)) {
+                // done
+            }
+            else if (TLX_UNLIKELY((rs.idx & 0xFF) == 0)) { // zero-termination
+                rs.strptr.flip(rs.pos, rs.pos).copy_back();
+                for(size_t i = rs.pos + 1; i < rs.pos + bkt_size; ++i)
+                  rs.strptr.set_lcp(i, depth + 2 * radixstack.size() - 1); 
+                rs.pos += bkt_size;
+            }
+            else if (TLX_UNLIKELY(bkt_size < g_inssort_threshold))
+            {
+              dss_schimek::insertion_sort(
+                    rs.strptr.flip(rs.pos, bkt_size).copy_back(),
+                    depth + 2 * radixstack.size(),
+                    memory - sizeof(RadixStep) * radixstack.size());
+                rs.pos += bkt_size;
+            }
+            else if (bkt_size < RADIX)
+            {
+              dss_schimek::radixsort_CE2(
+                    rs.strptr.flip(rs.pos, bkt_size),
+                    reinterpret_cast<uint8_t*>(charcache),
+                    depth + 2 * radixstack.size(),
+                    memory - sizeof(RadixStep) * radixstack.size());
+                rs.pos += bkt_size;
+            }
+            else if (TLX_UNLIKELY(memory != 0 &&
+                                  memory < sizeof(RadixStep) * radixstack.size() + 1))
+            {
+              dss_schimek::multikey_quicksort(
+                    rs.strptr.flip(rs.pos,  bkt_size).copy_back(),
+                    depth + 2 * radixstack.size(),
+                    memory - sizeof(RadixStep) * radixstack.size());
+                rs.pos += bkt_size;
+            }
+            else
+            {
+                // have to increment first, as rs may be invalidated
+                rs.pos += bkt_size;
+                radixstack.emplace(
+                    rs.strptr.flip(rs.pos - bkt_size, bkt_size),
+                    depth + 2 * radixstack.size(), charcache);
+            }
+        }
+        radixstack.pop();
+    }
+}
+
 template <typename StringSet>
 static inline void
 radixsort_CE3(const dss_schimek::StringLcpPtr<StringSet>& strptr_, size_t depth, size_t memory) {
@@ -414,69 +480,10 @@ radixsort_CE3(const dss_schimek::StringLcpPtr<StringSet>& strptr_, size_t depth,
 
     uint16_t* charcache = new uint16_t[ss.size()];
 
-    typedef std::stack<RadixStep, std::vector<RadixStep> > radixstack_type;
-    radixstack_type radixstack;
-    radixstack.emplace(strptr, depth, charcache);
-
-    while (TLX_LIKELY(!radixstack.empty()))
-    {
-        while (TLX_LIKELY(radixstack.top().idx < RADIX - 1))
-        {
-            RadixStep& rs = radixstack.top(); 
-
-            // process the bucket rs.idx
-            size_t bkt_size = rs.bkt_size[++rs.idx];
-            if (TLX_UNLIKELY(bkt_size == 0)) {
-                // done
-            }
-            else if (TLX_UNLIKELY((rs.idx & 0xFF) == 0)) { // zero-termination
-                rs.strptr.flip(rs.pos, rs.pos).copy_back();
-                for(size_t i = rs.pos + 1; i < rs.pos + bkt_size; ++i)
-                  rs.strptr.set_lcp(i, depth + 2 * radixstack.size() - 1); 
-                rs.pos += bkt_size;
-            }
-            else if (TLX_UNLIKELY(bkt_size < g_inssort_threshold))
-            {
-              dss_schimek::insertion_sort(
-                    rs.strptr.flip(rs.pos, bkt_size).copy_back(),
-                    depth + 2 * radixstack.size(),
-                    memory - memory_use - sizeof(RadixStep) * radixstack.size());
-                rs.pos += bkt_size;
-            }
-            else if (bkt_size < RADIX)
-            {
-              dss_schimek::radixsort_CE2(
-                    rs.strptr.flip(rs.pos, bkt_size),
-                    reinterpret_cast<uint8_t*>(charcache),
-                    depth + 2 * radixstack.size(),
-                    memory - memory_use - sizeof(RadixStep) * radixstack.size());
-                rs.pos += bkt_size;
-            }
-            else if (TLX_UNLIKELY(memory != 0 &&
-                                  memory < memory_use + sizeof(RadixStep) * radixstack.size() + 1))
-            {
-              dss_schimek::multikey_quicksort(
-                    rs.strptr.flip(rs.pos,  bkt_size).copy_back(),
-                    depth + 2 * radixstack.size(),
-                    memory - memory_use - sizeof(RadixStep) * radixstack.size());
-                rs.pos += bkt_size;
-            }
-            else
-            {
-                // have to increment first, as rs may be invalidated
-                rs.pos += bkt_size;
-                radixstack.emplace(
-                    rs.strptr.flip(rs.pos - bkt_size, bkt_size),
-                    depth + 2 * radixstack.size(), charcache);
-            }
-        }
-        radixstack.pop();
-    }
-
+    dss_schimek::radixsort_CE3(strptr, charcache, depth, memory - memory_use);
     delete[] charcache;
     StringSet::deallocate(shadow);
 }
-
 ///******************************************************************************/
 //// In-place 8-bit radix-sort with character caching.
 //
