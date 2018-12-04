@@ -215,10 +215,9 @@ struct RadixStep_CE2 {
     }
 };
 
-
 template <typename StringSet>
 static inline void
-radixsort_CI3(const StringSet& ss, size_t depth, size_t memory);
+radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory);
 
 
 /*
@@ -290,8 +289,8 @@ radixsort_CE2(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, 
         + ss.size() * sizeof(typename StringSet::String);
     size_t memory_slack = 3 * sizeof(RadixStep);
 
-    //if (memory != 0 && memory < memory_use + memory_slack + 1)
-    //    return dss_schimek::radixsort_CI3(ss, depth, memory);
+    if (memory != 0 && memory < memory_use + memory_slack + 1)
+        return dss_schimek::radixsort_CI3<StringSet>(strptr, depth, memory);
 
     typename StringSet::Container shadow = ss.allocate(ss.size());
     dss_schimek::StringShadowLcpPtr<StringSet> str_shadow_lcp_ptr(ss, StringSet(shadow), strptr.lcp_array());
@@ -705,30 +704,15 @@ struct RadixStep_CI3_lcp {
 // * In-place adaptive radix-sort with character caching which starts with 16-bit
 // * radix sort and then switching to 8-bit for smaller string sets.
 // */
-template <typename StringSet>
+template <typename StringPtr>
 static inline void
-radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory) {
+radixsort_CI3(const StringPtr& strptr, uint16_t* charcache, size_t depth, size_t memory) {
     enum { RADIX = 0x10000 };
 
+    typedef RadixStep_CI3_lcp<StringPtr> RadixStep;
+    using StringSet = typename StringPtr::StringSet;
     const StringSet& ss = strptr.active();
     const auto begin = ss.begin();
-    if (ss.size() < g_inssort_threshold)
-        return dss_schimek::insertion_sort(strptr, depth, memory);
-
-    if (ss.size() < RADIX)
-        return dss_schimek::radixsort_CI2(strptr, depth, memory);
-
-    typedef RadixStep_CI3_lcp<dss_schimek::StringLcpPtr<StringSet>> RadixStep;
-
-    // try to estimate the amount of memory used
-    size_t memory_use =
-        2 * sizeof(size_t) + sizeof(StringSet) + ss.size() * sizeof(uint16_t);
-    size_t memory_slack = 3 * sizeof(RadixStep);
-
-    if (memory != 0 && memory < memory_use + memory_slack + 1)
-        return dss_schimek::radixsort_CI2(strptr, depth, memory);
-
-    uint16_t* charcache = new uint16_t[ss.size()];
 
     std::stack<RadixStep, std::vector<RadixStep> > radixstack;
     radixstack.emplace(strptr, depth, charcache);
@@ -757,7 +741,7 @@ radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, 
               dss_schimek::insertion_sort(
                     strptr.sub(rs.pos - begin, bkt_size),
                     depth + 2 * radixstack.size(),
-                    memory - memory_use - sizeof(RadixStep) * radixstack.size());
+                    memory  - sizeof(RadixStep) * radixstack.size());
                 rs.pos += bkt_size;
             }
             else if (bkt_size < RADIX)
@@ -765,16 +749,16 @@ radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, 
               dss_schimek::radixsort_CI2(strptr.sub(rs.pos - begin, bkt_size),
                               reinterpret_cast<uint8_t*>(charcache),
                               depth + 2 * radixstack.size(),
-                              memory - memory_use - sizeof(RadixStep) * radixstack.size());
+                              memory  - sizeof(RadixStep) * radixstack.size());
                 rs.pos += bkt_size;
             }
             else if (TLX_UNLIKELY(memory != 0 &&
-                                  memory < memory_use + sizeof(RadixStep) * radixstack.size() + 1))
+                                  memory <  sizeof(RadixStep) * radixstack.size() + 1))
             {
               dss_schimek::multikey_quicksort(
                     strptr.sub(rs.pos - begin, bkt_size),
                     depth + 2 * radixstack.size(),
-                    memory - memory_use - sizeof(RadixStep) * radixstack.size());
+                    memory  - sizeof(RadixStep) * radixstack.size());
                 rs.pos += bkt_size;
             }
             else
@@ -788,7 +772,34 @@ radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, 
         }
         radixstack.pop();
     }
+}
 
+template <typename StringSet>
+static inline void
+radixsort_CI3(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory) {
+    enum { RADIX = 0x10000 };
+
+    const StringSet& ss = strptr.active();
+    const auto begin = ss.begin();
+    if (ss.size() < g_inssort_threshold)
+        return dss_schimek::insertion_sort(strptr, depth, memory);
+
+    if (ss.size() < RADIX)
+        return dss_schimek::radixsort_CI2(strptr, depth, memory);
+
+    typedef RadixStep_CI3_lcp<dss_schimek::StringLcpPtr<StringSet>> RadixStep;
+
+    // try to estimate the amount of memory used
+    size_t memory_use =
+        2 * sizeof(size_t) + sizeof(StringSet) + ss.size() * sizeof(uint16_t);
+    size_t memory_slack = 3 * sizeof(RadixStep);
+
+    if (memory != 0 && memory < memory_use + memory_slack + 1)
+        return dss_schimek::radixsort_CI2(strptr, depth, memory);
+
+    uint16_t* charcache = new uint16_t[ss.size()];
+
+    dss_schimek::radixsort_CI3(strptr, charcache, depth, memory - memory_use);
     delete[] charcache;
 }
 } // namespace tlx
