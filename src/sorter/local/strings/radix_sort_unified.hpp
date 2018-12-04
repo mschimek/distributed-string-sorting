@@ -487,144 +487,149 @@ radixsort_CE3(const dss_schimek::StringLcpPtr<StringSet>& strptr_, size_t depth,
 ///******************************************************************************/
 //// In-place 8-bit radix-sort with character caching.
 //
-//template <typename StringSet>
-//struct RadixStep_CI2_lcp {
-//
-//    typedef typename StringSet::Iterator Iterator;
-//    typedef typename StringSet::String String;
-//
-//    size_t idx;
-//    Iterator pos;
-//    size_t bkt_size[256];
-//
-//    RadixStep_CI2_lcp(const StringSet& ss, size_t depth, uint8_t* charcache) {
-//        const size_t n = ss.size();
-//
-//        // read characters and count character occurrences
-//        std::fill(bkt_size, bkt_size + 256, 0);
-//        uint8_t* cc = charcache;
-//        for (Iterator i = ss.begin(); i != ss.end(); ++i, ++cc)
-//            *cc = ss.get_uint8(ss[i], depth);
-//        for (cc = charcache; cc != charcache + n; ++cc)
-//            ++bkt_size[static_cast<uint8_t>(*cc)];
-//
-//        // inclusive prefix sum
-//        size_t bkt[256];
-//        bkt[0] = bkt_size[0];
-//        size_t last_bkt_size = bkt_size[0];
-//        for (size_t i = 1; i < 256; ++i) {
-//            bkt[i] = bkt[i - 1] + bkt_size[i];
-//            if (bkt_size[i]) last_bkt_size = bkt_size[i];
-//        }
-//        size_t j = 0;
-//        while(!bkt_size[j]) ++j;
-//        while(bkt[j] < ss.size())
-//        {
-//          ss.set_lcp(bkt[j], depth);
-//          ++j;
-//        }
-//
-//        // premute in-place
-//        for (size_t i = 0, j; i < n - last_bkt_size; )
-//        {
-//            String perm = std::move(ss[ss.begin() + i]);
-//            uint8_t permch = charcache[i];
-//            while ((j = --bkt[permch]) > i)
-//            {
-//                std::swap(perm, ss[ss.begin() + j]);
-//                std::swap(permch, charcache[j]);
-//            }
-//            ss[ss.begin() + i] = std::move(perm);
-//            i += bkt_size[permch];
-//        }
-//
-//        pos = ss.begin() + bkt_size[0];
-//        idx = 0; // will increment to 1 on first process, bkt 0 is not sorted further
-//        for(size_t i = 1; i < bkt_size[0]; ++i)
-//          ss.set_lcp(i, depth); 
-//    }
-//};
-//
+template <typename StringPtr>
+struct RadixStep_CI2_lcp {
+
+    using StringSet = typename StringPtr::StringSet;
+    typedef typename StringSet::Iterator Iterator;
+    typedef typename StringSet::String String;
+
+    size_t idx;
+    Iterator pos;
+    size_t bkt_size[256];
+
+    RadixStep_CI2_lcp(const StringPtr& strptr, size_t depth, uint8_t* charcache) {
+        const StringSet& ss = strptr.active();
+        const size_t n = ss.size();
+
+        // read characters and count character occurrences
+        std::fill(bkt_size, bkt_size + 256, 0);
+        uint8_t* cc = charcache;
+        for (Iterator i = ss.begin(); i != ss.end(); ++i, ++cc)
+            *cc = ss.get_uint8(ss[i], depth);
+        for (cc = charcache; cc != charcache + n; ++cc)
+            ++bkt_size[static_cast<uint8_t>(*cc)];
+
+        // inclusive prefix sum
+        size_t bkt[256];
+        bkt[0] = bkt_size[0];
+        size_t last_bkt_size = bkt_size[0];
+        for (size_t i = 1; i < 256; ++i) {
+            bkt[i] = bkt[i - 1] + bkt_size[i];
+            if (bkt_size[i]) last_bkt_size = bkt_size[i];
+        }
+        size_t j = 0;
+        while(!bkt_size[j]) ++j;
+        while(bkt[j] < ss.size())
+        {
+          strptr.set_lcp(bkt[j], depth);
+          ++j;
+        }
+
+        // premute in-place
+        for (size_t i = 0, j; i < n - last_bkt_size; )
+        {
+            String perm = std::move(ss[ss.begin() + i]);
+            uint8_t permch = charcache[i];
+            while ((j = --bkt[permch]) > i)
+            {
+                std::swap(perm, ss[ss.begin() + j]);
+                std::swap(permch, charcache[j]);
+            }
+            ss[ss.begin() + i] = std::move(perm);
+            i += bkt_size[permch];
+        }
+
+        pos = ss.begin() + bkt_size[0];
+        idx = 0; // will increment to 1 on first process, bkt 0 is not sorted further
+        for(size_t i = 1; i < bkt_size[0]; ++i)
+          strptr.set_lcp(i, depth); 
+    }
+};
+
 ///*
 // * In-place 8-bit radix-sort with character caching.
 // */
-//template <typename StringSet>
-//static inline void
-//radixsort_CI2(const StringSet& ss, uint8_t* charcache,
-//              size_t depth, size_t memory) {
-//
-//    typedef RadixStep_CI2_lcp<StringSet> RadixStep;
-//
-//    std::stack<RadixStep, std::vector<RadixStep> > radixstack;
-//    radixstack.emplace(ss, depth, charcache);
-//
-//    while (TLX_LIKELY(!radixstack.empty()))
-//    {
-//        while (TLX_LIKELY(radixstack.top().idx < 255))
-//        {
-//            RadixStep& rs = radixstack.top();
-//
-//            // process the bucket rs.idx
-//            size_t bkt_size = rs.bkt_size[++rs.idx];
-//
-//            if (TLX_UNLIKELY(bkt_size <= 1)) {
-//                // done
-//                rs.pos += bkt_size;
-//            }
-//            else if (bkt_size < g_inssort_threshold) {
-//              mysorter::insertion_sort(
-//                    ss.sub(rs.pos, rs.pos + bkt_size),
-//                    depth + radixstack.size(),
-//                    memory - sizeof(RadixStep) * radixstack.size());
-//                rs.pos += bkt_size;
-//            }
-//            else if (TLX_UNLIKELY(memory != 0 &&
-//                                  memory < sizeof(RadixStep) * radixstack.size() + 1))
-//            {
-//              mysorter::multikey_quicksort(
-//                    ss.sub(rs.pos, rs.pos + bkt_size),
-//                    depth + radixstack.size(),
-//                    memory - sizeof(RadixStep) * radixstack.size());
-//                rs.pos += bkt_size;
-//            }
-//            else
-//            {
-//                // have to increment first, as rs may be invalidated
-//                rs.pos += bkt_size;
-//                radixstack.emplace(ss.sub(rs.pos - bkt_size, rs.pos),
-//                                   depth + radixstack.size(), charcache);
-//            }
-//        }
-//        radixstack.pop();
-//    }
-//}
+template <typename StringPtr>
+static inline void
+radixsort_CI2(const StringPtr& strptr, uint8_t* charcache,
+              size_t depth, size_t memory) {
+
+    const auto begin = strptr.active().begin();
+    using StringSet = typename StringPtr::StringSet;
+    typedef RadixStep_CI2_lcp<StringPtr> RadixStep;
+
+    std::stack<RadixStep, std::vector<RadixStep> > radixstack;
+    radixstack.emplace(strptr, depth, charcache);
+
+    while (TLX_LIKELY(!radixstack.empty()))
+    {
+        while (TLX_LIKELY(radixstack.top().idx < 255))
+        {
+            RadixStep& rs = radixstack.top();
+
+            // process the bucket rs.idx
+            size_t bkt_size = rs.bkt_size[++rs.idx];
+
+            if (TLX_UNLIKELY(bkt_size <= 1)) {
+                // done
+                rs.pos += bkt_size;
+            }
+            else if (bkt_size < g_inssort_threshold) {
+              dss_schimek::insertion_sort(
+                    strptr.sub(rs.pos - begin, bkt_size),
+                    depth + radixstack.size(),
+                    memory - sizeof(RadixStep) * radixstack.size());
+                rs.pos += bkt_size;
+            }
+            else if (TLX_UNLIKELY(memory != 0 &&
+                                  memory < sizeof(RadixStep) * radixstack.size() + 1))
+            {
+              dss_schimek::multikey_quicksort(
+                    strptr.sub(rs.pos - begin, bkt_size),
+                    depth + radixstack.size(),
+                    memory - sizeof(RadixStep) * radixstack.size());
+                rs.pos += bkt_size;
+            }
+            else
+            {
+                // have to increment first, as rs may be invalidated
+                rs.pos += bkt_size;
+                radixstack.emplace(strptr.sub(rs.pos - bkt_size - begin, bkt_size),
+                                   depth + radixstack.size(), charcache);
+            }
+        }
+        radixstack.pop();
+    }
+}
 ///*
 // * In-place 8-bit radix-sort with character caching.
 // */
-//template <typename StringSet>
-//static inline void
-//radixsort_CI2(const StringSet& ss, size_t depth, size_t memory) {
-//
-//    if (ss.size() < g_inssort_threshold)
-//        return mysorter::insertion_sort(ss, depth, memory);
-//
-//    typedef RadixStep_CI2_lcp<StringSet> RadixStep;
-//
-//    // try to estimate the amount of memory used
-//    size_t memory_use =
-//        2 * sizeof(size_t) + sizeof(StringSet) + ss.size() * sizeof(uint8_t);
-//    size_t memory_slack = 3 * sizeof(RadixStep);
-//
-//    if (memory != 0 && memory < memory_use + memory_slack + 1)
-//        return mysorter::multikey_quicksort(ss, depth, memory);
-//
-//    uint8_t* charcache = new uint8_t[ss.size()];
-//
-//    mysorter::radixsort_CI2<StringSet>(ss, charcache, depth, memory - memory_use);
-//
-//    delete[] charcache;
-//}
-//
+template <typename StringSet>
+static inline void
+radixsort_CI2(const dss_schimek::StringLcpPtr<StringSet>& strptr, size_t depth, size_t memory) {
+
+    const StringSet& ss = strptr.active();
+    if (ss.size() < g_inssort_threshold)
+        return dss_schimek::insertion_sort(strptr, depth, memory);
+
+    typedef RadixStep_CI2_lcp<dss_schimek::StringLcpPtr<StringSet>> RadixStep;
+
+    // try to estimate the amount of memory used
+    size_t memory_use =
+        2 * sizeof(size_t) + sizeof(StringSet) + ss.size() * sizeof(uint8_t);
+    size_t memory_slack = 3 * sizeof(RadixStep);
+
+    if (memory != 0 && memory < memory_use + memory_slack + 1)
+        return dss_schimek::multikey_quicksort(strptr, depth, memory);
+
+    uint8_t* charcache = new uint8_t[ss.size()];
+
+    dss_schimek::radixsort_CI2(strptr, charcache, depth, memory - memory_use);
+
+    delete[] charcache;
+}
+
 ///******************************************************************************/
 //// In-place adaptive radix-sort with character caching
 //
