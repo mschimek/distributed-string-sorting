@@ -162,22 +162,26 @@ void test_all_lcp(const size_t num_strings) {
    run_lcp_tests(dss_schimek::multikey_quicksort);
    run_lcp_tests(dss_schimek::radixsort_CE0);
    run_lcp_tests(dss_schimek::radixsort_CE2);
+   run_lcp_tests(dss_schimek::radixsort_CE3);
   letters_alnum = "a";
   std::cout << "test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
    run_lcp_tests(dss_schimek::radixsort_CE0);
    run_lcp_tests(dss_schimek::radixsort_CE2);
+   run_lcp_tests(dss_schimek::radixsort_CE3);
 
   letters_alnum = "abc";
   std::cout << "test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
    run_lcp_tests(dss_schimek::radixsort_CE0);
    run_lcp_tests(dss_schimek::radixsort_CE2);
+   run_lcp_tests(dss_schimek::radixsort_CE3);
  letters_alnum = "acbef";
   std::cout << "test string: " << letters_alnum << std::endl;
    run_lcp_tests(dss_schimek::multikey_quicksort);
    run_lcp_tests(dss_schimek::radixsort_CE0);
    run_lcp_tests(dss_schimek::radixsort_CE2);
+   run_lcp_tests(dss_schimek::radixsort_CE3);
 
 }
 int main() {
