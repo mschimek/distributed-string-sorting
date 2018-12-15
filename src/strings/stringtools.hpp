@@ -24,8 +24,11 @@
 #ifndef PSS_SRC_TOOLS_STRINGTOOLS_HEADER
 #define PSS_SRC_TOOLS_STRINGTOOLS_HEADER
 
+#include <algorithm>
 #include <cassert>
 #include <tlx/logger.hpp>
+
+#include "stringset.hpp"
 
 namespace dss_schimek {
 
@@ -38,8 +41,25 @@ typedef unsigned char char_type;
 /// hacky gcc synthesised 128-bit datatype
 typedef unsigned int uint128_t __attribute__ ((mode(TI)));
 
+template<typename StringSet>
+  std::vector<typename StringSet::Char> getContiguousStrings(const StringSet& ss, size_t hintNumChars = 1000) {
+    using Char = typename StringSet::Char;
+    using CharIterator = typename StringSet::CharIterator;
+    using String = typename StringSet::String;
+
+    std::vector<Char> contiguousStrings;
+    contiguousStrings.reserve(hintNumChars);
+    auto begin = ss.begin();
+    for (size_t i = 0; i < ss.size(); ++i) {
+      String str = ss[begin + i]; 
+      LOG1 << str;
+      std::copy_n(ss.get_chars(str, 0), ss.get_length(str) + 1, std::back_inserter(contiguousStrings));
+    }
+    return contiguousStrings;
+  }
+
 template<typename CharType>
-static inline size_t string_length(const CharType* str);
+  static inline size_t string_length(const CharType* str);
 
 static inline void print_str(unsigned char** strings, size_t size)
 {

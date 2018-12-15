@@ -20,3 +20,6 @@ target_link_libraries(is_sorted ${MPI_LIBRARIES} tlx)
 
 add_executable(losertree losertree.cpp ../mpi/environment.cpp)
 target_link_libraries(losertree ${MPI_LIBRARIES} tlx)
+
+add_executable(send_test send_test.cpp ../mpi/environment.cpp)
+target_link_libraries(send_test ${MPI_LIBRARIES} tlx)

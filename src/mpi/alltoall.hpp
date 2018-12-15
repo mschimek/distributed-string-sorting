@@ -14,6 +14,7 @@
 #include <numeric>
 #include <iterator>
 #include <vector>
+#include <cstring>
 
 #include "mpi/allreduce.hpp"
 #include "mpi/big_type.hpp"
@@ -86,6 +87,56 @@ inline std::vector<DataType> alltoallv_small(
 
   data_type_mapper<DataType> dtm;
   MPI_Alltoallv(send_data.data(),
+                real_send_counts.data(),
+                send_displacements.data(),
+                dtm.get_mpi_type(),
+                receive_data.data(),
+                receive_counts.data(),
+                receive_displacements.data(),
+                dtm.get_mpi_type(),
+                env.communicator());
+  return receive_data;
+}
+
+template <typename DataType>
+inline std::vector<DataType> alltoallv_small(
+  DataType* send_data, std::vector<size_t>& send_counts,
+  environment env = environment()) {
+
+  std::vector<int32_t> real_send_counts(send_counts.size());
+  for (size_t i = 0; i < send_counts.size(); ++i) {
+    real_send_counts[i] = static_cast<int32_t>(send_counts[i]);
+  }
+  std::vector<int32_t> receive_counts = alltoall(real_send_counts, env);
+
+  std::vector<int32_t> send_displacements(real_send_counts.size(), 0);
+  std::vector<int32_t> receive_displacements(real_send_counts.size(), 0);
+  for (size_t i = 1; i < real_send_counts.size(); ++i) {
+    send_displacements[i] = send_displacements[i - 1] + real_send_counts[i - 1];
+    receive_displacements[i] = receive_displacements[i - 1] +
+      receive_counts[i - 1];
+  }
+  std::vector<DataType> receive_data(
+    receive_counts.back() + receive_displacements.back());
+
+  if constexpr (debug_alltoall) {
+    for (int32_t i = 0; i < env.size(); ++i) {
+      if (i == env.rank()) {
+        std::cout << i << ": send_counts.size() " << send_counts.size()
+                  << std::endl;
+        std::cout << i << ": send counts: ";
+        for (const auto sc : real_send_counts) { std::cout << sc << ", "; }
+        std::cout << std::endl << "receive counts: ";
+
+        for (const auto rc : receive_counts) { std::cout << rc << ", "; }
+        std::cout << std::endl;
+      }
+      env.barrier();
+    }
+  }
+
+  data_type_mapper<DataType> dtm;
+  MPI_Alltoallv(send_data,
                 real_send_counts.data(),
                 send_displacements.data(),
                 dtm.get_mpi_type(),
@@ -271,6 +322,185 @@ StringLcpContainer alltoallv(
   return StringLcpContainer(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
+static inline unsigned char*  writeToRawMemory(unsigned char* buffer, const unsigned char* charsToWrite, size_t numChars, const size_t* numbersToWrite, size_t numNumbers) {
+  const size_t alignmentSizeT = alignof(size_t);
+  const size_t sizeOfSizeT = sizeof(size_t);
+
+  memcpy(buffer, charsToWrite, numChars);
+  for (size_t i = 0; i < numChars; ++i)
+    std::cout << buffer[i];
+  std::cout << std::endl;
+  buffer += numChars;
+  const size_t bytesToWrite = sizeof(size_t) * numNumbers;
+  memcpy(buffer, numbersToWrite, bytesToWrite);
+  for(size_t i = 0; i < bytesToWrite; ++i)
+    std::cout << (int) buffer[i];
+  std::cout << std::endl;
+  buffer += bytesToWrite;
+  return buffer;
+}
+
+static inline void readFromRawMemory(unsigned char* buffer, size_t numChars, std::vector<unsigned char>& charsToRead, std::vector<size_t>& numbersToRead) {
+  size_t numStrings = 0;
+  
+  charsToRead.clear();
+  charsToRead.reserve(numChars);
+  for(size_t i = 0; i < numChars; ++i) {
+    charsToRead.emplace_back(buffer[i]);
+    if (buffer[i] == 0)
+      numStrings++;
+  }
+  std::cout << "numStrings: " << numStrings << std::endl;
+  numbersToRead.clear();
+  numbersToRead.reserve(numStrings);
+  for (size_t i = 0; i < numStrings; ++i) {
+    size_t tmp;
+    std::memcpy(&tmp, buffer + numChars + i * sizeof(size_t), sizeof(size_t));
+    numbersToRead.emplace_back(tmp);
+  }  
+}
+
+template <typename StringSet>
+dss_schimek::StringLcpContainer<StringSet> alltoallv(
+    dss_schimek::StringLcpPtr<StringSet>& strptr,
+    const std::vector<size_t>& send_counts,
+    environment env = environment()){
+
+  using namespace dss_schimek;
+  using String = typename StringSet::String;
+  using CharIterator = typename StringSet::CharIterator;
+  const StringSet& sendSet = strptr.active();
+  if (sendSet.size() == 0)
+    return StringLcpContainer<StringSet>();
+
+  std::vector<unsigned char> receive_buffer_char;
+  std::vector<size_t> receive_buffer_lcp;
+  std::vector<size_t> send_counts_lcp(send_counts);
+  std::vector<size_t> send_counts_char(send_counts.size(), 0);
+
+  std::vector<unsigned char> send_buffer;
+
+  for (size_t interval = 0, offset = 0; interval < send_counts.size(); ++interval) {
+    for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
+      size_t string_length = sendSet.get_length(sendSet[sendSet.begin() + j]); 
+      send_counts_char[interval] += string_length;
+    }
+    offset += send_counts[interval];
+  }
+  size_t totalNumSendChars = 
+    std::accumulate(send_counts_char.begin(), send_counts_char.end(), 0);
+  size_t totalNumStrings = 
+    std::accumulate(send_counts_lcp.begin(), send_counts_lcp.end(), 0);
+
+  size_t totalBytesToSend = totalNumSendChars + sizeof(size_t) * totalNumStrings;
+
+  std::cout << "totalBytesToSend: " << totalBytesToSend << std::endl;
+  std::cout << "totalNumSendChar: " << totalNumSendChars << std::endl;
+  std::cout << "totalNumStrings: " << totalNumStrings << std::endl;
+  
+
+  unsigned char* buffer = new unsigned char[totalBytesToSend]; 
+
+  
+  for (size_t interval = 0, bufferOffset = 0, stringOffset = 0;
+      interval < send_counts.size(); ++interval) {
+
+    for(size_t j = 0; j < send_counts[interval]; ++j) {
+      String str = sendSet[sendSet.begin() + stringOffset + j];
+      CharIterator charIt = sendSet.get_chars(str, 0);
+      size_t stringLength = sendSet.get_length(str) + 1;
+      std::cout << charIt << std::endl;
+      memcpy(buffer + bufferOffset, charIt, stringLength);
+      std::cout << buffer + bufferOffset << std::endl;
+      bufferOffset += stringLength;
+    }
+    size_t sizeOfLcpChunk = send_counts[interval] + sizeof(size_t);
+    memcpy(buffer + bufferOffset, strptr.lcp_array() + stringOffset, sizeOfLcpChunk);
+    bufferOffset += sizeOfLcpChunk; 
+    stringOffset += send_counts[interval];
+  }
+  
+  writeToRawMemory(nullptr, nullptr, 0, nullptr, 0);
+
+  for (size_t i = 0; i < totalBytesToSend; ++i) {
+    std::cout << (int) buffer[i] << ";";
+  }
+  std::cout << std::endl;
+  return StringLcpContainer<StringSet>();
+}
+
+template <typename StringSet>
+dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
+    dss_schimek::StringLcpContainer<StringSet>& container,
+    const std::vector<size_t>& send_counts,
+    environment env = environment()){
+
+  using namespace dss_schimek;
+  using String = typename StringSet::String;
+  using CharIterator = typename StringSet::CharIterator;
+
+  const StringSet& sendSet = container.make_string_set();
+  std::vector<unsigned char> contiguousStrings = dss_schimek::getContiguousStrings(sendSet, container.char_size());
+
+  for (size_t i = 0, offset = 0; i < sendSet.size(); ++i) {
+    size_t length = dss_schimek::string_length(contiguousStrings.data() + offset);
+    std::cout << contiguousStrings.data() + offset << std::endl;
+    offset += length + 1;
+  }
+
+  std::vector<unsigned char> receive_buffer_char;
+  std::vector<size_t> receive_buffer_lcp;
+  std::vector<size_t> send_counts_lcp(send_counts);
+  std::vector<size_t> send_counts_char(send_counts.size(), 0);
+  std::vector<size_t> sendCountsTotal(send_counts.size(), 0);
+
+  std::vector<unsigned char> send_buffer;
+
+  for (size_t interval = 0, offset = 0; interval < send_counts.size(); ++interval) {
+    for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
+      size_t string_length = sendSet.get_length(sendSet[sendSet.begin() + j]); 
+      send_counts_char[interval] += string_length + 1;
+    }
+    sendCountsTotal[interval] = send_counts_char[interval] + sizeof(size_t) * send_counts_lcp[interval];
+    offset += send_counts[interval];
+  }
+  size_t totalNumSendChars = 
+    std::accumulate(send_counts_char.begin(), send_counts_char.end(), 0);
+  size_t totalNumStrings = 
+    std::accumulate(send_counts_lcp.begin(), send_counts_lcp.end(), 0);
+
+  size_t totalBytesToSend = totalNumSendChars + sizeof(size_t) * totalNumStrings;
+
+  std::cout << "totalBytesToSend: " << totalBytesToSend << std::endl;
+  std::cout << "totalNumSendChar: " << totalNumSendChars << std::endl;
+  std::cout << "totalNumStrings: " << totalNumStrings << std::endl;
+  
+  unsigned char* buffer = new unsigned char[totalBytesToSend]; 
+  unsigned char* p = buffer;
+  
+  for (size_t interval = 0, offset = 0, stringsWritten = 0; interval < send_counts.size(); ++interval) {
+    std::cout << "interval " << "char counts: " << send_counts_char[interval] << " lcp: " << send_counts_lcp[interval] << std::endl;
+    p = writeToRawMemory(p, contiguousStrings.data() + offset, send_counts_char[interval], container.lcp_array() + stringsWritten, send_counts_lcp[interval]);
+    offset += send_counts_char[interval];
+    stringsWritten += send_counts_lcp[interval];
+  }
+  
+
+  std::vector<unsigned char> recv = alltoallv_small(buffer, sendCountsTotal);
+   
+ 
+  //std::vector<unsigned char> rawStrings;
+  //std::vector<size_t> rawLcps;
+  //readFromRawMemory(buffer, send_counts_char[0], rawStrings, rawLcps);
+  ////writeToRawMemory(nullptr, nullptr, 0, nullptr, 0);
+
+  //dss_schimek::print(rawStrings);
+  //for (size_t i = 0; i < rawLcps.size(); ++i) {
+  //  std::cout << rawLcps[i] << std::endl;
+  //}
+  //std::cout << std::endl;
+  return StringLcpContainer<StringSet>();
+}
 } // namespace dsss::mpi
 
 /******************************************************************************/

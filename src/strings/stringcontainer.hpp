@@ -63,6 +63,7 @@ namespace dss_schimek {
     public:
       using StringSet = StringSet_;
       using Char = typename StringSet::Char; 
+      using CharIterator = typename StringSet::CharIterator;
       using String = typename StringSet::String;
 
       StringLcpContainer() : raw_strings_(std::make_unique<std::vector<Char>>()),
@@ -91,6 +92,8 @@ namespace dss_schimek {
       std::vector<size_t>& lcps() { return lcps_; }
       size_t* lcp_array() { return lcps_.data(); }
       std::vector<Char>& raw_strings() { return *raw_strings_; }
+      
+      
 
       StringSet make_string_set() {
         return StringSet(strings(), strings() + size());
