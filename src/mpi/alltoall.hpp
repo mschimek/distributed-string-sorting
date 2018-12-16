@@ -322,43 +322,126 @@ StringLcpContainer alltoallv(
   return StringLcpContainer(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
-static inline unsigned char*  writeToRawMemory(unsigned char* buffer, const unsigned char* charsToWrite, size_t numChars, const size_t* numbersToWrite, size_t numNumbers) {
-  const size_t alignmentSizeT = alignof(size_t);
-  const size_t sizeOfSizeT = sizeof(size_t);
+class ByteEncoder {
 
-  memcpy(buffer, charsToWrite, numChars);
-  for (size_t i = 0; i < numChars; ++i)
-    std::cout << buffer[i];
-  std::cout << std::endl;
-  buffer += numChars;
-  const size_t bytesToWrite = sizeof(size_t) * numNumbers;
-  memcpy(buffer, numbersToWrite, bytesToWrite);
-  for(size_t i = 0; i < bytesToWrite; ++i)
-    std::cout << (int) buffer[i];
-  std::cout << std::endl;
-  buffer += bytesToWrite;
-  return buffer;
-}
+  /*
+   * Encoding: 
+   * (|Number Chars : size_t| Number Strings: size_t | [char : unsigned char] | [number : size_t] |)*
+   *
+   */
+  public:
+    size_t computeNumberOfSendBytes(size_t charsToSend, size_t numbersToSend) const {
+      return charsToSend + sizeof(size_t) * numbersToSend + 2 * sizeof(size_t);
+    }
 
-static inline void readFromRawMemory(unsigned char* buffer, size_t numChars, std::vector<unsigned char>& charsToRead, std::vector<size_t>& numbersToRead) {
-  size_t numStrings = 0;
-  
-  charsToRead.clear();
-  charsToRead.reserve(numChars);
-  for(size_t i = 0; i < numChars; ++i) {
-    charsToRead.emplace_back(buffer[i]);
-    if (buffer[i] == 0)
-      numStrings++;
-  }
-  std::cout << "numStrings: " << numStrings << std::endl;
-  numbersToRead.clear();
-  numbersToRead.reserve(numStrings);
-  for (size_t i = 0; i < numStrings; ++i) {
-    size_t tmp;
-    std::memcpy(&tmp, buffer + numChars + i * sizeof(size_t), sizeof(size_t));
-    numbersToRead.emplace_back(tmp);
-  }  
-}
+    size_t computeNumberOfSendBytes(const std::vector<size_t>& charsToSend,
+        const std::vector<size_t>& numbersToSend) const {
+      assert(charsToSend.size() == numbersToSend.size());
+      size_t numberOfSendBytes = 0;
+      for (size_t i = 0; i < charsToSend.size(); ++i) {
+        numberOfSendBytes += computeNumberOfSendBytes(charsToSend[i], numbersToSend[i]); 
+      }
+      return numberOfSendBytes;
+    }
+
+    std::pair<size_t, size_t> computeNumberOfRecvData(const char unsigned* buffer, size_t size) const {
+     size_t recvChars = 0, recvNumbers  = 0;
+     size_t i = 0; 
+     while(i < size) {
+       size_t curRecvChars = 0;
+       size_t curRecvNumbers = 0;
+       memcpy(&curRecvChars, buffer + i, sizeof(size_t));
+       recvChars += curRecvChars;
+       i += sizeof(size_t);
+       memcpy(&curRecvNumbers, buffer + i, sizeof(size_t));
+       recvNumbers += curRecvNumbers;
+       i += sizeof(size_t);
+       i += curRecvChars + sizeof(size_t) * curRecvNumbers;
+     }
+     return std::make_pair(recvChars, recvNumbers); 
+    }
+
+    unsigned char*  write(unsigned char* buffer,
+        const unsigned char* charsToWrite,
+        size_t numChars,
+        const size_t* numbersToWrite,
+        size_t numNumbers) const {
+      const size_t alignmentSizeT = alignof(size_t);
+      const size_t sizeOfSizeT = sizeof(size_t);
+
+      memcpy(buffer, &numChars, sizeOfSizeT);
+      buffer += sizeOfSizeT;
+      memcpy(buffer, &numNumbers, sizeOfSizeT);
+      buffer += sizeOfSizeT;
+      memcpy(buffer, charsToWrite, numChars);
+      for (size_t i = 0; i < numChars; ++i)
+        std::cout << buffer[i];
+      std::cout << std::endl;
+      buffer += numChars;
+      const size_t bytesToWrite = sizeof(size_t) * numNumbers;
+      memcpy(buffer, numbersToWrite, bytesToWrite);
+      for(size_t i = 0; i < bytesToWrite; ++i)
+        std::cout << (int) buffer[i];
+      std::cout << std::endl;
+      buffer += bytesToWrite;
+      return buffer;
+    }
+
+    void read_(unsigned char* buffer,
+        std::vector<unsigned char>& charsToRead,
+        std::vector<size_t>& numbersToRead) const {
+
+      size_t numCharsToRead = 0;
+      size_t numNumbersToRead = 0;
+      memcpy(&numCharsToRead, buffer, sizeof(size_t));
+      buffer += sizeof(size_t);
+      memcpy(&numNumbersToRead, buffer, sizeof(size_t));
+      buffer += sizeof(size_t);
+      std::cout << "READ: numberChar " << numCharsToRead << " numberNumbers " << numNumbersToRead << std::endl;
+      charsToRead.clear();
+      charsToRead.reserve(numCharsToRead);
+      numbersToRead.clear();
+      numbersToRead.reserve(numNumbersToRead);
+
+      for(size_t i = 0; i < numCharsToRead; ++i) 
+        charsToRead.emplace_back(buffer[i]);
+      for (size_t i = 0; i < numNumbersToRead; ++i) {
+        size_t tmp;
+        std::memcpy(&tmp, buffer + numCharsToRead + i * sizeof(size_t), sizeof(size_t));
+        numbersToRead.emplace_back(tmp);
+      }  
+    }
+    std::pair<std::vector<unsigned char>, std::vector<size_t>> read(unsigned char* buffer, size_t size) const {
+
+      auto recvData = computeNumberOfRecvData(buffer, size);
+      size_t numCharsToRead = recvData.first;
+      size_t numNumbersToRead = recvData.second;
+      std::vector<unsigned char> charsToRead;
+      std::vector<size_t> numbersToRead;
+      charsToRead.reserve(numCharsToRead);
+      numbersToRead.reserve(numNumbersToRead);
+
+      size_t curPos = 0;
+      while(curPos < size) {
+        memcpy(&numCharsToRead, buffer + curPos, sizeof(size_t));
+        curPos += sizeof(size_t);
+        memcpy(&numNumbersToRead, buffer + curPos, sizeof(size_t));
+        curPos += sizeof(size_t);
+
+        for(size_t i = 0; i < numCharsToRead; ++i) 
+          charsToRead.emplace_back(*(buffer + curPos + i));
+        curPos += numCharsToRead;
+        for (size_t i = 0; i < numNumbersToRead; ++i) {
+          size_t tmp;
+          std::memcpy(&tmp, buffer + curPos + i * sizeof(size_t), sizeof(size_t));
+          numbersToRead.emplace_back(tmp);
+        }
+        curPos += numNumbersToRead * sizeof(size_t);
+      }
+      return make_pair(std::move(charsToRead), std::move(numbersToRead));
+    }
+};
+
 
 template <typename StringSet>
 dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -420,7 +503,6 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv(
     stringOffset += send_counts[interval];
   }
   
-  writeToRawMemory(nullptr, nullptr, 0, nullptr, 0);
 
   for (size_t i = 0; i < totalBytesToSend; ++i) {
     std::cout << (int) buffer[i] << ";";
@@ -439,6 +521,7 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
   using String = typename StringSet::String;
   using CharIterator = typename StringSet::CharIterator;
 
+  const ByteEncoder byteEncoder;
   const StringSet& sendSet = container.make_string_set();
   std::vector<unsigned char> contiguousStrings = dss_schimek::getContiguousStrings(sendSet, container.char_size());
 
@@ -461,7 +544,8 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
       size_t string_length = sendSet.get_length(sendSet[sendSet.begin() + j]); 
       send_counts_char[interval] += string_length + 1;
     }
-    sendCountsTotal[interval] = send_counts_char[interval] + sizeof(size_t) * send_counts_lcp[interval];
+    sendCountsTotal[interval] = byteEncoder.computeNumberOfSendBytes(send_counts_char[interval], 
+        send_counts_lcp[interval]); 
     offset += send_counts[interval];
   }
   size_t totalNumSendChars = 
@@ -475,29 +559,40 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
   std::cout << "totalNumSendChar: " << totalNumSendChars << std::endl;
   std::cout << "totalNumStrings: " << totalNumStrings << std::endl;
   
-  unsigned char* buffer = new unsigned char[totalBytesToSend]; 
+  size_t totalNumberSendBytes = 
+    byteEncoder.computeNumberOfSendBytes(send_counts_char, send_counts_lcp);
+  unsigned char* buffer = new unsigned char[totalNumberSendBytes]; 
   unsigned char* p = buffer;
   
   for (size_t interval = 0, offset = 0, stringsWritten = 0; interval < send_counts.size(); ++interval) {
-    std::cout << "interval " << "char counts: " << send_counts_char[interval] << " lcp: " << send_counts_lcp[interval] << std::endl;
-    p = writeToRawMemory(p, contiguousStrings.data() + offset, send_counts_char[interval], container.lcp_array() + stringsWritten, send_counts_lcp[interval]);
+    p = byteEncoder.write(p, 
+        contiguousStrings.data() + offset, 
+        send_counts_char[interval], 
+        container.lcp_array() + stringsWritten, 
+        send_counts_lcp[interval]);
     offset += send_counts_char[interval];
     stringsWritten += send_counts_lcp[interval];
   }
   
+  for (size_t i = 0; i < totalNumberSendBytes; ++i) {
+    std::cout << (int) buffer[i] << ";";
+  }
+  std::cout << std::endl;
 
-  std::vector<unsigned char> recv = alltoallv_small(buffer, sendCountsTotal);
+  //std::vector<unsigned char> recv = alltoallv_small(buffer, sendCountsTotal);
    
+  
  
-  //std::vector<unsigned char> rawStrings;
-  //std::vector<size_t> rawLcps;
-  //readFromRawMemory(buffer, send_counts_char[0], rawStrings, rawLcps);
+  std::vector<unsigned char> rawStrings;
+  std::vector<size_t> rawLcps;
+  std::tie(rawStrings, rawLcps) = byteEncoder.read(buffer, totalNumberSendBytes);
+  
   ////writeToRawMemory(nullptr, nullptr, 0, nullptr, 0);
 
-  //dss_schimek::print(rawStrings);
-  //for (size_t i = 0; i < rawLcps.size(); ++i) {
-  //  std::cout << rawLcps[i] << std::endl;
-  //}
+  dss_schimek::print(rawStrings);
+  for (size_t i = 0; i < rawLcps.size(); ++i) {
+    std::cout << rawLcps[i] << std::endl;
+  }
   //std::cout << std::endl;
   return StringLcpContainer<StringSet>();
 }
