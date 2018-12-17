@@ -52,7 +52,6 @@ template<typename StringSet>
     auto begin = ss.begin();
     for (size_t i = 0; i < ss.size(); ++i) {
       String str = ss[begin + i]; 
-      LOG1 << str;
       std::copy_n(ss.get_chars(str, 0), ss.get_length(str) + 1, std::back_inserter(contiguousStrings));
     }
     return contiguousStrings;
