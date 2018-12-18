@@ -90,8 +90,10 @@ namespace dss_schimek {
       size_t size() const { return strings_.size(); }
       size_t char_size() const { return raw_strings_->size(); }
       std::vector<size_t>& lcps() { return lcps_; }
+      const std::vector<size_t>& lcps() const { return lcps_; }
       size_t* lcp_array() { return lcps_.data(); }
       std::vector<Char>& raw_strings() { return *raw_strings_; }
+      const std::vector<Char>& raw_strings() const { return *raw_strings_; }
       
       
 
@@ -111,6 +113,12 @@ namespace dss_schimek {
       void set(std::vector<Char>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
       void set(std::vector<String>&& strings) { strings_ = std::move(strings);  }
       void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
+      
+      bool operator==(const StringLcpContainer<StringSet_>& other) {
+        return (raw_strings() == other.raw_strings()) && (lcps() == other.lcps());
+      }
+
+      
 
       void update(std::vector<Char>&& raw_strings)
       {

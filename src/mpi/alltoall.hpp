@@ -282,16 +282,15 @@ inline dsss::indexed_string_set<IndexType> alltoallv_indexed_strings(
     std::move(receive_data_indices));
 }
 
-template <typename StringLcpContainer>
-StringLcpContainer alltoallv(
-    StringLcpContainer& send_data,
+template <typename StringSet>
+dss_schimek::StringLcpContainer<StringSet> alltoallv(
+    dss_schimek::StringLcpContainer<StringSet>& send_data,
     const std::vector<size_t>& send_counts,
     environment env = environment()){
 
   using namespace dss_schimek;
-  using StringSet = typename StringLcpContainer::StringSet;
   if (send_data.size() == 0)
-    return StringLcpContainer();
+    return dss_schimek::StringLcpContainer<StringSet>();
 
   std::vector<unsigned char> receive_buffer_char;
   std::vector<size_t> receive_buffer_lcp;
@@ -321,14 +320,14 @@ StringLcpContainer alltoallv(
   receive_buffer_char = alltoallv(send_buffer, send_counts_char, env);
   receive_buffer_lcp = alltoallv(send_data.lcps(), send_counts_lcp, env);
 
-  return StringLcpContainer(std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+  return dss_schimek::StringLcpContainer<StringSet>(
+      std::move(receive_buffer_char), std::move(receive_buffer_lcp));
 }
 
 class ByteEncoder {
-
   /*
    * Encoding: 
-   * (|Number Chars : size_t| Number Strings: size_t | [char : unsigned char] | [number : size_t] |)*
+   * (|Number Chars : size_t | Number Strings: size_t | [char : unsigned char] | [number : size_t] |)*
    *
    */
   public:
@@ -361,6 +360,44 @@ class ByteEncoder {
        i += curRecvChars + sizeof(size_t) * curRecvNumbers;
      }
      return std::make_pair(recvChars, recvNumbers); 
+    }
+
+    // start work here
+    template<typename StringSet>
+    unsigned char* write(unsigned char* buffer,
+        const StringSet ss,
+        const size_t* numbersToWrite) const {
+
+      using String = typename StringSet::String;
+      using CharIt = typename StringSet::CharIterator;
+
+      unsigned char* const startOfBuffer = buffer;
+      size_t numChars = 0;
+      const size_t size = ss.size();
+
+      std::cout << "size: " << size << std::endl;
+      buffer += sizeof(size_t);
+      memcpy(buffer, &size, sizeof(size_t));
+      buffer += sizeof(size_t);
+      auto beginOfSet = ss.begin();
+      for (size_t i = 0; i < size; ++i) {
+        String str = ss[beginOfSet + i];
+        size_t stringLength = ss.get_length(str) + 1;
+        numChars += stringLength;
+        memcpy(buffer, ss.get_chars(str, 0), stringLength);
+        buffer += stringLength;
+      }
+      memcpy(startOfBuffer, &numChars, sizeof(size_t));
+      memcpy(buffer, numbersToWrite, size * sizeof(size_t));
+      buffer += size * sizeof(size_t);
+      dsss::mpi::environment env;
+      size_t output1 = 0;
+      size_t output2 = 0; 
+      memcpy(&output1, startOfBuffer, sizeof(size_t));
+      memcpy(&output2, startOfBuffer + sizeof(size_t), sizeof(size_t));
+
+      std::cout << "rank: " << env.rank() << " numChars:" << output1 << " numStrings " << output2 << std::endl;
+      return buffer;
     }
 
     unsigned char*  write(unsigned char* buffer,
@@ -405,7 +442,7 @@ class ByteEncoder {
       numbersToRead.clear();
       numbersToRead.reserve(numNumbersToRead);
 
-      for(size_t i = 0; i < numCharsToRead; ++i) 
+      for (size_t i = 0; i < numCharsToRead; ++i) 
         charsToRead.emplace_back(buffer[i]);
       for (size_t i = 0; i < numNumbersToRead; ++i) {
         size_t tmp;
@@ -418,6 +455,8 @@ class ByteEncoder {
       auto recvData = computeNumberOfRecvData(buffer, size);
       size_t numCharsToRead = recvData.first;
       size_t numNumbersToRead = recvData.second;
+      dsss::mpi::environment env;
+      std::cout << "env: " << env.rank() << " numChars: " << numCharsToRead << " numNumbers: " <<numNumbersToRead << std::endl; 
       std::vector<unsigned char> charsToRead;
       std::vector<size_t> numbersToRead;
       charsToRead.reserve(numCharsToRead);
@@ -516,7 +555,7 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv(
 template <typename StringSet>
 dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
     dss_schimek::StringLcpContainer<StringSet>& container,
-    const std::vector<size_t>& send_counts,
+    const std::vector<size_t>& sendCountsString,
     environment env = environment()){
 
   using namespace dss_schimek;
@@ -525,7 +564,8 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
 
   const ByteEncoder byteEncoder;
   const StringSet& sendSet = container.make_string_set();
-  std::vector<unsigned char> contiguousStrings = dss_schimek::getContiguousStrings(sendSet, container.char_size());
+  std::vector<unsigned char> contiguousStrings = 
+    dss_schimek::getContiguousStrings(sendSet, container.char_size());
 
   //for (size_t i = 0, offset = 0; i < sendSet.size(); ++i) {
   //  size_t length = dss_schimek::string_length(contiguousStrings.data() + offset);
@@ -533,46 +573,36 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
   //  offset += length + 1;
   //}
 
-  std::vector<unsigned char> receive_buffer_char;
-  std::vector<size_t> receive_buffer_lcp;
-  std::vector<size_t> send_counts_lcp(send_counts);
-  std::vector<size_t> send_counts_char(send_counts.size(), 0);
-  std::vector<size_t> sendCountsTotal(send_counts.size(), 0);
+  const std::vector<size_t>& sendCountsLcp(sendCountsString);
+  std::vector<size_t> sendCountsChar(sendCountsString.size(), 0);
+  std::vector<size_t> sendCountsTotal(sendCountsString.size(), 0);
 
-  std::vector<unsigned char> send_buffer;
-
-  for (size_t interval = 0, offset = 0; interval < send_counts.size(); ++interval) {
-    for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
-      size_t string_length = sendSet.get_length(sendSet[sendSet.begin() + j]); 
-      send_counts_char[interval] += string_length + 1;
+  for (size_t interval = 0, offset = 0; interval < sendCountsString.size(); ++interval) {
+    for (size_t j = offset; j < sendCountsString[interval] + offset; ++j) {
+      size_t stringLength = sendSet.get_length(sendSet[sendSet.begin() + j]); 
+      sendCountsChar[interval] += stringLength + 1;
     }
-    sendCountsTotal[interval] = byteEncoder.computeNumberOfSendBytes(send_counts_char[interval], 
-        send_counts_lcp[interval]); 
-    offset += send_counts[interval];
+    sendCountsTotal[interval] = byteEncoder.computeNumberOfSendBytes(sendCountsChar[interval], 
+        sendCountsLcp[interval]); 
+    offset += sendCountsString[interval];
   }
-  size_t totalNumSendChars = 
-    std::accumulate(send_counts_char.begin(), send_counts_char.end(), 0);
-  size_t totalNumStrings = 
-    std::accumulate(send_counts_lcp.begin(), send_counts_lcp.end(), 0);
 
-  size_t totalBytesToSend = totalNumSendChars + sizeof(size_t) * totalNumStrings;
-
-  //std::cout << "totalBytesToSend: " << totalBytesToSend << std::endl;
-  //std::cout << "totalNumSendChar: " << totalNumSendChars << std::endl;
-  //std::cout << "totalNumStrings: " << totalNumStrings << std::endl;
   size_t totalNumberSendBytes = 
-    byteEncoder.computeNumberOfSendBytes(send_counts_char, send_counts_lcp);
-  unsigned char* buffer = new unsigned char[totalNumberSendBytes]; 
-  unsigned char* p = buffer;
+    byteEncoder.computeNumberOfSendBytes(sendCountsChar, sendCountsLcp);
+
+  std::vector<unsigned char> buffer(totalNumberSendBytes);
+  unsigned char* curPos = buffer.data();
   
-  for (size_t interval = 0, offset = 0, stringsWritten = 0; interval < send_counts.size(); ++interval) {
-    p = byteEncoder.write(p, 
+  for (size_t interval = 0, offset = 0, stringsWritten = 0; 
+      interval < sendCountsString.size(); ++interval) {
+
+    curPos = byteEncoder.write(curPos, 
         contiguousStrings.data() + offset, 
-        send_counts_char[interval], 
+        sendCountsChar[interval], 
         container.lcp_array() + stringsWritten, 
-        send_counts_lcp[interval]);
-    offset += send_counts_char[interval];
-    stringsWritten += send_counts_lcp[interval];
+        sendCountsLcp[interval]);
+    offset += sendCountsChar[interval];
+    stringsWritten += sendCountsLcp[interval];
   }
   
   //for (size_t i = 0; i < totalNumberSendBytes; ++i) {
@@ -582,24 +612,79 @@ dss_schimek::StringLcpContainer<StringSet> alltoallv_2(
 
   std::vector<unsigned char> recv = alltoallv_small(buffer, sendCountsTotal);
    
-  
- 
   std::vector<unsigned char> rawStrings;
   std::vector<size_t> rawLcps;
   std::tie(rawStrings, rawLcps) = byteEncoder.read(recv.data(), recv.size());
+
+  return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
+}
+
+template <typename StringSet>
+dss_schimek::StringLcpContainer<StringSet> alltoallv_3(
+    dss_schimek::StringLcpContainer<StringSet>& container,
+    const std::vector<size_t>& sendCountsString,
+    environment env = environment()){
+
+  using namespace dss_schimek;
+  using String = typename StringSet::String;
+  using CharIterator = typename StringSet::CharIterator;
+
+  const ByteEncoder byteEncoder;
+  const StringSet& sendSet = container.make_string_set();
+
+  //for (size_t i = 0, offset = 0; i < sendSet.size(); ++i) {
+  //  size_t length = dss_schimek::string_length(contiguousStrings.data() + offset);
+  //  std::cout << contiguousStrings.data() + offset << std::endl;
+  //  offset += length + 1;
+  //}
+
+  const std::vector<size_t>& sendCountsLcp(sendCountsString);
+  std::vector<size_t> sendCountsChar(sendCountsString.size(), 0);
+  std::vector<size_t> sendCountsTotal(sendCountsString.size(), 0);
+
+  for (size_t interval = 0, offset = 0; interval < sendCountsString.size(); ++interval) {
+    for (size_t j = offset; j < sendCountsString[interval] + offset; ++j) {
+      size_t stringLength = sendSet.get_length(sendSet[sendSet.begin() + j]); 
+      sendCountsChar[interval] += stringLength + 1;
+    }
+    sendCountsTotal[interval] = byteEncoder.computeNumberOfSendBytes(sendCountsChar[interval], 
+        sendCountsLcp[interval]); 
+    offset += sendCountsString[interval];
+  }
+
+  size_t totalNumberSendBytes = 
+    byteEncoder.computeNumberOfSendBytes(sendCountsChar, sendCountsLcp);
+
+  std::vector<unsigned char> buffer(totalNumberSendBytes);
+  unsigned char* curPos = buffer.data();
   
-  ////writeToRawMemory(nullptr, nullptr, 0, nullptr, 0);
+    
+  for (size_t interval = 0, offset = 0, stringsWritten = 0; 
+      interval < sendCountsString.size(); ++interval) {
 
-  dss_schimek::mpi::execute_in_order([&]() {
-      std::cout << "rank: " << env.rank() << std::endl;
-      dss_schimek::print(rawStrings);
-      for (size_t i = 0; i < rawLcps.size(); ++i) {
-      std::cout << rawLcps[i] << std::endl;
-      }
-      });
-
+    std::cout << "sendSet size: " << sendSet.size() << " sendCountsLcp[interval]: " << sendCountsLcp[interval] << std::endl;
+    auto begin = sendSet.begin() + stringsWritten;
+    StringSet subSet = sendSet.sub(begin, begin + sendCountsLcp[interval]);
+    //subSet.print();
+    curPos = byteEncoder.write(curPos, 
+        subSet,
+        container.lcp_array() + stringsWritten);
+    stringsWritten += sendCountsLcp[interval];
+  }
+  
+  //std::cout << "rank: " << env.rank() << " bytes written" << std::endl;
+  //for (size_t i = 0; i < totalNumberSendBytes; ++i) {
+  //  std::cout << (int) buffer[i] << ";";
+  //}
   //std::cout << std::endl;
-  return StringLcpContainer<StringSet>();
+
+  std::vector<unsigned char> recv = alltoallv_small(buffer, sendCountsTotal);
+  // 
+  std::vector<unsigned char> rawStrings;
+  std::vector<size_t> rawLcps;
+  std::tie(rawStrings, rawLcps) = byteEncoder.read(recv.data(), recv.size());
+
+  return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
 }
 } // namespace dsss::mpi
 
