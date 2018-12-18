@@ -18,7 +18,7 @@ int main() {
   using namespace dss_schimek;
   using StringSet = UCharLengthStringSet;
   dsss::mpi::environment env;
-  size_t numStrings = 10;
+  size_t numStrings = 100;
 
   RandomStringLcpContainer<StringSet> randContainer(numStrings);
   dss_schimek::StringLcpPtr strptr = randContainer.make_string_lcp_ptr();
@@ -30,9 +30,10 @@ int main() {
       });
 
   
-  std::vector<size_t> sendCounts{2, 2, 6};
+  std::vector<size_t> sendCounts{2, 2, 95, 1};
   auto recvContainer2= dsss::mpi::alltoallv_2(randContainer, sendCounts);
   auto recvContainer3= dsss::mpi::alltoallv_3(randContainer, sendCounts);
+  auto recvContainer4= dsss::mpi::alltoallv_4(randContainer, sendCounts);
   auto recvContainerRef = dsss::mpi::alltoallv(randContainer, sendCounts);
   
   if (!(recvContainerRef ==  recvContainer2)) {
@@ -40,6 +41,10 @@ int main() {
     std::abort();
   }
   if (!(recvContainerRef ==  recvContainer3)) {
+    std::cout << "alltoall failed! at rank " << env.rank() << std::endl;
+    std::abort();
+  }
+  if (!(recvContainerRef ==  recvContainer4)) {
     std::cout << "alltoall failed! at rank " << env.rank() << std::endl;
     std::abort();
   }
