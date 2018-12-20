@@ -5,6 +5,7 @@
 #include "util/random_string_generator.hpp"
 #include "mpi/alltoall.hpp"
 #include "mpi/synchron.hpp"
+#include "mpi/byte_encoder.hpp"
 #include "sorter/local/strings/insertion_sort_unified.hpp"
 
   using namespace dss_schimek;
@@ -31,10 +32,14 @@ int main() {
 
   
   std::vector<size_t> sendCounts{2, 2, 95, 1};
-  auto recvContainer2= dsss::mpi::alltoallv_2(randContainer, sendCounts);
-  auto recvContainer3= dsss::mpi::alltoallv_3(randContainer, sendCounts);
-  auto recvContainer4= dsss::mpi::alltoallv_4(randContainer, sendCounts);
-  auto recvContainerRef = dsss::mpi::alltoallv(randContainer, sendCounts);
+  std::cout << "call 0" << std::endl;
+  auto recvContainer2= dsss::mpi::alltoallv<StringSet, SequentialDelayedByteEncoder>(randContainer, sendCounts);
+  std::cout << "call 1" << std::endl;
+  auto recvContainer3= dsss::mpi::alltoallv<StringSet, SequentialByteEncoder>(randContainer, sendCounts);
+  std::cout << "call 2" << std::endl;
+  auto recvContainer4= dsss::mpi::alltoallv<StringSet, InterleavedByteEncoder>(randContainer, sendCounts);
+  std::cout << "call 3" << std::endl;
+  auto recvContainerRef = dsss::mpi::alltoallv<StringSet, EmptyByteEncoder>(randContainer, sendCounts);
   
   if (!(recvContainerRef ==  recvContainer2)) {
     std::cout << "alltoall failed! at rank " << env.rank() << std::endl;

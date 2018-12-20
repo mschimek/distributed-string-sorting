@@ -10,6 +10,7 @@
 #include "mpi/allgather.hpp"
 #include "mpi/synchron.hpp"
 #include "mpi/is_sorted.hpp"
+#include "mpi/byte_encoder.hpp"
 
 #include "merge/stringtools.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
@@ -363,7 +364,7 @@ namespace dss_schimek {
 
           timer.start("all_to_all_strings");
           dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
-            dsss::mpi::alltoallv(local_string_container, interval_sizes);
+            dsss::mpi::alltoallv<StringSet, EmptyByteEncoder>(local_string_container, interval_sizes);
           timer.end("all_to_all_strings");
 
           std::cout << "#rank: " 
