@@ -17,6 +17,8 @@
       }
 int main() {
   using namespace dss_schimek;
+  using namespace dss_schimek::mpi;
+  using namespace dsss::mpi;
   using StringSet = UCharLengthStringSet;
   dsss::mpi::environment env;
   size_t numStrings = 100;
@@ -33,13 +35,13 @@ int main() {
   
   std::vector<size_t> sendCounts{2, 2, 95, 1};
   std::cout << "call 0" << std::endl;
-  auto recvContainer2= dsss::mpi::alltoallv<StringSet, SequentialDelayedByteEncoder>(randContainer, sendCounts);
+  auto recvContainer2= dsss::mpi::alltoallv<StringSet, AllToAllvCombined<AllToAllvSmall>, SequentialDelayedByteEncoder>(randContainer, sendCounts);
   std::cout << "call 1" << std::endl;
-  auto recvContainer3= dsss::mpi::alltoallv<StringSet, SequentialByteEncoder>(randContainer, sendCounts);
+  auto recvContainer3= dsss::mpi::alltoallv<StringSet, AllToAllvDirectMessages, SequentialByteEncoder>(randContainer, sendCounts);
   std::cout << "call 2" << std::endl;
-  auto recvContainer4= dsss::mpi::alltoallv<StringSet, InterleavedByteEncoder>(randContainer, sendCounts);
+  auto recvContainer4= dsss::mpi::alltoallv<StringSet, AllToAllvSmall, InterleavedByteEncoder>(randContainer, sendCounts);
   std::cout << "call 3" << std::endl;
-  auto recvContainerRef = dsss::mpi::alltoallv<StringSet, EmptyByteEncoder>(randContainer, sendCounts);
+  auto recvContainerRef = dsss::mpi::alltoallv<StringSet, AllToAllvSmall, EmptyByteEncoder>(randContainer, sendCounts);
   
   if (!(recvContainerRef ==  recvContainer2)) {
     std::cout << "alltoall failed! at rank " << env.rank() << std::endl;

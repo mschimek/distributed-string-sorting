@@ -50,7 +50,6 @@ namespace dsss::mpi {
           env.communicator());
       return receive_data;
     }
-
   template <typename DataType>
     inline std::vector<DataType> alltoallv_small(
         std::vector<DataType>& send_data, std::vector<size_t>& send_counts,
@@ -101,58 +100,226 @@ namespace dsss::mpi {
       return receive_data;
     }
 
-  template <typename DataType>
-    inline std::vector<DataType> alltoallv_small(
-        DataType* send_data, std::vector<size_t>& send_counts,
-        environment env = environment()) {
 
-      static size_t counter = 0;
-      std::cout << "my small send rank: " << env.rank() << " counter = " << counter++ << std::endl;
-      std::vector<int32_t> real_send_counts(send_counts.size());
-      for (size_t i = 0; i < send_counts.size(); ++i) {
-        real_send_counts[i] = static_cast<int32_t>(send_counts[i]);
-      }
-      std::vector<int32_t> receive_counts = alltoall(real_send_counts, env);
+  class AllToAllvSmall {
+    public:
+      template<typename DataType>
+        static std::vector<DataType> alltoallv(
+            DataType* send_data, std::vector<size_t>& send_counts,
+            environment env = environment()) {
 
-      std::vector<int32_t> send_displacements(real_send_counts.size(), 0);
-      std::vector<int32_t> receive_displacements(real_send_counts.size(), 0);
-      for (size_t i = 1; i < real_send_counts.size(); ++i) {
-        send_displacements[i] = send_displacements[i - 1] + real_send_counts[i - 1];
-        receive_displacements[i] = receive_displacements[i - 1] +
-          receive_counts[i - 1];
-      }
-      std::vector<DataType> receive_data(
-          receive_counts.back() + receive_displacements.back());
-
-      if constexpr (debug_alltoall) {
-        for (int32_t i = 0; i < env.size(); ++i) {
-          if (i == env.rank()) {
-            std::cout << i << ": send_counts.size() " << send_counts.size()
-              << std::endl;
-            std::cout << i << ": send counts: ";
-            for (const auto sc : real_send_counts) { std::cout << sc << ", "; }
-            std::cout << std::endl << "receive counts: ";
-
-            for (const auto rc : receive_counts) { std::cout << rc << ", "; }
-            std::cout << std::endl;
+          std::vector<int32_t> real_send_counts(send_counts.size());
+          for (size_t i = 0; i < send_counts.size(); ++i) {
+            real_send_counts[i] = static_cast<int32_t>(send_counts[i]);
           }
-          env.barrier();
+          std::vector<int32_t> receive_counts = alltoall(real_send_counts, env);
+
+          std::vector<int32_t> send_displacements(real_send_counts.size(), 0);
+          std::vector<int32_t> receive_displacements(real_send_counts.size(), 0);
+          for (size_t i = 1; i < real_send_counts.size(); ++i) {
+            send_displacements[i] = send_displacements[i - 1] + real_send_counts[i - 1];
+            receive_displacements[i] = receive_displacements[i - 1] +
+              receive_counts[i - 1];
+          }
+          std::vector<DataType> receive_data(
+              receive_counts.back() + receive_displacements.back());
+
+          if constexpr (debug_alltoall) {
+            for (int32_t i = 0; i < env.size(); ++i) {
+              if (i == env.rank()) {
+                std::cout << i << ": send_counts.size() " << send_counts.size()
+                  << std::endl;
+                std::cout << i << ": send counts: ";
+                for (const auto sc : real_send_counts) { std::cout << sc << ", "; }
+                std::cout << std::endl << "receive counts: ";
+
+                for (const auto rc : receive_counts) { std::cout << rc << ", "; }
+                std::cout << std::endl;
+              }
+              env.barrier();
+            }
+          }
+
+          data_type_mapper<DataType> dtm;
+          MPI_Alltoallv(send_data,
+              real_send_counts.data(),
+              send_displacements.data(),
+              dtm.get_mpi_type(),
+              receive_data.data(),
+              receive_counts.data(),
+              receive_displacements.data(),
+              dtm.get_mpi_type(),
+              env.communicator());
+          return receive_data;
         }
-      }
 
-      data_type_mapper<DataType> dtm;
-      MPI_Alltoallv(send_data,
-          real_send_counts.data(),
-          send_displacements.data(),
-          dtm.get_mpi_type(),
-          receive_data.data(),
-          receive_counts.data(),
-          receive_displacements.data(),
-          dtm.get_mpi_type(),
-          env.communicator());
-      return receive_data;
-    }
+  };
 
+  class AllToAllvDirectMessages {
+    public:
+      template<typename DataType>
+        static std::vector<DataType> alltoallv(DataType* send_data,
+            std::vector<size_t>& send_counts, environment env = environment()) {
+
+          std::vector<size_t> receive_counts = alltoall(send_counts, env);
+          size_t local_receive_count = std::accumulate(
+              receive_counts.begin(), receive_counts.end(), 0);
+
+          std::vector<size_t> send_displacements(env.size(), 0);
+          for (size_t i = 1; i < send_counts.size(); ++i) {
+            send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
+          }
+          std::vector<size_t> receive_displacements(env.size(), 0);
+          for (size_t i = 1; i < send_counts.size(); ++i) {
+            receive_displacements[i] =
+              receive_displacements[i - 1] + receive_counts[i - 1];
+          }
+
+          std::vector<MPI_Request> mpi_request(2 * env.size());
+          std::vector<DataType> receive_data(receive_displacements.back() +
+              receive_counts.back());
+          for (int32_t i = 0; i < env.size(); ++i) {
+            // start with self send/recv
+            auto source = (env.rank() + (env.size() - i)) % env.size();
+            auto receive_type = get_big_type<DataType>(receive_counts[source]);
+            MPI_Irecv(receive_data.data() + receive_displacements[source],
+                1,
+                receive_type,
+                source,
+                44227,
+                env.communicator(),
+                &mpi_request[source]);
+          }
+          // dispatch sends
+          for (int32_t i = 0; i < env.size(); ++i) {
+            auto target = (env.rank() + i) % env.size();
+            auto send_type = get_big_type<DataType>(send_counts[target]);
+            MPI_Isend(send_data + send_displacements[target],
+                1,
+                send_type,
+                target,
+                44227,
+                env.communicator(),
+                &mpi_request[env.size() + target]);
+          }
+          MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
+          return receive_data;
+        }
+  };
+
+  template<typename AllToAllvSmallPolicy>
+    class AllToAllvCombined {
+      public:
+        template<typename DataType>
+          static std::vector<DataType> alltoallv(DataType* send_data,
+              std::vector<size_t>& send_counts, environment env = environment()) {
+
+            size_t local_send_count = std::accumulate(
+                send_counts.begin(), send_counts.end(), 0);
+
+            std::vector<size_t> receive_counts = alltoall(send_counts, env);
+            size_t local_receive_count = std::accumulate(
+                receive_counts.begin(), receive_counts.end(), 0);
+
+            size_t local_max = std::max(local_send_count, local_receive_count);
+            size_t global_max = allreduce_max(local_max, env);
+
+            if (global_max < env.mpi_max_int() && false) {
+              return AllToAllvSmallPolicy::alltoallv(send_data, send_counts, env);
+            } else {
+              std::vector<size_t> send_displacements(env.size(), 0);
+              for (size_t i = 1; i < send_counts.size(); ++i) {
+                send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
+              }
+              std::vector<size_t> receive_displacements(env.size(), 0);
+              for (size_t i = 1; i < send_counts.size(); ++i) {
+                receive_displacements[i] =
+                  receive_displacements[i - 1] + receive_counts[i - 1];
+              }
+
+              std::vector<MPI_Request> mpi_request(2 * env.size());
+              std::vector<DataType> receive_data(receive_displacements.back() +
+                  receive_counts.back());
+              for (int32_t i = 0; i < env.size(); ++i) {
+                // start with self send/recv
+                auto source = (env.rank() + (env.size() - i)) % env.size();
+                auto receive_type = get_big_type<DataType>(receive_counts[source]);
+                MPI_Irecv(receive_data.data() + receive_displacements[source],
+                    1,
+                    receive_type,
+                    source,
+                    44227,
+                    env.communicator(),
+                    &mpi_request[source]);
+              }
+              // dispatch sends
+              for (int32_t i = 0; i < env.size(); ++i) {
+                auto target = (env.rank() + i) % env.size();
+                auto send_type = get_big_type<DataType>(send_counts[target]);
+                MPI_Isend(send_data + send_displacements[target],
+                    1,
+                    send_type,
+                    target,
+                    44227,
+                    env.communicator(),
+                    &mpi_request[env.size() + target]);
+              }
+              MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
+              return receive_data;
+            }
+          }
+    };
+  //template <typename DataType>
+  //    inline std::vector<DataType> alltoallv_small(
+  //        DataType* send_data, std::vector<size_t>& send_counts,
+  //        environment env = environment()) {
+  //
+  //      static size_t counter = 0;
+  //      std::cout << "my small send rank: " << env.rank() << " counter = " << counter++ << std::endl;
+  //      std::vector<int32_t> real_send_counts(send_counts.size());
+  //      for (size_t i = 0; i < send_counts.size(); ++i) {
+  //        real_send_counts[i] = static_cast<int32_t>(send_counts[i]);
+  //      }
+  //      std::vector<int32_t> receive_counts = alltoall(real_send_counts, env);
+  //
+  //      std::vector<int32_t> send_displacements(real_send_counts.size(), 0);
+  //      std::vector<int32_t> receive_displacements(real_send_counts.size(), 0);
+  //      for (size_t i = 1; i < real_send_counts.size(); ++i) {
+  //        send_displacements[i] = send_displacements[i - 1] + real_send_counts[i - 1];
+  //        receive_displacements[i] = receive_displacements[i - 1] +
+  //          receive_counts[i - 1];
+  //      }
+  //      std::vector<DataType> receive_data(
+  //          receive_counts.back() + receive_displacements.back());
+  //
+  //      if constexpr (debug_alltoall) {
+  //        for (int32_t i = 0; i < env.size(); ++i) {
+  //          if (i == env.rank()) {
+  //            std::cout << i << ": send_counts.size() " << send_counts.size()
+  //              << std::endl;
+  //            std::cout << i << ": send counts: ";
+  //            for (const auto sc : real_send_counts) { std::cout << sc << ", "; }
+  //            std::cout << std::endl << "receive counts: ";
+  //
+  //            for (const auto rc : receive_counts) { std::cout << rc << ", "; }
+  //            std::cout << std::endl;
+  //          }
+  //          env.barrier();
+  //        }
+  //      }
+  //
+  //      data_type_mapper<DataType> dtm;
+  //      MPI_Alltoallv(send_data,
+  //          real_send_counts.data(),
+  //          send_displacements.data(),
+  //          dtm.get_mpi_type(),
+  //          receive_data.data(),
+  //          receive_counts.data(),
+  //          receive_displacements.data(),
+  //          dtm.get_mpi_type(),
+  //          env.communicator());
+  //      return receive_data;
+  //    }
   template <typename DataType>
     inline std::vector<DataType> alltoallv(std::vector<DataType>& send_data,
         std::vector<size_t>& send_counts, environment env = environment()) {
@@ -211,65 +378,65 @@ namespace dsss::mpi {
         return receive_data;
       }
     }
-  
-  template <typename DataType>
-    inline std::vector<DataType> alltoallv(DataType* send_data,
-        std::vector<size_t>& send_counts, environment env = environment()) {
 
-      size_t local_send_count = std::accumulate(
-          send_counts.begin(), send_counts.end(), 0);
+  //template <typename DataType>
+  //  inline std::vector<DataType> alltoallv(DataType* send_data,
+  //      std::vector<size_t>& send_counts, environment env = environment()) {
 
-      std::vector<size_t> receive_counts = alltoall(send_counts, env);
-      size_t local_receive_count = std::accumulate(
-          receive_counts.begin(), receive_counts.end(), 0);
+  //    size_t local_send_count = std::accumulate(
+  //        send_counts.begin(), send_counts.end(), 0);
 
-      size_t local_max = std::max(local_send_count, local_receive_count);
-      size_t global_max = allreduce_max(local_max, env);
+  //    std::vector<size_t> receive_counts = alltoall(send_counts, env);
+  //    size_t local_receive_count = std::accumulate(
+  //        receive_counts.begin(), receive_counts.end(), 0);
 
-      if (global_max < env.mpi_max_int() && false) {
-        return alltoallv_small(send_data, send_counts, env);
-      } else {
-        std::vector<size_t> send_displacements(env.size(), 0);
-        for (size_t i = 1; i < send_counts.size(); ++i) {
-          send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
-        }
-        std::vector<size_t> receive_displacements(env.size(), 0);
-        for (size_t i = 1; i < send_counts.size(); ++i) {
-          receive_displacements[i] =
-            receive_displacements[i - 1] + receive_counts[i - 1];
-        }
+  //    size_t local_max = std::max(local_send_count, local_receive_count);
+  //    size_t global_max = allreduce_max(local_max, env);
 
-        std::vector<MPI_Request> mpi_request(2 * env.size());
-        std::vector<DataType> receive_data(receive_displacements.back() +
-            receive_counts.back());
-        for (int32_t i = 0; i < env.size(); ++i) {
-          // start with self send/recv
-          auto source = (env.rank() + (env.size() - i)) % env.size();
-          auto receive_type = get_big_type<DataType>(receive_counts[source]);
-          MPI_Irecv(receive_data.data() + receive_displacements[source],
-              1,
-              receive_type,
-              source,
-              44227,
-              env.communicator(),
-              &mpi_request[source]);
-        }
-        // dispatch sends
-        for (int32_t i = 0; i < env.size(); ++i) {
-          auto target = (env.rank() + i) % env.size();
-          auto send_type = get_big_type<DataType>(send_counts[target]);
-          MPI_Isend(send_data + send_displacements[target],
-              1,
-              send_type,
-              target,
-              44227,
-              env.communicator(),
-              &mpi_request[env.size() + target]);
-        }
-        MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
-        return receive_data;
-      }
-    }
+  //    if (global_max < env.mpi_max_int() && false) {
+  //      return alltoallv_small(send_data, send_counts, env);
+  //    } else {
+  //      std::vector<size_t> send_displacements(env.size(), 0);
+  //      for (size_t i = 1; i < send_counts.size(); ++i) {
+  //        send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
+  //      }
+  //      std::vector<size_t> receive_displacements(env.size(), 0);
+  //      for (size_t i = 1; i < send_counts.size(); ++i) {
+  //        receive_displacements[i] =
+  //          receive_displacements[i - 1] + receive_counts[i - 1];
+  //      }
+
+  //      std::vector<MPI_Request> mpi_request(2 * env.size());
+  //      std::vector<DataType> receive_data(receive_displacements.back() +
+  //          receive_counts.back());
+  //      for (int32_t i = 0; i < env.size(); ++i) {
+  //        // start with self send/recv
+  //        auto source = (env.rank() + (env.size() - i)) % env.size();
+  //        auto receive_type = get_big_type<DataType>(receive_counts[source]);
+  //        MPI_Irecv(receive_data.data() + receive_displacements[source],
+  //            1,
+  //            receive_type,
+  //            source,
+  //            44227,
+  //            env.communicator(),
+  //            &mpi_request[source]);
+  //      }
+  //      // dispatch sends
+  //      for (int32_t i = 0; i < env.size(); ++i) {
+  //        auto target = (env.rank() + i) % env.size();
+  //        auto send_type = get_big_type<DataType>(send_counts[target]);
+  //        MPI_Isend(send_data + send_displacements[target],
+  //            1,
+  //            send_type,
+  //            target,
+  //            44227,
+  //            env.communicator(),
+  //            &mpi_request[env.size() + target]);
+  //      }
+  //      MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
+  //      return receive_data;
+  //    }
+  //  }
 
   inline std::vector<dsss::char_type> alltoallv_strings(
       dsss::string_set& send_data, const std::vector<size_t>& send_counts,
@@ -365,20 +532,20 @@ namespace dsss::mpi {
       return sendCountsBytes;
     }
 
-  template<typename StringSet, typename ByteEncoderPolicy>
-    struct AllToAllImpl;
+  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
+    struct AllToAllStringImpl;
 
-  template <typename StringSet, typename ByteEncoderPolicy>
+  template <typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
         dss_schimek::StringLcpContainer<StringSet>& container,
         const std::vector<size_t>& sendCountsString,
         environment env = environment()) {
 
-      return AllToAllImpl<StringSet, ByteEncoderPolicy>::alltoallv(container, sendCountsString, env);
+      return AllToAllStringImpl<StringSet, AllToAllPolicy, ByteEncoderPolicy>::alltoallv(container, sendCountsString, env);
 
     }
-  template<typename StringSet, typename ByteEncoderPolicy>
-    struct AllToAllImpl : private ByteEncoderPolicy {
+  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
+    struct AllToAllStringImpl : private ByteEncoderPolicy {
       static  dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
           const std::vector<size_t>& sendCountsString,
@@ -408,15 +575,15 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
-        std::vector<unsigned char> recv = dsss::mpi::alltoallv(buffer.data(), sendCountsTotal);
+        std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }
 
     };
 
-  template<typename StringSet> 
-    struct AllToAllImpl<StringSet, dss_schimek::EmptyByteEncoder> {
+  template<typename StringSet, typename AllToAllPolicy> 
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoder> {
       static dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& send_counts,
@@ -449,16 +616,16 @@ namespace dsss::mpi {
           offset += send_counts[interval];
         }
 
-        receive_buffer_char = dsss::mpi::alltoallv(send_buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = dsss::mpi::alltoallv(send_data.lcps().data(), send_counts_lcp, env);
+        receive_buffer_char = AllToAllPolicy::alltoallv(send_buffer.data(), send_counts_char, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts_lcp, env);
 
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
     };
 
-  template<typename StringSet> 
-    struct AllToAllImpl<StringSet, dss_schimek::SequentialDelayedByteEncoder> {
+  template<typename StringSet, typename AllToAllPolicy> 
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::SequentialDelayedByteEncoder> {
 
       static dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
@@ -508,7 +675,7 @@ namespace dsss::mpi {
           stringsWritten += sendCountsLcp[interval];
         }
 
-        std::vector<unsigned char> recv = dsss::mpi::alltoallv(buffer.data(), sendCountsTotal);
+        std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }  
