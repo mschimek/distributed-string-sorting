@@ -224,7 +224,7 @@ namespace dsss::mpi {
             size_t local_max = std::max(local_send_count, local_receive_count);
             size_t global_max = allreduce_max(local_max, env);
 
-            if (global_max < env.mpi_max_int() && false) {
+            if (global_max < env.mpi_max_int()) {
               return AllToAllvSmallPolicy::alltoallv(send_data, send_counts, env);
             } else {
               std::vector<size_t> send_displacements(env.size(), 0);
@@ -532,25 +532,29 @@ namespace dsss::mpi {
       return sendCountsBytes;
     }
 
-  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
+  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy, typename Timer>
     struct AllToAllStringImpl;
 
-  template <typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
+  template <typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy, typename Timer>
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
         dss_schimek::StringLcpContainer<StringSet>& container,
         const std::vector<size_t>& sendCountsString,
+        Timer& timer,
         environment env = environment()) {
-
-      return AllToAllStringImpl<StringSet, AllToAllPolicy, ByteEncoderPolicy>::alltoallv(container, sendCountsString, env);
+      static AllToAllStringImpl<StringSet, AllToAllPolicy, ByteEncoderPolicy, Timer> sender;
+      return sender.alltoallv(container, sendCountsString, timer, env);
 
     }
-  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
+  template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy, typename Timer>
     struct AllToAllStringImpl : private ByteEncoderPolicy {
-      static  dss_schimek::StringLcpContainer<StringSet> alltoallv(
+      dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
           const std::vector<size_t>& sendCountsString,
+          Timer& timer,
           environment env = environment()) {
 
+        
+        timer.start("all_to_all_strings_intern_copy", env);
         std::cout << ByteEncoderPolicy::getName() << std::endl;
         using namespace dss_schimek;
         using String = typename StringSet::String;
@@ -574,24 +578,31 @@ namespace dsss::mpi {
               container.lcp_array() + stringsWritten);
           stringsWritten += sendCountsString[interval];
         }
+        timer.end("all_to_all_strings_intern_copy", env);
 
+        timer.start("all_to_all_strings_mpi", env);
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
+        timer.end("all_to_all_strings_mpi", env);
+        timer.start("all_to_all_strings_read", env);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
+        timer.end("all_to_all_strings_read", env);
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }
 
     };
 
-  template<typename StringSet, typename AllToAllPolicy> 
-    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoder> {
-      static dss_schimek::StringLcpContainer<StringSet> alltoallv(
+  template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoder, Timer> {
+      dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& send_counts,
+          Timer& timer,
           environment env = environment()){
 
         using namespace dss_schimek;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
+        timer.start("all_to_all_strings_intern_copy", env);
         const StringSet ss = send_data.make_string_set();
 
         std::cout << EmptyByteEncoder::getName() << std::endl;
@@ -616,20 +627,30 @@ namespace dsss::mpi {
           offset += send_counts[interval];
         }
 
+        timer.end("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_mpi", env);
         receive_buffer_char = AllToAllPolicy::alltoallv(send_buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts_lcp, env);
+        timer.end("all_to_all_strings_mpi", env);
 
+        // no bytes are read in this version only for evaluation layout
+        timer.start("all_to_all_strings_read", env);
+        timer.end("all_to_all_strings_read", env);
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
     };
 
-  template<typename StringSet, typename AllToAllPolicy> 
-    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::SequentialDelayedByteEncoder> {
+  template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+    struct AllToAllStringImpl<StringSet,
+      AllToAllPolicy,
+      dss_schimek::SequentialDelayedByteEncoder,
+      Timer> {
 
-      static dss_schimek::StringLcpContainer<StringSet> alltoallv(
+      dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
           const std::vector<size_t>& sendCountsString,
+          Timer& timer,
           environment env = environment()){
 
         using namespace dss_schimek;
@@ -638,6 +659,7 @@ namespace dsss::mpi {
 
         const SequentialDelayedByteEncoder byteEncoder;
 
+        timer.start("all_to_all_strings_intern_copy", env);
         std::cout << SequentialDelayedByteEncoder::getName() << std::endl;
         const StringSet& sendSet = container.make_string_set();
         std::vector<unsigned char> contiguousStrings = 
@@ -675,8 +697,13 @@ namespace dsss::mpi {
           stringsWritten += sendCountsLcp[interval];
         }
 
+        timer.end("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_mpi", env);
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
+        timer.end("all_to_all_strings_mpi", env);
+        timer.start("all_to_all_strings_read", env);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
+        timer.end("all_to_all_strings_read", env);
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }  
     };
