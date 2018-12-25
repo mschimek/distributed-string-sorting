@@ -3,61 +3,113 @@
 #include "util/random_string_generator.hpp"
 #include "util/timer.hpp"
 #include "mpi/synchron.hpp"
+#include <map>
 
 #include <tlx/cmdline_parser.hpp>
 
-template <typename StringSet, typename StringGenerator, typename SampleSplittersPolicy>
-void execute_sorter(const size_t numOfStrings, const bool checkInput,
-                    dsss::mpi::environment env = dsss::mpi::environment()) { 
-  using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
-  using namespace dss_schimek;
-  static size_t iteration = 0;
-  ++iteration;
+namespace dss_schimek::execution {
 
-  std::string prefix = std::string("RESULT") +
-                       " numberProcessors=" + std::to_string(env.size()) +
-                       " samplePolicy=" + SampleSplittersPolicy::getName() +
-                       " StringGenerator=" + StringGenerator::getName() +
-                       " StringSet=" + StringSet::getName() + 
-                       " iteration=" + std::to_string(iteration) +
-                       " size=" + std::to_string(numOfStrings);
-                       
-  Timer timer(prefix);
 
-  StringGenerator rand_container(numOfStrings);
-  StringLcpPtr rand_string_ptr = 
-    rand_container.make_string_lcp_ptr();
 
-  const size_t numGeneratedChars = rand_container.char_size();
+template <typename StringSet, typename StringGenerator, typename SampleSplittersPolicy, typename MPIAllToAllRoutine, typename ByteEncoder, typename Timer>
+  void execute_sorter(const size_t numOfStrings, const bool checkInput,
+      dsss::mpi::environment env = dsss::mpi::environment()) { 
+    using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
+    using namespace dss_schimek;
+    static size_t iteration = 0;
+    ++iteration;
 
-  timer.start("sorting_overall");
+    std::string prefix = std::string("RESULT") +
+      " numberProcessors=" + std::to_string(env.size()) +
+      " samplePolicy=" + SampleSplittersPolicy::getName() +
+      " StringGenerator=" + StringGenerator::getName() +
+      " MPIAllToAllRoutine=" + MPIAllToAllRoutine::getName() + 
+      " ByteEncoder= " + ByteEncoder::getName() + 
+      " Timer= " + Timer::getName() + 
+      " StringSet=" + StringSet::getName() + 
+      " iteration=" + std::to_string(iteration) +
+      " size=" + std::to_string(numOfStrings);
 
-  DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy> sorter;
-  StringLcpContainer<StringSet> sorted_string_cont = 
-    sorter.sort(rand_string_ptr, std::move(rand_container), timer);
+    Timer timer(prefix);
 
-  timer.end("sorting_overall");
+    StringGenerator rand_container(numOfStrings);
+    StringLcpPtr rand_string_ptr = 
+      rand_container.make_string_lcp_ptr();
 
-  const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-  const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-      numGeneratedChars,
-      sorted_string_cont.char_size(),
-      numOfStrings,
-      sorted_string_cont.size()); 
+    const size_t numGeneratedChars = rand_container.char_size();
 
-  std::stringstream buffer;
-  timer.writeToStream(buffer);
-  if (env.rank() == 0) {
-    std::cout << buffer.str() << std::endl;
+    timer.start("sorting_overall");
+    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, dss_schimek::mpi::AllToAllvSmall, dss_schimek::EmptyByteEncoder, Timer>;
+    DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy> sorter;
+    StringLcpContainer<StringSet> sorted_string_cont = 
+      sorter.sort(rand_string_ptr, std::move(rand_container), timer);
+
+    timer.end("sorting_overall");
+
+    const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
+    const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
+        numGeneratedChars,
+        sorted_string_cont.char_size(),
+        numOfStrings,
+        sorted_string_cont.size()); 
+
+    std::stringstream buffer;
+    timer.writeToStream(buffer);
+    if (env.rank() == 0) {
+      std::cout << buffer.str() << std::endl;
+    }
   }
 }
+enum StringSet {UCharLengthStringSetE = 0, UCharStringSetE = 1};
+enum SampleStringPolicys { NumStrings = 0, NumChars = 1};
+enum MPIAllToAllRoutine { small = 0, directMessages = 1, combined = 2};
+enum ByteEncoder { emptyByteEncoder = 0, sequentialDelayedByeEncoder = 1, sequentialByteEncoder = 2, interleavedByteEncoder = 3 };
 
+
+template <typename T>
+struct TypeContainer{
+  using Type = T;
+};
+
+
+struct CombinationKey  {
+  CombinationKey(StringSet stringSet, SampleStringPolicys sampleStringPolicy, MPIAllToAllRoutine mpiAllToAllRoutine, ByteEncoder byteEncoder) :
+    stringSet_(stringSet), sampleStringPolicy_(sampleStringPolicy), mpiAllToAllRoutine_(mpiAllToAllRoutine), byteEncoder_(byteEncoder) {}
+  StringSet stringSet_;
+  SampleStringPolicys sampleStringPolicy_;
+  MPIAllToAllRoutine mpiAllToAllRoutine_;
+  ByteEncoder byteEncoder_;
+
+  bool operator==(const CombinationKey& other) {
+    return stringSet_ == other.stringSet_ && sampleStringPolicy_ == other.sampleStringPolicy_ 
+      && other.mpiAllToAllRoutine_ == mpiAllToAllRoutine_ && other.byteEncoder_ == byteEncoder_;
+  }
+};
+
+
+using namespace dss_schimek;
+using namespace dss_schimek::execution;
+
+template<typename StringSet>
+void secondArg(const CombinationKey& key) {
+  using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
+  using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
+  using MPIAllToAllRoutine = dss_schimek::mpi::AllToAllvSmall;
+  using ByteEncoder = dss_schimek::EmptyByteEncoder;
+  execute_sorter<StringSet, StringGenerator, SampleSplittersPolicy, MPIAllToAllRoutine, ByteEncoder, Timer>(1000000, false);
+}
+
+void firstArg(const CombinationKey& key) {
+  switch (key.stringSet_) {
+    case 0 : secondArg<UCharLengthStringSet>(key); break;
+    case 1 : secondArg<UCharStringSet>(key); break;
+  };
+}
 int main(std::int32_t argc, char const *argv[]) {
   using namespace dss_schimek;
   using StringSet = UCharLengthStringSet;
 
   dsss::mpi::environment env;
-  enum SampleStringPolicy { NumStrings = 0, NumChars = 1};
 
   bool check = false;
   bool skewedInput = false;
@@ -78,6 +130,9 @@ int main(std::int32_t argc, char const *argv[]) {
     return -1;
   }
 
+  CombinationKey key =  {UCharLengthStringSetE, NumStrings, small, emptyByteEncoder};
+  firstArg(key);
+/*
   switch (sampleStringsPolicy) {
     case NumStrings : {
                         using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
@@ -109,6 +164,6 @@ int main(std::int32_t argc, char const *argv[]) {
                       }
                       break;
                     }
-  };
+  };*/
   env.finalize();
 }

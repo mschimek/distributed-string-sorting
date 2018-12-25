@@ -313,8 +313,8 @@ namespace dss_schimek {
       return StringLcpContainer();
     }
 
-  template<typename StringPtr, typename SampleSplittersPolicy>
-    class DistributedMergeSort : private SampleSplittersPolicy
+  template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy>
+    class DistributedMergeSort : private SampleSplittersPolicy, private AllToAllStringPolicy
   {
     public:
       dss_schimek::StringLcpContainer<typename StringPtr::StringSet>
@@ -364,7 +364,7 @@ namespace dss_schimek {
 
           timer.start("all_to_all_strings");
           dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
-            dsss::mpi::alltoallv<StringSet, EmptyByteEncoder>(local_string_container, interval_sizes);
+            AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
           timer.end("all_to_all_strings");
 
           std::cout << "#rank: " 

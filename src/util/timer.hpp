@@ -16,6 +16,9 @@
 namespace dss_schimek {
   class EmptyTimer { // do not measure, used in alltoall-variants 
     public:
+      static std::string getName() {
+        return "EmptyTimer";
+      }
       void start(const std::string& description,
           dsss::mpi::environment env = dsss::mpi::environment()) {}
       void end(const std::string& description,
@@ -29,6 +32,9 @@ namespace dss_schimek {
     using TimeIntervalDataType = size_t;
 
     public:
+    static std::string getName() {
+      return "Timer";
+    }
     Timer(const std::string& prefix) : prefix(prefix) {};
     void start(const std::string& description,
         dsss::mpi::environment env = dsss::mpi::environment()) {

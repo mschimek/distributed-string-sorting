@@ -103,6 +103,9 @@ namespace dsss::mpi {
 
   class AllToAllvSmall {
     public:
+      static std::string getName()  {
+        return "AlltoAllvSmall";
+      }
       template<typename DataType>
         static std::vector<DataType> alltoallv(
             DataType* send_data, std::vector<size_t>& send_counts,
@@ -157,6 +160,9 @@ namespace dsss::mpi {
 
   class AllToAllvDirectMessages {
     public:
+      static std::string getName() {
+        return "AlltoAllvDirectMessages";
+      }
       template<typename DataType>
         static std::vector<DataType> alltoallv(DataType* send_data,
             std::vector<size_t>& send_counts, environment env = environment()) {
@@ -210,6 +216,9 @@ namespace dsss::mpi {
   template<typename AllToAllvSmallPolicy>
     class AllToAllvCombined {
       public:
+        static std::string getName() {
+          return "AllToAllvCombined";
+        }
         template<typename DataType>
           static std::vector<DataType> alltoallv(DataType* send_data,
               std::vector<size_t>& send_counts, environment env = environment()) {
