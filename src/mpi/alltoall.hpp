@@ -564,7 +564,6 @@ namespace dsss::mpi {
 
         
         timer.start("all_to_all_strings_intern_copy", env);
-        std::cout << ByteEncoderPolicy::getName() << std::endl;
         using namespace dss_schimek;
         using String = typename StringSet::String;
         using CharIterator = typename StringSet::CharIterator;
@@ -614,7 +613,6 @@ namespace dsss::mpi {
         timer.start("all_to_all_strings_intern_copy", env);
         const StringSet ss = send_data.make_string_set();
 
-        std::cout << EmptyByteEncoder::getName() << std::endl;
         if (send_data.size() == 0)
           return dss_schimek::StringLcpContainer<StringSet>();
 
@@ -669,7 +667,6 @@ namespace dsss::mpi {
         const SequentialDelayedByteEncoder byteEncoder;
 
         timer.start("all_to_all_strings_intern_copy", env);
-        std::cout << SequentialDelayedByteEncoder::getName() << std::endl;
         const StringSet& sendSet = container.make_string_set();
         std::vector<unsigned char> contiguousStrings = 
           dss_schimek::getContiguousStrings(sendSet, container.char_size());

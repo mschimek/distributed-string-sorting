@@ -26,7 +26,7 @@ done
    i=$(($i + 1))
   done
   echo ".headers on"
-  echo ".mode column"
+  #echo ".mode column"
   echo ".once ${1}/data.txt"
   echo "SELECT * from table1;"
   echo ".exit"

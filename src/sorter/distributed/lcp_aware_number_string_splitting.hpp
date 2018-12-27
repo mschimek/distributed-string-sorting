@@ -151,6 +151,45 @@ namespace dss_schimek {
         interval_sizes[i] -= interval_sizes[i - 1];
       }
       return interval_sizes;
+    } 
+  
+    template <typename StringSet>
+    inline std::vector<size_t> compute_interval_binary(const StringSet& ss, 
+        const StringSet& splitters,
+        dsss::mpi::environment env = dsss::mpi::environment())
+    {
+      using String = typename StringSet::String;
+      using CharIt = typename StringSet::CharIterator
+      std::vector<size_t> interval_sizes;
+      interval_sizes.reserve(splitters.size());
+
+      size_t nr_splitters = std::min<size_t>(env.size() - 1, ss.size());
+      size_t splitter_dist = ss.size() / (nr_splitters + 1);
+      size_t element_pos = 0;
+      class Comparator {
+        bool operator() ()
+      }
+
+      for (std::size_t i = 0; i < splitters.size(); ++i) {
+        element_pos = (i + 1) * splitter_dist;
+
+        while(element_pos > 0 && !dss_schimek::leq(
+              ss.get_chars(ss[ss.begin() + element_pos], 0), 
+              splitters.get_chars(splitters[splitters.begin() + i], 0))) 
+        { --element_pos; }
+
+        while (element_pos < ss.size() && dss_schimek::leq(
+              ss.get_chars(ss[ss.begin() + element_pos], 0),
+              splitters.get_chars(splitters[splitters.begin() + i], 0))) 
+        { ++element_pos; }
+
+        interval_sizes.emplace_back(element_pos);
+      }
+      interval_sizes.emplace_back(ss.size());
+      for (std::size_t i = interval_sizes.size() - 1; i > 0; --i) {
+        interval_sizes[i] -= interval_sizes[i - 1];
+      }
+      return interval_sizes;
     }
 
     static inline void print_interval_sizes(const std::vector<size_t>& sent_interval_sizes,
@@ -365,14 +404,10 @@ namespace dss_schimek {
 
           dss_schimek::StringLcpContainer<StringSet> recv_string_cont; 
           if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
-            std::cout << "hallo 0" << std::endl;
             timer.start("all_to_all_strings");
-            std::cout << "hallo 0.5 " << std::endl;
             recv_string_cont = 
               AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
-            std::cout << "hallo 1" << std::endl;
             timer.end("all_to_all_strings");
-            std::cout << "hallo 2" << std::endl;
           } else {
             timer.start("all_to_all_strings");
             EmptyTimer emptyTimer;
