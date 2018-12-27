@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <type_traits>
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
 #include "strings/stringtools.hpp"
@@ -313,14 +314,14 @@ namespace dss_schimek {
       return StringLcpContainer();
     }
 
-  template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy>
+  template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename Timer>
     class DistributedMergeSort : private SampleSplittersPolicy, private AllToAllStringPolicy
   {
     public:
       dss_schimek::StringLcpContainer<typename StringPtr::StringSet>
         sort(StringPtr& local_string_ptr,
             dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&& local_string_container, 
-            Timer& timer,
+            dss_schimek::Timer& timer,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
           constexpr bool debug = false;
@@ -362,10 +363,23 @@ namespace dss_schimek {
           timer.end("compute_interval_sizes");
           //print_interval_sizes(interval_sizes, receiving_interval_sizes);
 
-          timer.start("all_to_all_strings");
-          dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
-            AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
-          timer.end("all_to_all_strings");
+          dss_schimek::StringLcpContainer<StringSet> recv_string_cont; 
+          if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
+            std::cout << "hallo 0" << std::endl;
+            timer.start("all_to_all_strings");
+            std::cout << "hallo 0.5 " << std::endl;
+            recv_string_cont = 
+              AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
+            std::cout << "hallo 1" << std::endl;
+            timer.end("all_to_all_strings");
+            std::cout << "hallo 2" << std::endl;
+          } else {
+            timer.start("all_to_all_strings");
+            EmptyTimer emptyTimer;
+            recv_string_cont = 
+              AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, emptyTimer);
+            timer.end("all_to_all_strings");
+          }
 
           std::cout << "#rank: " 
             << env.rank() 
