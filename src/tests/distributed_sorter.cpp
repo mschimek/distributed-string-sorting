@@ -15,12 +15,10 @@ template <typename StringSet, typename StringGenerator,
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
          typename Timer>
-           void execute_sorter(const size_t numOfStrings, const bool checkInput,
+           void execute_sorter(const size_t numOfStrings, const bool checkInput, size_t iteration,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
              using namespace dss_schimek;
-             static size_t iteration = 0;
-             ++iteration;
 
              std::string prefix = std::string("RESULT") +
                " numberProcessors=" + std::to_string(env.size()) +
@@ -147,6 +145,7 @@ void secondArg_(const PolicyEnums::CombinationKey& key) {
 struct SorterArgs {
   size_t size;
   bool checkInput;
+  size_t iteration;
 };
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -157,13 +156,13 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  Timer>(args.size, args.checkInput);
+                  Timer>(args.size, args.checkInput, args.iteration);
    execute_sorter<StringSet,
                   StringGenerator,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  EmptyTimer>(args.size, args.checkInput);
+                  EmptyTimer>(args.size, args.checkInput, args.iteration);
    }
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -289,40 +288,9 @@ int main(std::int32_t argc, char const *argv[]) {
       PolicyEnums::getMPIRoutineAllToAll(mpiRoutineAllToAll),
       PolicyEnums::getByteEncoder(byteEncoder));
   
-  SorterArgs args =  {numberOfStrings, check};
-  firstArg(key, args);
-  /*
-     switch (sampleStringsPolicy) {
-     case NumStrings : {
-     using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
-     if (skewedInput) {
-     using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
-     for (size_t i = 0; i < numberOfIterations; ++i)
-     execute_sorter<StringSet, StringGenerator, SampleSplittersPolicy>
-     (numberOfStrings, check);
-     } else {
-     using StringGenerator = RandomStringLcpContainer<StringSet>;
-     for (size_t i = 0; i < numberOfIterations; ++i)
-     execute_sorter<StringSet, StringGenerator, SampleSplittersPolicy>
-     (numberOfStrings, check);
-     }
-     } 
-     break;
-     case NumChars : {
-     using SampleSplittersPolicy = SampleSplittersNumCharsPolicy<StringSet>;
-     if (skewedInput) {
-     using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
-     for (size_t i = 0; i < numberOfIterations; ++i)
-     execute_sorter<StringSet, StringGenerator, SampleSplittersPolicy>
-     (numberOfStrings, check);
-     } else {
-     using StringGenerator = RandomStringLcpContainer<StringSet>;
-     for (size_t i = 0; i < numberOfIterations; ++i)
-     execute_sorter<StringSet, StringGenerator, SampleSplittersPolicy>
-     (numberOfStrings, check);
-     }
-     break;
-     }
-     };*/
+  for (size_t i = 0; i < numberOfIterations; ++i) {
+    SorterArgs args =  {numberOfStrings, check, i};
+    firstArg(key, args);
+  }
   env.finalize();
 }
