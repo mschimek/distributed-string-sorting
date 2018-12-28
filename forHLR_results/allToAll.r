@@ -10,14 +10,6 @@ library(tidyverse)
 
 #print(args[[1]])
 
-columns <- c("numberProcessors",
-             "samplePolicy",
-             "iteration",
-             "size",
-             "operation",
-             "type",
-             "time")
-
 colTypeSpec = cols(numberProcessors = col_integer(),
        samplePolicy = col_character(),
        iteration = col_integer(),
@@ -29,27 +21,24 @@ colTypeSpec = cols(numberProcessors = col_integer(),
 # "Constants"
 POINTSIZE = 0.1
 
-#allData <- read.table("./output.txt", comment.char = "#", col.names = columns)
 allData <- read_delim(file = "2018_12_27_H13_38/data.txt", delim = "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
-allDataWithoutIt1_intern <- filter(allData, iteration != 1, Timer == "Timer")
-allDataWithoutIt1_noIntern <- filter(allData, iteration != 1, Timer == "EmptyTimer")
+allDataWithoutIt1_Timer <- filter(allData, iteration != 1, Timer == "Timer")
+allDataWithoutIt1_EmptyTimer <- filter(allData, iteration != 1, Timer == "EmptyTimer")
 
 availableProcessorCounts <- unique(allData$numberProcessors)
 availableByteEncoders <- unique(allData$ByteEncoder)
 
-scatter <- function(data_, operations_, pointSize, title) {
-plot <- ggplot(data = filter(data_, operation %in% operations_, type %in% c("avgTime")))
+scatterPlot <- function(data_, operations_, type_, pointSize, title) {
+plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
   plot <- plot + geom_point(mapping = aes(x = operation, y = time, colour = ByteEncoder),
                             size = pointSize, position = "jitter")
   plot <- plot + facet_wrap(~ MPIAllToAllRoutine)
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title)
   return(plot)
 }
-plot1 <- scatter(allDataWithoutIt1_intern, c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "blabla")
 
-plot2 <- scatter(filter(allDataWithoutIt1_intern, numberProcessors == 2), c("all_to_all_strings"), 0.5, "blabla")
-#functions
 scatterPlotOnOperation <- function(data_, operation_, pointSize, title) {
   plot <- ggplot(data = filter(data_, operation == operation_)) 
   plot <- plot + geom_point(mapping = aes(x = interaction(numberProcessors, type), y = time, colour = type),
@@ -125,21 +114,48 @@ scatterPlotOnOperationProcsOnXAxisType <- function(data_, operation_, type_, poi
 }
 
 
-
+scatterPlotAllProcessors <- function(data_, operations_, type_) {
+  procs <- unique(allData$numberProcessors)
+  procs <- sort(procs)
+  for (i in procs) {
+    print(i)
+    print(scatterPlot(filter(data_, numberProcessors == i), operations_, type_, 0.5, paste(i, " procs type of measurement ", type_, sep = "")))
+  }
+}
 
 pdf(paste("plots_alltoall.pdf",sep=""), width=10, height=5)
-plot1 <- scatter(filter(allDataWithoutIt1_intern, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
-plot2 <- scatter(filter(allDataWithoutIt1_intern, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
-plot3 <- scatter(filter(allDataWithoutIt1_intern, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
-plot1
-plot2
-plot3
-plot4 <- scatter(filter(allDataWithoutIt1_noIntern, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
-plot5 <- scatter(filter(allDataWithoutIt1_noIntern, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
-plot6 <- scatter(filter(allDataWithoutIt1_noIntern, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
-plot4
-plot5
-plot6
-scatter(filter(allDataWithoutIt1_intern, numberProcessors == 2), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "blabla")
-scatter(filter(allDataWithoutIt1_intern, numberProcessors == 4), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "blabla")
-scatter(filter(allDataWithoutIt1_intern, numberProcessors == 8), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "blabla")
+
+operations <- c("all_to_all_strings")
+data <- allDataWithoutIt1_EmptyTimer
+scatterPlotAllProcessors(data, operations, "avgTime")
+scatterPlotAllProcessors(data, operations, "maxTime")
+scatterPlotAllProcessors(data, operations, "avgLoss")
+scatterPlotAllProcessors(data, operations, "maxLoss")
+
+operations <- c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi")
+data <- allDataWithoutIt1_Timer
+scatterPlotAllProcessors(data, operations, "avgTime")
+scatterPlotAllProcessors(data, operations, "maxTime")
+scatterPlotAllProcessors(data, operations, "avgLoss")
+scatterPlotAllProcessors(data, operations, "maxLoss")
+#
+#plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
+#plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
+#plot3 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
+#plot4 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 32), c("all_to_all_strings"), 0.5, " 32 procs")
+#plot1
+#plot2
+#plot3
+#plot4
+##plot5 <- scatterPlot(filter(allDataWithoutIt1_EmptyTimer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
+##plot6 <- scatterPlot(filter(allDataWithoutIt1_EmptyTimer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
+##plot7 <- scatterPlot(filter(allDataWithoutIt1_EmptyTimer, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
+##plot8 <- scatterPlot(filter(allDataWithoutIt1_EmptyTimer, numberProcessors == 32), c("all_to_all_strings"), 0.5, " 32 procs")
+##plot5
+##plot6
+##plot7
+##plot8
+##scatterPlot(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "2")
+##scatterPlot(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "4")
+##scatterPlot(filter(allDataWithoutIt1_Timer, numberProcessors == 8), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "8")
+##scatterPlot(filter(allDataWithoutIt1_Timer, numberProcessors == 32), c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi"), 0.5, "32")

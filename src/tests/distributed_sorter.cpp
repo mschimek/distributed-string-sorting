@@ -53,7 +53,11 @@ template <typename StringSet, typename StringGenerator,
                  sorted_string_cont.char_size(),
                  numOfStrings,
                  sorted_string_cont.size()); 
-
+             
+             if (!is_complete_and_sorted) {
+               std::cout << "not sorted" << std::endl;
+               std::abort(); 
+             }
              std::stringstream buffer;
              timer.writeToStream(buffer);
              if (env.rank() == 0) {
@@ -248,7 +252,8 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringSet::UCharLengthStringSet : 
       secondArg<UCharLengthStringSet>(key, args); break;
     case PolicyEnums::StringSet::UCharStringSet : 
-      secondArg<UCharStringSet>(key, args); break;
+      secondArg<UCharStringSet>(key, args); 
+      break;
   };
 }
  

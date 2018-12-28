@@ -125,6 +125,16 @@ scmp(const string _s1, const string _s2, size_t& lcp)
         s1++, s2++, lcp++;
     return (*s1 - *s2);
 }
+static inline int
+scmp(const unsigned char* _s1, const unsigned char* _s2)
+{
+    const unsigned char* s1 = _s1;
+    const unsigned char* s2 = _s2;
+
+    while (*s1 != 0 && *s1 == *s2)
+        s1++, s2++;
+    return (*s1 - *s2);
+}
 
 /// compare strings by scanning
 template <typename CharIterator>
@@ -135,6 +145,16 @@ static inline bool leq(CharIterator _s1, CharIterator _s2)
     while (*s1 != 0 && *s1 == *s2)
         s1++, s2++;
     return (*s1 - *s2) <= 0;
+}
+/// compare strings by scanning
+template <typename CharIterator>
+static inline std::pair<bool, size_t> leq_lcp(CharIterator _s1, CharIterator _s2)
+{
+    CharIterator s1 = _s1, s2 = _s2;
+
+    while (*s1 != 0 && *s1 == *s2)
+        s1++, s2++;
+    return make_pair((*s1 - *s2) <= 0, s1 - _s1);
 }
 /// calculate lcp by scanning
 static inline unsigned int calc_lcp(const string _s1, const string _s2)

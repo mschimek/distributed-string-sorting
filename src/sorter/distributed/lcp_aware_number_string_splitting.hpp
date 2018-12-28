@@ -152,6 +152,31 @@ namespace dss_schimek {
       }
       return interval_sizes;
     } 
+    
+    template <typename StringSet>
+    inline static int binarySearch(const StringSet& ss, typename StringSet::CharIterator elem) {
+      using String = typename StringSet::String;
+      using CharIt = typename StringSet::CharIterator;
+
+      auto left = ss.begin();
+      auto right = ss.end();
+
+
+      while(left != right) {
+        size_t dist = (right - left) / 2;
+        String curStr = ss[left + dist];
+        size_t curLcp = 0;
+        int res = dss_schimek::scmp(ss.get_chars(curStr, 0), elem);
+        if (res < 0) {
+          left = left + dist + 1;
+        } else if (res == 0) {
+          return left + dist - ss.begin();
+        } else {
+          right = left + dist;
+        }
+      }
+      return left -ss.begin();
+    }
   
     template <typename StringSet>
     inline std::vector<size_t> compute_interval_binary(const StringSet& ss, 
@@ -159,31 +184,31 @@ namespace dss_schimek {
         dsss::mpi::environment env = dsss::mpi::environment())
     {
       using String = typename StringSet::String;
-      using CharIt = typename StringSet::CharIterator
+      using CharIt = typename StringSet::CharIterator;
       std::vector<size_t> interval_sizes;
       interval_sizes.reserve(splitters.size());
 
       size_t nr_splitters = std::min<size_t>(env.size() - 1, ss.size());
       size_t splitter_dist = ss.size() / (nr_splitters + 1);
       size_t element_pos = 0;
-      class Comparator {
-        bool operator() ()
-      }
 
       for (std::size_t i = 0; i < splitters.size(); ++i) {
-        element_pos = (i + 1) * splitter_dist;
+        //element_pos = (i + 1) * splitter_dist;
 
-        while(element_pos > 0 && !dss_schimek::leq(
-              ss.get_chars(ss[ss.begin() + element_pos], 0), 
-              splitters.get_chars(splitters[splitters.begin() + i], 0))) 
-        { --element_pos; }
+        //while(element_pos > 0 && !dss_schimek::leq(
+        //      ss.get_chars(ss[ss.begin() + element_pos], 0), 
+        //      splitters.get_chars(splitters[splitters.begin() + i], 0))) 
+        //{ --element_pos; }
 
-        while (element_pos < ss.size() && dss_schimek::leq(
-              ss.get_chars(ss[ss.begin() + element_pos], 0),
-              splitters.get_chars(splitters[splitters.begin() + i], 0))) 
-        { ++element_pos; }
+        //while (element_pos < ss.size() && dss_schimek::leq(
+        //      ss.get_chars(ss[ss.begin() + element_pos], 0),
+        //      splitters.get_chars(splitters[splitters.begin() + i], 0))) 
+        //{ ++element_pos; }
 
-        interval_sizes.emplace_back(element_pos);
+        CharIt splitter = splitters.get_chars(splitters[splitters.begin() + i], 0);
+        size_t pos = binarySearch(ss, splitter);
+        interval_sizes.emplace_back(pos);
+        std::cout << "rank: " << env.rank() << " pos: " << pos << " " << ss[ss.begin() + pos - 1] << " " << ss[ss.begin() + pos] << " " << ss[ss.begin() + pos + 1] << std::endl;
       }
       interval_sizes.emplace_back(ss.size());
       for (std::size_t i = interval_sizes.size() - 1; i > 0; --i) {
@@ -396,8 +421,12 @@ namespace dss_schimek {
           const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
               chosen_splitters_cont.strings() + chosen_splitters_cont.size());
 
+          if (env.rank() == 0) {
+            chosen_splitters_set.print();
+          }
+
           timer.start("compute_interval_sizes");
-          std::vector<std::size_t> interval_sizes = compute_interval_sizes(ss, chosen_splitters_set);
+          std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           timer.end("compute_interval_sizes");
           //print_interval_sizes(interval_sizes, receiving_interval_sizes);
