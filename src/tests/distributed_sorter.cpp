@@ -15,7 +15,7 @@ template <typename StringSet, typename StringGenerator,
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
          typename Timer>
-           void execute_sorter(const size_t numOfStrings, const bool checkInput, size_t iteration,
+           void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
              using namespace dss_schimek;
@@ -29,10 +29,13 @@ template <typename StringSet, typename StringGenerator,
                " Timer=" + Timer::getName() + 
                " StringSet=" + StringSet::getName() + 
                " iteration=" + std::to_string(iteration) +
-               " size=" + std::to_string(numOfStrings);
+               " size=" + std::to_string(numOfStrings) +
+               " strongScaling=" + std::to_string(strongScaling);
 
              dss_schimek::Timer timer(prefix);
 
+             if (strongScaling)
+               numOfStrings /= env.size();
              StringGenerator rand_container(numOfStrings);
              StringLcpPtr rand_string_ptr = 
                rand_container.make_string_lcp_ptr();
@@ -151,6 +154,7 @@ struct SorterArgs {
   size_t size;
   bool checkInput;
   size_t iteration;
+  bool strongScaling;
 };
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -161,13 +165,13 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  Timer>(args.size, args.checkInput, args.iteration);
+                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling);
    execute_sorter<StringSet,
                   StringGenerator,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  EmptyTimer>(args.size, args.checkInput, args.iteration);
+                  EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling);
    }
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -241,7 +245,7 @@ void thirdArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::SampleString::numChars: 
       {
         using SampleString = dss_schimek::SampleSplittersNumCharsPolicy<StringSet>;
-        //fourthArg<StringSet, StringGenerator, SampleString>(key, args); break;
+        fourthArg<StringSet, StringGenerator, SampleString>(key, args); break;
       }
   };
 }
@@ -259,7 +263,7 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringSet::UCharLengthStringSet : 
       secondArg<UCharLengthStringSet>(key, args); break;
     case PolicyEnums::StringSet::UCharStringSet : 
-      //secondArg<UCharStringSet>(key, args); 
+      secondArg<UCharStringSet>(key, args); 
       break;
   };
 }
@@ -272,6 +276,7 @@ int main(std::int32_t argc, char const *argv[]) {
 
   bool check = true;
   bool skewedInput = false;
+  bool strongScaling = false;
   unsigned int sampleStringsPolicy = static_cast<int>(PolicyEnums::SampleString::numStrings);
   unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderCopy);
   unsigned int mpiRoutineAllToAll = static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
@@ -288,6 +293,7 @@ int main(std::int32_t argc, char const *argv[]) {
   cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
   cp.add_flag('c', "checkSortedness", check, " ");
   cp.add_flag('k', "skewed", skewedInput, " ");
+  cp.add_flag('x', "strongScaling", strongScaling, " ");
 
   if (!cp.process(argc, argv)) {
     return -1;
@@ -301,7 +307,7 @@ int main(std::int32_t argc, char const *argv[]) {
       PolicyEnums::getByteEncoder(byteEncoder));
   
   for (size_t i = 0; i < numberOfIterations; ++i) {
-    SorterArgs args =  {numberOfStrings, check, i};
+    SorterArgs args =  {numberOfStrings, check, i, strongScaling};
     firstArg(key, args);
   }
   env.finalize();
