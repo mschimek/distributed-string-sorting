@@ -30,9 +30,9 @@ colTypeSpec = cols(numberProcessors = col_integer(),
 POINTSIZE = 0.05
 
 #allData <- read.table("./output.txt", comment.char = "#", col.names = columns)
-allData <- read_table(file = "2018_12_02_H22_35/data.txt", col_types = colTypeSpec, comment="-")
+allData <- read_delim(file = "2018_12_28_H23_48/data.txt", "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
-allDataWithoutIt1 <- filter(allData, iteration != 1)
+allDataWithoutIt1 <- filter(allData, iteration != 1, Timer != "Timer")
 
 availableProcessorCounts <- unique(allData$numberProcessors)
 
