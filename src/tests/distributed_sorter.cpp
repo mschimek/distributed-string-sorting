@@ -266,7 +266,7 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringSet::UCharLengthStringSet : 
       secondArg<UCharLengthStringSet>(key, args); break;
     case PolicyEnums::StringSet::UCharStringSet : 
-      //secondArg<UCharStringSet>(key, args); 
+      secondArg<UCharStringSet>(key, args); 
       break;
   };
 }
