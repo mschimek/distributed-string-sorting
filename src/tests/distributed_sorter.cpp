@@ -278,7 +278,7 @@ int main(std::int32_t argc, char const *argv[]) {
   bool skewedInput = false;
   bool strongScaling = false;
   unsigned int sampleStringsPolicy = static_cast<int>(PolicyEnums::SampleString::numStrings);
-  unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderCopy);
+  unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderMemCpy);
   unsigned int mpiRoutineAllToAll = static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
   unsigned int numberOfStrings = 100000;
   unsigned int numberOfIterations = 5;
