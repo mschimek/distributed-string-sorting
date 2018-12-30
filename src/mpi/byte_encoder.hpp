@@ -6,13 +6,77 @@
 
 namespace dss_schimek {
 
-  class EmptyByteEncoder{
+  class EmptyByteEncoderMemCpy{
     public:
       static std::string getName() {
-        return "EmptyByteEncoder";
+        return "EmptyByteEncoderMemCpy";
       }
+
+      template<typename StringSet>
+        std::pair<unsigned char*, size_t> write(unsigned char* buffer,
+            const StringSet ss) const {
+
+          using String = typename StringSet::String;
+          using CharIt = typename StringSet::CharIterator;
+
+          const size_t size = ss.size();
+          size_t numCharsWritten = 0;
+
+          auto beginOfSet = ss.begin();
+          for (size_t i = 0; i < size; ++i) {
+            String str = ss[beginOfSet + i];
+            size_t stringLength = ss.get_length(str) + 1;
+            numCharsWritten += stringLength;
+            memcpy(buffer, ss.get_chars(str, 0), stringLength);
+            buffer += stringLength;
+          }
+          return std::make_pair(buffer, numCharsWritten);
+        }
+
   };
 
+  class EmptyByteEncoderMemCpyIntervalwise{
+    public:
+      static std::string getName() {
+        return "EmptyByteEncoderMemCpyIntervalwise";
+      }
+
+      template<typename StringSet>
+        unsigned char* write(unsigned char* buffer,
+            const StringSet ss, size_t charsToWrite) const {
+
+          using String = typename StringSet::String;
+          using CharIt = typename StringSet::CharIterator;
+
+          const size_t size = ss.size();
+
+          String str = ss[ss.begin()];
+          memcpy(buffer, ss.get_chars(str, 0), charsToWrite);
+          buffer += charsToWrite;
+          return buffer;
+        }
+
+      template<typename StringSet>
+        std::vector<size_t> computeNumberOfCharsToSend(StringSet ss, const std::vector<size_t>& sendCounts) const {
+          using String = typename StringSet::String;
+
+          std::vector<size_t> charsToSend(sendCounts.size(), 0);
+          for (size_t interval = 0, stringsWritten = 0; interval < sendCounts.size(); ++interval) {
+            for(size_t j = 0; j < sendCounts[interval]; ++j) {
+              String str = ss[ss.begin() + j];
+              charsToSend[interval] += ss.get_chars(str) + 1;
+            }
+          }
+          return charsToSend;
+        }
+  };
+      
+  class EmptyByteEncoderCopy{
+    public:
+      static std::string getName() {
+        return "EmptyByteEncoderCopy";
+      }
+  }; 
   class SequentialDelayedByteEncoder {
     /*
      * Encoding: 

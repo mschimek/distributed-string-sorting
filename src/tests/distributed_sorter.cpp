@@ -98,13 +98,15 @@ namespace PolicyEnums {
       default : std::abort();
     }
   }
-  enum class ByteEncoder { emptyByteEncoder = 0, sequentialDelayedByteEncoder = 1, sequentialByteEncoder = 2, interleavedByteEncoder = 3 };
+  enum class ByteEncoder { emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, emptyByteEncoderMemCpyIntervalwise = 2, sequentialDelayedByteEncoder = 3, sequentialByteEncoder = 4, interleavedByteEncoder = 5 };
   ByteEncoder getByteEncoder(size_t i) {
     switch(i) {
-      case 0 : return ByteEncoder::emptyByteEncoder;
-      case 1 : return ByteEncoder::sequentialDelayedByteEncoder;
-      case 2 : return ByteEncoder::sequentialByteEncoder;
-      case 3 : return ByteEncoder::interleavedByteEncoder;
+      case 0 : return ByteEncoder::emptyByteEncoderCopy;
+      case 1 : return ByteEncoder::emptyByteEncoderMemCpy;
+      case 2 : return ByteEncoder::emptyByteEncoderMemCpyIntervalwise;
+      case 3 : return ByteEncoder::sequentialDelayedByteEncoder;
+      case 4 : return ByteEncoder::sequentialByteEncoder;
+      case 5 : return ByteEncoder::interleavedByteEncoder;
       default : std::abort();
     }
   }
@@ -143,7 +145,7 @@ void secondArg_(const PolicyEnums::CombinationKey& key) {
   using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
   using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
   using MPIAllToAllRoutine = dss_schimek::mpi::AllToAllvSmall;
-  using ByteEncoder = dss_schimek::EmptyByteEncoder;
+  using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
 }
 
 struct SorterArgs {
@@ -173,9 +175,21 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
   typename MPIRoutineAllToAll>
   void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch(key.byteEncoder_) {
-      case PolicyEnums::ByteEncoder::emptyByteEncoder : 
+      case PolicyEnums::ByteEncoder::emptyByteEncoderCopy : 
         {
-          using ByteEncoder = dss_schimek::EmptyByteEncoder;
+          using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
+          sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder>(key, args);
+          break;
+        }
+      case PolicyEnums::ByteEncoder::emptyByteEncoderMemCpy : 
+        {
+          using ByteEncoder = dss_schimek::EmptyByteEncoderMemCpy;
+          sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder>(key, args);
+          break;
+        }
+      case PolicyEnums::ByteEncoder::emptyByteEncoderMemCpyIntervalwise : 
+        {
+          using ByteEncoder = dss_schimek::EmptyByteEncoderMemCpy;
           sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder>(key, args);
           break;
         }
@@ -252,7 +266,7 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringSet::UCharLengthStringSet : 
       secondArg<UCharLengthStringSet>(key, args); break;
     case PolicyEnums::StringSet::UCharStringSet : 
-      secondArg<UCharStringSet>(key, args); 
+      //secondArg<UCharStringSet>(key, args); 
       break;
   };
 }
@@ -266,7 +280,7 @@ int main(std::int32_t argc, char const *argv[]) {
   bool check = true;
   bool skewedInput = false;
   unsigned int sampleStringsPolicy = static_cast<int>(PolicyEnums::SampleString::numStrings);
-  unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoder);
+  unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderCopy);
   unsigned int mpiRoutineAllToAll = static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
   unsigned int numberOfStrings = 100000;
   unsigned int numberOfIterations = 5;

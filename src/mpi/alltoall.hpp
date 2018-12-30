@@ -37,7 +37,7 @@ namespace dsss::mpi {
   static constexpr bool debug_alltoall = false;
 
   template <typename DataType>
-    inline std::vector<DataType> alltoall(std::vector<DataType>& send_data,
+    inline std::vector<DataType> alltoall(const std::vector<DataType>& send_data,
         environment env = environment()) {
       std::vector<DataType> receive_data(send_data.size(), 0);
       data_type_mapper<DataType> dtm;
@@ -52,7 +52,7 @@ namespace dsss::mpi {
     }
   template <typename DataType>
     inline std::vector<DataType> alltoallv_small(
-        std::vector<DataType>& send_data, std::vector<size_t>& send_counts,
+        const std::vector<DataType>& send_data, const std::vector<size_t>& send_counts,
         environment env = environment()) {
 
       std::vector<int32_t> real_send_counts(send_counts.size());
@@ -108,7 +108,7 @@ namespace dsss::mpi {
       }
       template<typename DataType>
         static std::vector<DataType> alltoallv(
-            DataType* send_data, std::vector<size_t>& send_counts,
+            DataType* const send_data, const std::vector<size_t>& send_counts,
             environment env = environment()) {
 
           std::vector<int32_t> real_send_counts(send_counts.size());
@@ -164,8 +164,8 @@ namespace dsss::mpi {
         return "AlltoAllvDirectMessages";
       }
       template<typename DataType>
-        static std::vector<DataType> alltoallv(DataType* send_data,
-            std::vector<size_t>& send_counts, environment env = environment()) {
+        static std::vector<DataType> alltoallv(DataType* const send_data,
+            const std::vector<size_t>& send_counts, environment env = environment()) {
 
           std::vector<size_t> receive_counts = alltoall(send_counts, env);
           size_t local_receive_count = std::accumulate(
@@ -220,8 +220,8 @@ namespace dsss::mpi {
           return "AllToAllvCombined";
         }
         template<typename DataType>
-          static std::vector<DataType> alltoallv(DataType* send_data,
-              std::vector<size_t>& send_counts, environment env = environment()) {
+          static std::vector<DataType> alltoallv(DataType* const send_data,
+              const std::vector<size_t>& send_counts, environment env = environment()) {
 
             size_t local_send_count = std::accumulate(
                 send_counts.begin(), send_counts.end(), 0);
@@ -331,7 +331,7 @@ namespace dsss::mpi {
   //    }
   template <typename DataType>
     inline std::vector<DataType> alltoallv(std::vector<DataType>& send_data,
-        std::vector<size_t>& send_counts, environment env = environment()) {
+        const std::vector<size_t>& send_counts, environment env = environment()) {
 
       size_t local_send_count = std::accumulate(
           send_counts.begin(), send_counts.end(), 0);
@@ -600,7 +600,7 @@ namespace dsss::mpi {
     };
 
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
-    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoder, Timer> {
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderCopy, Timer> {
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& send_counts,
@@ -637,7 +637,104 @@ namespace dsss::mpi {
         timer.end("all_to_all_strings_intern_copy", env);
         timer.start("all_to_all_strings_mpi", env);
         receive_buffer_char = AllToAllPolicy::alltoallv(send_buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts_lcp, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts, env);
+        timer.end("all_to_all_strings_mpi", env);
+
+        // no bytes are read in this version only for evaluation layout
+        timer.start("all_to_all_strings_read", env);
+        timer.end("all_to_all_strings_read", env);
+        return dss_schimek::StringLcpContainer<StringSet>(
+            std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+      }
+    };
+  
+  template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderMemCpy, Timer> {
+      dss_schimek::StringLcpContainer<StringSet> alltoallv(
+          dss_schimek::StringLcpContainer<StringSet>& send_data,
+          const std::vector<size_t>& sendCountsString,
+          Timer& timer,
+          environment env = environment()){
+
+        using namespace dss_schimek;
+        using String = typename StringSet::String;
+        using CharIt = typename StringSet::CharIterator;
+        timer.start("all_to_all_strings_intern_copy", env);
+        const EmptyByteEncoderMemCpy byteEncoder;
+        const StringSet ss = send_data.make_string_set();
+
+        if (send_data.size() == 0)
+          return dss_schimek::StringLcpContainer<StringSet>();
+
+        std::vector<unsigned char> receive_buffer_char;
+        std::vector<size_t> receive_buffer_lcp;
+        std::vector<size_t> send_counts_lcp(sendCountsString);
+        std::vector<size_t> send_counts_char(sendCountsString.size());
+
+        std::vector<unsigned char> buffer(send_data.char_size());
+        unsigned char* curPos = buffer.data();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          auto begin = ss.begin() + stringsWritten;
+          StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
+          size_t numWrittenChars = 0;
+          std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
+              subSet);
+
+          send_counts_char[interval] = numWrittenChars;
+          stringsWritten += sendCountsString[interval];
+        }
+
+        timer.end("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_mpi", env);
+        receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
+        timer.end("all_to_all_strings_mpi", env);
+
+        // no bytes are read in this version only for evaluation layout
+        timer.start("all_to_all_strings_read", env);
+        timer.end("all_to_all_strings_read", env);
+        return dss_schimek::StringLcpContainer<StringSet>(
+            std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+      }
+    };
+
+template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+    struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderMemCpyIntervalwise, Timer> {
+      dss_schimek::StringLcpContainer<StringSet> alltoallv(
+          dss_schimek::StringLcpContainer<StringSet>& send_data,
+          const std::vector<size_t>& sendCountsString,
+          Timer& timer,
+          environment env = environment()){
+
+        using namespace dss_schimek;
+        using String = typename StringSet::String;
+        using CharIt = typename StringSet::CharIterator;
+        timer.start("all_to_all_strings_intern_copy", env);
+        const EmptyByteEncoderMemCpyIntervalwise byteEncoder;
+        const StringSet ss = send_data.make_string_set();
+
+        if (send_data.size() == 0)
+          return dss_schimek::StringLcpContainer<StringSet>();
+
+        std::vector<unsigned char> receive_buffer_char;
+        std::vector<size_t> receive_buffer_lcp;
+        std::vector<size_t> send_counts_lcp(sendCountsString);
+        std::vector<size_t> send_counts_char(sendCountsString.size());
+
+        std::vector<unsigned char> buffer(send_data.char_size());
+        unsigned char* curPos = buffer.data();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          auto begin = ss.begin() + stringsWritten;
+          StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
+          size_t numWrittenChars = 0;
+          curPos= byteEncoder.write(curPos, subSet, send_counts_char[interval]);
+          stringsWritten += sendCountsString[interval];
+        }
+
+        timer.end("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_mpi", env);
+        receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
         timer.end("all_to_all_strings_mpi", env);
 
         // no bytes are read in this version only for evaluation layout
