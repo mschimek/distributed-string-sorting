@@ -208,7 +208,6 @@ namespace dss_schimek {
         CharIt splitter = splitters.get_chars(splitters[splitters.begin() + i], 0);
         size_t pos = binarySearch(ss, splitter);
         interval_sizes.emplace_back(pos);
-        std::cout << "rank: " << env.rank() << " pos: " << pos << " " << ss[ss.begin() + pos - 1] << " " << ss[ss.begin() + pos] << " " << ss[ss.begin() + pos + 1] << std::endl;
       }
       interval_sizes.emplace_back(ss.size());
       for (std::size_t i = interval_sizes.size() - 1; i > 0; --i) {
@@ -421,10 +420,6 @@ namespace dss_schimek {
           const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
               chosen_splitters_cont.strings() + chosen_splitters_cont.size());
 
-          if (env.rank() == 0) {
-            chosen_splitters_set.print();
-          }
-
           timer.start("compute_interval_sizes");
           std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
@@ -444,13 +439,8 @@ namespace dss_schimek {
               AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, emptyTimer);
             timer.end("all_to_all_strings");
           }
-
-          std::cout << "#rank: " 
-            << env.rank() 
-            << " received num chars: " 
-            << recv_string_cont.char_size() - recv_string_cont.size() 
-            << std::endl;
-
+          timer.add("num_received_chars", recv_string_cont.char_size() - recv_string_cont.size());
+          
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
 

@@ -12,6 +12,7 @@
 #include <tuple>
 
 #include "mpi/allreduce.hpp"
+#include "mpi/allgather.hpp"
 
 namespace dss_schimek {
   class EmptyTimer { // do not measure, used in alltoall-variants 
@@ -36,6 +37,16 @@ namespace dss_schimek {
       return "Timer";
     }
     Timer(const std::string& prefix) : prefix(prefix) {};
+    
+    void add(const std::string& description, size_t value) {
+      if (descriptionToValue.find(description) != descriptionToValue.end())
+      {
+        std::cout << description << " has already been added to timer" << std::endl;
+        std::abort();
+      }
+      descriptionToValue.emplace(description, value);
+    }
+
     void start(const std::string& description,
         dsss::mpi::environment env = dsss::mpi::environment()) {
       if (descriptionToStart.find(description) != descriptionToStart.end())
@@ -132,9 +143,24 @@ namespace dss_schimek {
       buffer <<  prefix
         << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
         << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
-        << " "/*std::setw(alignmentLong) */<< ("time=" + std::to_string(time))
+        << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(time))
         << std::endl;;
     }
+    
+    void collectAndWriteToStream(std::stringstream& buffer, 
+        const std::string& description,
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      size_t localValue = (*descriptionToValue.find(description)).second;
+      std::vector<size_t> values = dsss::mpi::allgather(localValue, env);
+      for (const size_t value : values) {
+        buffer << prefix
+          << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
+          << " "/*std::setw(alignmentSmall)*/<< ("type=number")
+          << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(value))
+          << std::endl;;
+      }
+   }
 
     void writeToStream(std::stringstream& buffer, const std::string& description, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -150,15 +176,21 @@ namespace dss_schimek {
     void writeToStream(std::stringstream& buffer,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
+      // time related values
       std::vector<std::string> descriptions;
       for (auto [description, not_used] : descriptionToStart)
         descriptions.push_back(description);
       for (const std::string& description : descriptions)
         writeToStream(buffer, description);
+     
+      // write remaining values 
+      for (auto [description, value] : descriptionToValue)
+        collectAndWriteToStream(buffer, description);
     }
 
     private:
     std::string prefix;
+    std::map<std::string, size_t> descriptionToValue;
     std::map<std::string, PointInTime> descriptionToStart;
     std::map<std::string, TimeIntervalDataType> descriptionToTime;
     std::map<std::string, TimeIntervalDataType> descriptionToActiveTime;

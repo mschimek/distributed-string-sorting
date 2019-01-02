@@ -1,14 +1,14 @@
 library(ggplot2)
 library(tidyverse)
 
-#args = commandArgs(trailingOnly=TRUE)
-#
-## test if there is at least one argument: if not, return an error
-#if (length(args) != 1) {
-#  stop("At least one argument must be supplied (input file)", call.=FALSE)
-#}
+args = commandArgs(trailingOnly=TRUE)
 
-#print(args[[1]])
+# test if there is at least one argument: if not, return an error
+if (length(args) != 1) {
+  stop("At least one argument must be supplied (input file)", call.=FALSE)
+}
+
+print(args[[1]])
 
 columns <- c("numberProcessors",
              "samplePolicy",
@@ -16,7 +16,7 @@ columns <- c("numberProcessors",
              "size",
              "operation",
              "type",
-             "time")
+             "value")
 
 colTypeSpec = cols(numberProcessors = col_integer(),
        samplePolicy = col_character(),
@@ -24,13 +24,13 @@ colTypeSpec = cols(numberProcessors = col_integer(),
        size = col_double(),
        operation = col_character(),
        type = col_character(),
-       time = col_double())
+       value = col_double())
 
 # "Constants"
 POINTSIZE = 0.05
-
+filename <- paste(args[[1]], "/data.txt", sep="")
 #allData <- read.table("./output.txt", comment.char = "#", col.names = columns)
-allData <- read_delim(file = "2018_12_28_H23_48/data.txt", "|", col_types = colTypeSpec, comment="-")
+allData <- read_delim(file = filename, "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
 allDataWithoutIt1 <- filter(allData, iteration != 1, Timer != "Timer")
 
@@ -123,32 +123,32 @@ bigStringSet <- filter(allDataWithoutIt1, size == 5000000)
 operation = "all_to_all_strings"
 filterTime = c("avgTime", "maxTime", "minTime")
 filterLoss = c("avgLoss", "maxLoss", "minLoss")
-scatterPlotOnOperation(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 5000000")
-boxPlotOnOperation(smallStringSet, operation, "All-to-All Strings, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, operation, "All-to-All Strings, StringSetSize = 5000000")
-scatterPlotOnOperationProcsOnXAxis(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
-scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
-                                       filterTime, POINTSIZE, "All-to-All Strings, Time only, StringSetSize = 1000000")
-scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
-                                       filterLoss, POINTSIZE, "All-to-All Strings, Loss only, StringSetSize = 1000000")
-boxPlotOnOperationProcsAreFacets(smallStringSet, operation, filterTime, "All-to-All Strings, StringSetSize = 1000000")
-boxPlotOnOperationProcsAreFacets_(filter(smallStringSet, numberProcessors != 32), operation, filterTime, "All-to-All Strings, ZoomIn, StringSetSize = 1000000", c(250000000, 420000000))
-#Sort String locally
-scatterPlotOnOperation(smallStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 5000000")
-boxPlotOnOperation(smallStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 5000000")
-
-#Merge Sequences
-scatterPlotOnOperation(smallStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 5000000")
-boxPlotOnOperation(smallStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 5000000")
-
+#scatterPlotOnOperation(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
+#scatterPlotOnOperation(bigStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 5000000")
+#boxPlotOnOperation(smallStringSet, operation, "All-to-All Strings, StringSetSize = 1000000")
+#boxPlotOnOperation(bigStringSet, operation, "All-to-All Strings, StringSetSize = 5000000")
+#scatterPlotOnOperationProcsOnXAxis(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
+#scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
+#                                       filterTime, POINTSIZE, "All-to-All Strings, Time only, StringSetSize = 1000000")
+#scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
+#                                       filterLoss, POINTSIZE, "All-to-All Strings, Loss only, StringSetSize = 1000000")
+#boxPlotOnOperationProcsAreFacets(smallStringSet, operation, filterTime, "All-to-All Strings, StringSetSize = 1000000")
+#boxPlotOnOperationProcsAreFacets_(filter(smallStringSet, numberProcessors != 32), operation, filterTime, "All-to-All Strings, ZoomIn, StringSetSize = 1000000", c(250000000, 420000000))
+##Sort String locally
+#scatterPlotOnOperation(smallStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 1000000")
+#scatterPlotOnOperation(bigStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 5000000")
+#boxPlotOnOperation(smallStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 1000000")
+#boxPlotOnOperation(bigStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 5000000")
+#
+##Merge Sequences
+#scatterPlotOnOperation(smallStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 1000000")
+#scatterPlotOnOperation(bigStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 5000000")
+#boxPlotOnOperation(smallStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 1000000")
+#boxPlotOnOperation(bigStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 5000000")
+#
 #Overall
 barPlot <- function(data_, operation_, type_, size_, title = " ") {
-  filteredData <- filter(data_, operation != operation_, type == type_, size == size_)
+  filteredData <- filter(data_, operation != operation_, type == type_, size == size_, Timer != "Timer")
   group <- group_by(filteredData, numberProcessors, samplePolicy, size, operation, type)
   timeMean <- summarise(group, time = mean(value, rm.na = TRUE))
   timeMean$size <- as.factor(timeMean$size)

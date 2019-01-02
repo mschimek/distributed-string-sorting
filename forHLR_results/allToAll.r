@@ -1,14 +1,14 @@
 library(ggplot2)
 library(tidyverse)
 
-#args = commandArgs(trailingOnly=TRUE)
-#
-## test if there is at least one argument: if not, return an error
-#if (length(args) != 1) {
-#  stop("At least one argument must be supplied (input file)", call.=FALSE)
-#}
+args = commandArgs(trailingOnly=TRUE)
 
-#print(args[[1]])
+# test if there is at least one argument: if not, return an error
+if (length(args) != 1) {
+  stop("At least one argument must be supplied (input file)", call.=FALSE)
+}
+
+print(args[[1]])
 
 colTypeSpec = cols(numberProcessors = col_integer(),
        samplePolicy = col_character(),
@@ -16,12 +16,13 @@ colTypeSpec = cols(numberProcessors = col_integer(),
        size = col_double(),
        operation = col_character(),
        type = col_character(),
-       time = col_double())
+       value = col_double())
 
 # "Constants"
 POINTSIZE = 0.1
 
-allData <- read_delim(file = "2018_12_27_H13_38/data.txt", delim = "|", col_types = colTypeSpec, comment="-")
+filename = paste(args[[1]], "/data.txt", sep="")
+allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
 allDataWithoutIt1_Timer <- filter(allData, iteration != 1, Timer == "Timer")
 allDataWithoutIt1_EmptyTimer <- filter(allData, iteration != 1, Timer == "EmptyTimer")
@@ -31,7 +32,7 @@ availableByteEncoders <- unique(allData$ByteEncoder)
 
 scatterPlot <- function(data_, operations_, type_, pointSize, title) {
 plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
-  plot <- plot + geom_point(mapping = aes(x = operation, y = time, colour = ByteEncoder),
+  plot <- plot + geom_point(mapping = aes(x = operation, y = value, colour = ByteEncoder),
                             size = pointSize, position = "jitter")
   plot <- plot + facet_wrap(~ MPIAllToAllRoutine)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
