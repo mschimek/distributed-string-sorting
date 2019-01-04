@@ -144,7 +144,7 @@ namespace dss_schimek {
         << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
         << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
         << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(time))
-        << std::endl;;
+        << std::endl;
     }
     
     void collectAndWriteToStream(std::stringstream& buffer, 
@@ -158,7 +158,7 @@ namespace dss_schimek {
           << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
           << " "/*std::setw(alignmentSmall)*/<< ("type=number")
           << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(value))
-          << std::endl;;
+          << std::endl;
       }
    }
 

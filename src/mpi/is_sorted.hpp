@@ -88,6 +88,7 @@ namespace dss_schimek {
         return false;
       }
       if (initial_total_num_strings != current_total_num_strings) {
+        std::cout << "initial total num strings: " << initial_total_num_strings << " current total num strings: " << current_total_num_strings << std::endl;
         std::cout << "We've lost some strings" << std::endl;
         return false;
       }

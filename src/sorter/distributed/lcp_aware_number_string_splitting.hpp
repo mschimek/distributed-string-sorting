@@ -291,24 +291,66 @@ namespace dss_schimek {
       stringtools::LcpStringPtr lt_all_strings(strings.data(),
           recv_string_cont.lcp_array(),
           recv_string_cont.size());
+      dsss::mpi::environment env;
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          recv_string_cont.make_string_set().print();
+          for(size_t i = 0; i < recv_string_cont.size(); ++i) {
+          std::cout << i << " " << *(recv_string_cont.lcp_array() + i) << std::endl;
+          }
+          env.barrier();
+          });
 
-      std::vector<unsigned char*> sorted_string(recv_string_cont.size());
+      //if (env.rank() != 0) {
+      //  return std::move(recv_string_cont);
+      //}
+
+      std::vector<typename UCharLengthStringSet::String> sorted_string(recv_string_cont.size(), {nullptr, 0});
       std::vector<size_t> sorted_lcp(recv_string_cont.size());
-      bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
-      stringtools::LcpStringPtr out_(sorted_string.data(),
-          sorted_lcp.data(),
-          num_recv_elems);
-      loser_tree_.writeElementsToStream(out_, num_recv_elems);
+      UCharLengthStringSet ss = recv_string_cont.make_string_set();
+      std::vector<size_t> nulls(recv_string_cont.size(), 0);
+      dss_schimek::StringLcpPtrMergeAdapter<UCharLengthStringSet> mergeAdapter(ss, recv_string_cont.lcp_array());
+      dss_schimek::LcpStringLoserTree_<K, UCharLengthStringSet> loser_tree(mergeAdapter, ranges.data());
+      std::cout << "initialization completed " << std::endl;
+      UCharLengthStringSet sortedSet(sorted_string.data(), sorted_string.data() + sorted_string.size());
+      dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
+      dss_schimek::mpi::execute_in_order([&]() {
 
+          env.barrier();
+          std::cout << "rank: " << env.rank() << std::endl;
+          loser_tree.writeElementsToStream(out_, num_recv_elems);
+          std::cout << "\n\n\n" << std::endl;
+          env.barrier();
+          });
       StringLcpContainer<UCharLengthStringSet> sorted_string_cont;
       sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
-      using String = typename UCharLengthStringSet::String;
-      std::vector<String> tmp(num_recv_elems, String(0,0));
-      for (size_t i = 0; i < num_recv_elems; ++i)
-        tmp[i].string = sorted_string[i];
-      sorted_string_cont.set(std::move(tmp));
+      sorted_string_cont.set(std::move(sorted_string));
       sorted_string_cont.set(std::move(sorted_lcp));
+      std::cout << "merging completed " << std::endl;
+      dss_schimek::mpi::execute_in_order([&]() {
+          env.barrier();
+          std::cout << "rank: " << env.rank() << std::endl;
+          sorted_string_cont.make_string_set().print();
+          });
+
+
       return sorted_string_cont;
+
+      //bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
+      //stringtools::LcpStringPtr out_(sorted_string.data(),
+      //    sorted_lcp.data(),
+      //    num_recv_elems);
+      //loser_tree_.writeElementsToStream(out_, num_recv_elems);
+
+      //StringLcpContainer<UCharLengthStringSet> sorted_string_cont;
+      //sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
+      //using String = typename UCharLengthStringSet::String;
+      //std::vector<String> tmp(num_recv_elems, String(0,0));
+      //for (size_t i = 0; i < num_recv_elems; ++i)
+      //  tmp[i].string = sorted_string[i];
+      //sorted_string_cont.set(std::move(tmp));
+      //sorted_string_cont.set(std::move(sorted_lcp));
+      //return sorted_string_cont;
     }
   template<size_t K, typename StringSet>
     static inline StringLcpContainer<StringSet> merge(

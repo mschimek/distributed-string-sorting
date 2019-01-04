@@ -93,7 +93,8 @@ namespace dss_schimek {
     {
       std::vector<Char> random_raw_string_data;
       std::random_device rand_seed;
-      std::mt19937 rand_gen(rand_seed());
+      dsss::mpi::environment env;
+      std::mt19937 rand_gen(rand_gen());
       std::uniform_int_distribution<Char> small_char_dis(65, 70);
       std::uniform_int_distribution<Char> char_dis(65, 90);
       

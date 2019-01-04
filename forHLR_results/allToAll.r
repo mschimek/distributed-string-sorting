@@ -42,7 +42,7 @@ plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
 
 scatterPlotOnOperation <- function(data_, operation_, pointSize, title) {
   plot <- ggplot(data = filter(data_, operation == operation_)) 
-  plot <- plot + geom_point(mapping = aes(x = interaction(numberProcessors, type), y = time, colour = type),
+  plot <- plot + geom_point(mapping = aes(x = interaction(numberProcessors, type), y = value, colour = type),
                             size = pointSize, position = "jitter")
   plot <- plot + facet_wrap(~ samplePolicy)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -52,7 +52,7 @@ scatterPlotOnOperation <- function(data_, operation_, pointSize, title) {
 
 boxPlotOnOperation <- function(data_, operation_, title) {
   plot <- ggplot(data = filter(data_, operation == operation_)) 
-  plot <- plot + geom_boxplot(mapping = aes(x = interaction(numberProcessors, type), y = time, colour = type)) 
+  plot <- plot + geom_boxplot(mapping = aes(x = interaction(numberProcessors, type), y = value, colour = type)) 
   plot <- plot + facet_wrap(~ samplePolicy)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title) 
@@ -83,7 +83,7 @@ computeYLimitsBoxplot_v <- function(data_) {
 boxPlotOnOperationProcsAreFacets <- function(data_, operation_, types_, title) {
   filteredData <- filter(data_, operation == operation_, type %in% types_)
   plot <- ggplot(data = filteredData) 
-  plot <- plot + geom_boxplot(mapping = aes(x = samplePolicy, y = time, colour = type)) 
+  plot <- plot + geom_boxplot(mapping = aes(x = samplePolicy, y = value, colour = type)) 
   plot <- plot + facet_wrap(~ numberProcessors, nrow = 1)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title) 
@@ -98,7 +98,7 @@ boxPlotOnOperationProcsAreFacets_ <- function(data_, operation_, types_, title, 
 
 scatterPlotOnOperationProcsOnXAxis <- function(data_, operation_, pointSize, title) {
   plot <- ggplot(data = filter(data_, operation == operation_))
-  plot <- plot + geom_point(mapping = aes(x = numberProcessors, y = time, colour = type),
+  plot <- plot + geom_point(mapping = aes(x = numberProcessors, y = value, colour = type),
                             size = pointSize, position = "jitter")
   plot <- plot + facet_wrap(~ samplePolicy)
   plot <- plot + ggtitle(title)
@@ -107,8 +107,9 @@ scatterPlotOnOperationProcsOnXAxis <- function(data_, operation_, pointSize, tit
 
 scatterPlotOnOperationProcsOnXAxisType <- function(data_, operation_, type_, pointSize, title) {
   plot <- ggplot(data = filter(data_, operation == operation_, type %in% type_))
-  plot <- plot + geom_point(mapping = aes(x = numberProcessors, y = time, colour = type),
-                            size = pointSize, position = "jitter")
+  plot <- plot + geom_point(mapping = aes(x = numberProcessors, y = value, colour = type),
+                            size = pointSize, position = "jitter"
+
   plot <- plot + facet_wrap(~ samplePolicy)
   plot <- plot + ggtitle(title)
   return(plot)

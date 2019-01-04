@@ -120,6 +120,142 @@ namespace dss_schimek {
     };
 
   template <typename _StringSet>
+    class StringLcpPtrMergeAdapter
+    {
+      public:
+        typedef _StringSet StringSet;
+        typedef typename StringSet::String String;
+        using Iterator = typename StringSet::Iterator;
+        using CharIt = typename StringSet::CharIterator;
+
+      public:
+        StringSet active_;
+        LcpType* lcp_;
+        size_t offset;
+        Iterator strings_; 
+        
+
+      public:
+         StringLcpPtrMergeAdapter()
+          : active_(StringSet(nullptr, nullptr)), lcp_(nullptr), offset(0), strings_(nullptr)
+        { }
+        //! constructor specifying all attributes
+        StringLcpPtrMergeAdapter(const StringSet& ss, LcpType* lcp_begin)
+          : active_(ss), lcp_(lcp_begin), offset(0), strings_(ss.begin())
+        { }
+
+        //! return currently active array
+        const StringSet & active() const { return active_; }
+
+        ////! return valid length
+        size_t size() const { return active_.size() - offset; }
+
+        ////! Advance (both) pointers by given offset, return sub-array
+        StringLcpPtrMergeAdapter sub(size_t _offset, size_t _size) const
+        {
+          if (_offset + _size > size()) {
+            std::cout << "offset + size >  size " << std::endl;
+            std::abort();
+          }
+          return StringLcpPtrMergeAdapter(active_.subi(offset + _offset, offset + _offset + _size), lcp_ + _offset + offset);
+        }
+
+        ////! check sorted order of strings
+        //bool check() const
+        //{
+        //  assert(output().check_order());
+        //  return true;
+        //}
+
+        ////! Return i-th string pointer from active_
+        //String & str(size_t i) const
+        //{
+        //  assert(i < size());
+        //  return active_.at(i);
+        //}
+
+        ////! return reference to the i-th lcp
+        //LcpType& lcp(size_t i) const
+        //{
+        //  return lcp_[i];
+        //}
+
+        ////! set the i-th lcp to v and check its value
+        //void set_lcp(size_t i, const LcpType& v) const 
+        //{ 
+        //  assert(i < size());
+        //  if (i >= size())
+        //    std::cout << " lcp out of bounds " << std::endl;
+        //  lcp_[i] = v;
+        //}
+
+        ////! Fill whole LCP array with n times the value v, ! excluding the first
+        ////! LCP[0] position
+        //void fill_lcp(LcpType v)
+        //{
+        //  std::fill_n(lcp_ + 1, size() - 1, v);
+        //}
+
+        //LcpType* lcp_array() const
+        //{
+        //  return lcp_;
+        //}
+        
+        bool empty() const
+        {
+          return (active().size() - offset <= 0);
+        }
+
+        void setFirst(String str, LcpType lcp) {
+          if (strings_ + offset >= active_.end()) {
+            std::cout << "memory access error setFirst" << std::endl;
+            std::abort();
+          }
+          *(strings_ + offset) = str;
+          *(lcp_ + offset) = lcp;
+        }
+
+        String& firstString() const 
+        {
+         if (strings_ + offset >= active_.end()) {
+            std::cout << "memory access error firstString" << std::endl;
+            std::abort();
+          }
+          return *(strings_ + offset);
+        }
+
+        CharIt firstStringChars() const
+        {
+          if (strings_ + offset >= active_.end()) {
+            std::cout << "memory access error firstStringChars" << std::endl;
+            std::abort();
+          }
+          return active().get_chars(*(strings_ + offset), 0);
+        }
+
+        LcpType& firstLcp() const
+        {
+if (strings_ + offset >= active_.end()) {
+            std::cout << "memory access error firstLcp" << std::endl;
+            std::abort();
+          }
+          std::cout << "\t\t\t offset " << offset << std::endl;
+         return *(lcp_ + offset);
+        }
+
+        StringLcpPtrMergeAdapter& operator ++ () 
+        {
+          ++offset;
+          return *this;
+        }
+
+        bool operator < (const StringLcpPtrMergeAdapter& rhs) const
+        {
+          return strings_ + offset < rhs.strings_ + rhs.offset;
+        }
+    };
+
+  template <typename _StringSet>
     class StringLcpPtr
     {
       public:
@@ -191,7 +327,6 @@ namespace dss_schimek {
           return lcp_;
         }
     };
-
   /******************************************************************************/
 
   //! Objectified string array pointer and shadow pointer array for out-of-place
