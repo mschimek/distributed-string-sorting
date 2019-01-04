@@ -153,10 +153,6 @@ namespace dss_schimek {
         ////! Advance (both) pointers by given offset, return sub-array
         StringLcpPtrMergeAdapter sub(size_t _offset, size_t _size) const
         {
-          if (_offset + _size > size()) {
-            std::cout << "offset + size >  size " << std::endl;
-            std::abort();
-          }
           return StringLcpPtrMergeAdapter(active_.subi(offset + _offset, offset + _offset + _size), lcp_ + _offset + offset);
         }
 
@@ -207,39 +203,22 @@ namespace dss_schimek {
         }
 
         void setFirst(String str, LcpType lcp) {
-          if (strings_ + offset >= active_.end()) {
-            std::cout << "memory access error setFirst" << std::endl;
-            std::abort();
-          }
           *(strings_ + offset) = str;
           *(lcp_ + offset) = lcp;
         }
 
         String& firstString() const 
         {
-         if (strings_ + offset >= active_.end()) {
-            std::cout << "memory access error firstString" << std::endl;
-            std::abort();
-          }
           return *(strings_ + offset);
         }
 
         CharIt firstStringChars() const
         {
-          if (strings_ + offset >= active_.end()) {
-            std::cout << "memory access error firstStringChars" << std::endl;
-            std::abort();
-          }
           return active().get_chars(*(strings_ + offset), 0);
         }
 
         LcpType& firstLcp() const
         {
-if (strings_ + offset >= active_.end()) {
-            std::cout << "memory access error firstLcp" << std::endl;
-            std::abort();
-          }
-          std::cout << "\t\t\t offset " << offset << std::endl;
          return *(lcp_ + offset);
         }
 

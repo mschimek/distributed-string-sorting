@@ -221,7 +221,6 @@ private:
     //! the winning index, and defender.lcp = lcp(s_loser,s_winner).
     void updateNode(Node& contender, Node& defender)
     {
-        //std::cout << "\t\t\t contender.idx: " << contender.idx  << " contender.lcp:" << contender.lcp  << " contender: " << streams[contender.idx].firstStringChars() << " defender.idx:" << defender.idx << " defender.lcp:" << defender.lcp <<  " defender " << streams[defender.idx].firstStringChars() << std::endl;
         const Stream& defenderStream = streams[defender.idx];
 
         if (TLX_UNLIKELY(defenderStream.empty()))
@@ -318,22 +317,14 @@ public:
     void writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
     {
         const dss_schimek::StringLcpPtrMergeAdapter<StringSet> end = outStream.sub(length, 0);
-        size_t counter = 0;
-        for (size_t i = 1; i < K + 1; ++i) {
-                std::cout << "\t\t\t" << i << " idx:" << nodes[i].idx << " lcp:" << nodes[i].lcp << std::endl;
-              }
-        std::cout << "length: " << length << std::endl;
         while (outStream < end)
         {
             // take winner and put into output
 
             size_t winnerIdx = nodes[1].idx;
-            std::cout << "winnerIdx " << winnerIdx << std::endl;
             outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
             ++outStream;
-            std::cout << "counter " << counter << " streams[winnerIdx]" << streams[winnerIdx].firstStringChars() << std::endl;
 
-            counter++;
             // advance winner stream
 
             Stream& stream = streams[winnerIdx];
@@ -342,27 +333,17 @@ public:
 
             Node& contender = nodes[1];
 
-            if (!stream.empty()) {
+            if (!stream.empty()) 
               contender.lcp = streams[winnerIdx].firstLcp();
-              std::cout << "winnerIdx: " << winnerIdx << " contender.lcp: " << contender.lcp << std::endl;
-
-            }
-            else {
-              std::cout << "empty" << std::endl;
-            }
 
             size_t nodeIdx = winnerIdx + K;
             //std::cout << "nodeIdx " << nodeIdx << "\n";
 
-              std::cout << "\t\t\trecalculate tree" << std::endl;
               while (nodeIdx > 2) {
                 nodeIdx = (nodeIdx + 1) / 2;
                 //std::cout << "play against " << nodeIdx << "\n";
                 updateNode(contender, nodes[nodeIdx]);
             }
-              for (size_t i = 1; i < K + 1; ++i) {
-                std::cout << "\t\t\t" << i << " idx:" << nodes[i].idx << " lcp:" << nodes[i].lcp << std::endl;
-              }
             //std::cout << "play against " << nodeIdx << "\n";
 
             // for (size_t nodeIdx = (K + winnerIdx) >> 1; nodeIdx >= 1; nodeIdx >>= 1)

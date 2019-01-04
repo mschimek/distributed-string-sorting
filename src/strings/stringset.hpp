@@ -535,6 +535,7 @@ typedef GenericCharStringSet<unsigned char> UCharStringSet;
 template <typename String, typename Length = size_t>
 struct StringLength
 {
+  StringLength() : string(nullptr), length(0) {}
   StringLength(const String string, const Length length) : string(string), length(length) {}
   String string;
   Length length;
