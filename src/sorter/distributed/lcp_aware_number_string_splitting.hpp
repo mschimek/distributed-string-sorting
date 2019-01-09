@@ -391,6 +391,12 @@ namespace dss_schimek {
           dss_schimek::multikey_quicksort(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
+          //size_t lcp_sum = 0;
+          //for (size_t i = 0; i < local_string_ptr.size(); ++i) {
+          //  lcp_sum += local_string_ptr.lcp(i);
+          //}
+          //std::cout << "\n\n\n\n\n" << "lcp_sum: " << lcp_sum << " chars_total: " << local_string_container.char_size() << "\n\n\n" << std::endl;
+
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
             return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));

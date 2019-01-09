@@ -125,7 +125,8 @@ scatterPlotAllProcessors <- function(data_, operations_, type_) {
   }
 }
 
-pdf(paste("plots_alltoall.pdf",sep=""), width=10, height=5)
+pureDirName <- str_sub(args, start = 1, end = -2)
+pdf(paste(pureDirName, "_plots_alltoall.pdf",sep=""), width=10, height=5)
 
 operations <- c("all_to_all_strings")
 data <- allDataWithoutIt1_EmptyTimer

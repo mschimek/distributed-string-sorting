@@ -7,9 +7,7 @@ args = commandArgs(trailingOnly=TRUE)
 if (length(args) != 1) {
   stop("At least one argument must be supplied (input file)", call.=FALSE)
 }
-
-print(args[[1]])
-
+dirName <- args[[1]]
 columns <- c("numberProcessors",
              "samplePolicy",
              "iteration",
@@ -77,16 +75,6 @@ computeYLimitsBoxplot_v <- function(data_) {
 
 
 
-boxPlotOnOperationProcsAreFacets <- function(data_, operation_, types_, title) {
-  filteredData <- filter(data_, operation == operation_, type %in% types_)
-  plot <- ggplot(data = filteredData) 
-  plot <- plot + geom_boxplot(mapping = aes(x = samplePolicy, y = value, colour = type)) 
-  plot <- plot + facet_wrap(~ numberProcessors, nrow = 1)
-  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  plot <- plot + ggtitle(title) 
-  return(plot)
-}
-
 boxPlotOnOperationProcsAreFacets_ <- function(data_, operation_, types_, title, ylimits) {
   plot <- boxPlotOnOperationProcsAreFacets(data_, operation_, types_, title)
   plot <- plot + coord_cartesian(ylim = ylimits)
@@ -111,9 +99,29 @@ scatterPlotOnOperationProcsOnXAxisType <- function(data_, operation_, type_, poi
   return(plot)
 }
 
+overallBarPlot <- function(data_, operation_, type_, size_, title = " ") {
+  filteredData <- filter(data_, operation != operation_, type == type_, size == size_, Timer != "Timer")
+  group <- group_by(filteredData, numberProcessors, samplePolicy, size, operation, type)
+  timeMean <- summarise(group, time = mean(value, rm.na = TRUE))
+  timeMean$size <- as.factor(timeMean$size)
+  plot <- ggplot(data = timeMean)
+  plot <- plot + geom_bar(mapping = aes(x = samplePolicy, y = time, fill = operation), stat="identity")
+  plot <- plot + facet_wrap(~ numberProcessors, labeller = label_both, nrow=1)
+  plot <- plot + ggtitle(title)
 
+  return(plot)
+}
 
-
+boxPlotOnOperationProcsAreFacets <- function(data_, operation_, type_, size_, title) {
+  filteredData <- filter(data_, operation == operation_, type == type_, size == size_, Timer != "Timer")
+  print(filteredData)
+  plot <- ggplot(data = filteredData) 
+  plot <- plot + geom_boxplot(mapping = aes(x = samplePolicy, y = value, colour = operation)) 
+  plot <- plot + facet_wrap(~ numberProcessors, nrow = 1)
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  plot <- plot + ggtitle(title) 
+  return(plot)
+}
 pdf(paste("plots.pdf",sep=""), width=10, height=5)
 
 smallStringSet <- filter(allDataWithoutIt1, size == 1000000)
@@ -147,20 +155,13 @@ filterLoss = c("avgLoss", "maxLoss", "minLoss")
 #boxPlotOnOperation(bigStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 5000000")
 #
 #Overall
-barPlot <- function(data_, operation_, type_, size_, title = " ") {
-  filteredData <- filter(data_, operation != operation_, type == type_, size == size_, Timer != "Timer")
-  group <- group_by(filteredData, numberProcessors, samplePolicy, size, operation, type)
-  timeMean <- summarise(group, time = mean(value, rm.na = TRUE))
-  timeMean$size <- as.factor(timeMean$size)
-  plot <- ggplot(data = timeMean)
-  plot <- plot + geom_bar(mapping = aes(x = samplePolicy, y = time, fill = operation), stat="identity")
-  plot <- plot + facet_wrap(~ numberProcessors, labeller = label_both, nrow=1)
-  plot <- plot + ggtitle(title)
 
-  return(plot)
-}
 
-barPlot(allDataWithoutIt1, operation_ = "sorting_overall", type_ = "avgTime", size_ = 1000000, "AvgTime and StringSetSize = 1000000")
-barPlot(allDataWithoutIt1, operation_ = "sorting_overall", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
+dirNameWithoutSlash <- str_sub(dirName, start = 1, end = -2)
+pdf(paste(dirNameWithoutSlash, "_plots_strong_scaling", ".pdf",sep=""), width=10, height=5)
+overallBarPlot(allDataWithoutIt1, operation_ = "sorting_overall", type_ = "avgTime", size_ = 1000000, "AvgTime and StringSetSize = 1000000")
+overallBarPlot(allDataWithoutIt1, operation_ = "sorting_overall", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
 
-#plot1
+boxPlotOnOperationProcsAreFacets(allDataWithoutIt1, operation_ = "merge_ranges", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
+boxPlotOnOperationProcsAreFacets(allDataWithoutIt1, operation_ = "all_to_all_strings", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
+boxPlotOnOperationProcsAreFacets(allDataWithoutIt1, operation_ = "sort_locally", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")

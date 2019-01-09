@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <string>
 #include <cassert>
@@ -7,6 +8,9 @@
 namespace dss_schimek {
 
   class EmptyByteEncoderMemCpy{
+    /*
+     * No endcoding 
+     */
     public:
       static std::string getName() {
         return "EmptyByteEncoderMemCpy";
@@ -35,12 +39,49 @@ namespace dss_schimek {
 
   };
 
-  class EmptyByteEncoderCopy{
+class EmptyLcpByteEncoderMemCpy{
+    /*
+     * No endcoding 
+     */
     public:
+      static std::string getName() {
+        return "EmptyLcpByteEncoderMemCpy";
+      }
+
+      template<typename StringSet>
+        std::pair<unsigned char*, size_t> write(unsigned char* buffer,
+            const StringSet ss, const size_t* lcps) const {
+
+          using String = typename StringSet::String;
+          using CharIt = typename StringSet::CharIterator;
+
+          const size_t size = ss.size();
+          size_t numCharsWritten = 0;
+
+          auto beginOfSet = ss.begin();
+          for (size_t i = 0; i < size; ++i) {
+            String str = ss[beginOfSet + i];
+            size_t stringLength = ss.get_length(str) + 1;
+            size_t stringLcp = lcps[i];
+            size_t actuallyWrittenChars = stringLength - stringLcp;
+            numCharsWritten += actuallyWrittenChars;
+            memcpy(buffer, ss.get_chars(str, stringLcp), actuallyWrittenChars);
+            buffer += actuallyWrittenChars;
+          }
+          return std::make_pair(buffer, numCharsWritten);
+        }
+
+  };
+  class EmptyByteEncoderCopy{
+    /*
+     * No endcoding 
+     */
+public:
       static std::string getName() {
         return "EmptyByteEncoderCopy";
       }
   }; 
+
   class SequentialDelayedByteEncoder {
     /*
      * Encoding: 

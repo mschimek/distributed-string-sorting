@@ -1,12 +1,12 @@
 library(ggplot2)
 library(tidyverse)
 
-#args = commandArgs(trailingOnly=TRUE)
-#
-## test if there is at least one argument: if not, return an error
-#if (length(args) != 1) {
-#  stop("At least one argument must be supplied (input file)", call.=FALSE)
-#}
+args = commandArgs(trailingOnly=TRUE)
+
+# test if there is at least one argument: if not, return an error
+if (length(args) != 1) {
+  stop("At least one argument must be supplied (input file)", call.=FALSE)
+}
 
 #print(args[[1]])
 
@@ -16,7 +16,7 @@ columns <- c("numberProcessors",
              "size",
              "operation",
              "type",
-             "time")
+             "value")
 
 colTypeSpec = cols(numberProcessors = col_integer(),
        samplePolicy = col_character(),
@@ -24,13 +24,13 @@ colTypeSpec = cols(numberProcessors = col_integer(),
        size = col_double(),
        operation = col_character(),
        type = col_character(),
-       time = col_double())
+       value = col_double())
 
 # "Constants"
 POINTSIZE = 0.05
 
 #allData <- read.table("./output.txt", comment.char = "#", col.names = columns)
-allData <- read_delim(file = "2018_12_28_H23_48/data.txt", "|", col_types = colTypeSpec, comment="-")
+allData <- read_delim(file = paste(args[[1]], "/data.txt", sep = ""), "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
 allDataWithoutIt1 <- filter(allData, iteration != 1, Timer != "Timer")
 
@@ -111,7 +111,14 @@ scatterPlotOnOperationProcsOnXAxisType <- function(data_, operation_, type_, poi
   return(plot)
 }
 
-
+numChars <- function(data_) {
+  data_ = filter(data_, operation == "num_received_chars", size == 1000000)
+  print(data_)
+  plot <- ggplot(data = data_)
+  plot <- plot + geom_point(mapping = aes(x = samplePolicy, y = value), position = "jitter")
+  plot <- plot + facet_wrap(~ numberProcessors)
+  plot <- plot + ggtitle("number received chars")
+}
 
 
 pdf(paste("plots.pdf",sep=""), width=10, height=5)
@@ -124,9 +131,9 @@ operation = "all_to_all_strings"
 filterTime = c("avgTime", "maxTime", "minTime")
 filterLoss = c("avgLoss", "maxLoss", "minLoss")
 scatterPlotOnOperation(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 5000000")
+#scatterPlotOnOperation(bigStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 5000000")
 boxPlotOnOperation(smallStringSet, operation, "All-to-All Strings, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, operation, "All-to-All Strings, StringSetSize = 5000000")
+#boxPlotOnOperation(bigStringSet, operation, "All-to-All Strings, StringSetSize = 5000000")
 scatterPlotOnOperationProcsOnXAxis(smallStringSet, operation, POINTSIZE, "All-to-All Strings, StringSetSize = 1000000")
 scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
                                        filterTime, POINTSIZE, "All-to-All Strings, Time only, StringSetSize = 1000000")
@@ -134,26 +141,26 @@ scatterPlotOnOperationProcsOnXAxisType(smallStringSet, operation,
                                        filterLoss, POINTSIZE, "All-to-All Strings, Loss only, StringSetSize = 1000000")
 boxPlotOnOperationProcsAreFacets(smallStringSet, operation, filterTime, "All-to-All Strings, StringSetSize = 1000000")
 boxPlotOnOperationProcsAreFacets_(filter(smallStringSet, numberProcessors != 32), operation, filterTime, "All-to-All Strings, ZoomIn, StringSetSize = 1000000", c(250000000, 420000000))
-#Sort String locally
+##Sort String locally
 scatterPlotOnOperation(smallStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 5000000")
+#scatterPlotOnOperation(bigStringSet, "sort_locally", POINTSIZE, "Sort locally, StringSetSize = 5000000")
 boxPlotOnOperation(smallStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 5000000")
-
-#Merge Sequences
+#boxPlotOnOperation(bigStringSet, "sort_locally", "Sort Strings locally, StringSetSize = 5000000")
+#
+##Merge Sequences
 scatterPlotOnOperation(smallStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 1000000")
-scatterPlotOnOperation(bigStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 5000000")
+#scatterPlotOnOperation(bigStringSet, "merge_ranges", POINTSIZE, "Merge Sequences, StringSetSize = 5000000")
 boxPlotOnOperation(smallStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 1000000")
-boxPlotOnOperation(bigStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 5000000")
-
-#Overall
+#boxPlotOnOperation(bigStringSet, "merge_ranges", "Merge Sequences, StringSetSize = 5000000")
+#
+##Overall
 barPlot <- function(data_, operation_, type_, size_, title = " ") {
   filteredData <- filter(data_, operation != operation_, type == type_, size == size_)
   group <- group_by(filteredData, numberProcessors, samplePolicy, size, operation, type)
-  timeMean <- summarise(group, time = mean(value, rm.na = TRUE))
-  timeMean$size <- as.factor(timeMean$size)
-  plot <- ggplot(data = timeMean)
-  plot <- plot + geom_bar(mapping = aes(x = samplePolicy, y = time, fill = operation), stat="identity")
+  valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
+  valueMean$size <- as.factor(valueMean$size)
+  plot <- ggplot(data = valueMean)
+  plot <- plot + geom_bar(mapping = aes(x = samplePolicy, y = value, fill = operation), stat="identity")
   plot <- plot + facet_wrap(~ numberProcessors, labeller = label_both, nrow=1)
   plot <- plot + ggtitle(title)
 
@@ -161,6 +168,7 @@ barPlot <- function(data_, operation_, type_, size_, title = " ") {
 }
 
 barPlot(allDataWithoutIt1, operation_ = "sorting_overall", type_ = "avgTime", size_ = 1000000, "AvgTime and StringSetSize = 1000000")
-barPlot(allDataWithoutIt1, operation_ = "sorting_overall", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
+#barPlot(allDataWithoutIt1, operation_ = "sorting_overall", type = "avgTime", size = 5000000, "AvgTime and StringSetSize = 5000000")
+numChars(allDataWithoutIt1)
 
 #plot1
