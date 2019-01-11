@@ -64,7 +64,6 @@ class EmptyLcpByteEncoderMemCpy{
             size_t stringLength = ss.get_length(str) + 1;
             size_t stringLcp = lcps[i];
             size_t actuallyWrittenChars = stringLength - stringLcp;
-            std::cout << "actuallyWrittenChar " << actuallyWrittenChars << std::endl;
             numCharsWritten += actuallyWrittenChars;
             memcpy(buffer, ss.get_chars(str, stringLcp), actuallyWrittenChars);
             buffer += actuallyWrittenChars;

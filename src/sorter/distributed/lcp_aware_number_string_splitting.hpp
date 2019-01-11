@@ -289,26 +289,26 @@ namespace dss_schimek {
         std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
         std::vector<size_t> sorted_lcp(recv_string_cont.size());
         StringSet ss = recv_string_cont.make_string_set();
-        dss_schimek::mpi::execute_in_order([&] () {
-            dsss::mpi::environment env;
-            env.barrier();
-            std::cout << "before merge: \n rank: " << env.rank() << std::endl;
-            ss.print();
-            for (size_t i = 0; i < ss.size(); ++i)
-            std::cout << i << " " << recv_string_cont.lcps()[i] << std::endl;
-            });
+        //dss_schimek::mpi::execute_in_order([&] () {
+        //    dsss::mpi::environment env;
+        //    env.barrier();
+        //    std::cout << "before merge: \n rank: " << env.rank() << std::endl;
+        //    ss.print();
+        //    for (size_t i = 0; i < ss.size(); ++i)
+        //    std::cout << i << " " << recv_string_cont.lcps()[i] << std::endl;
+        //    });
         dss_schimek::StringLcpPtrMergeAdapter<StringSet> mergeAdapter(ss, recv_string_cont.lcp_array());
         dss_schimek::LcpStringLoserTree_<K, StringSet> loser_tree(mergeAdapter, ranges.data());
         StringSet sortedSet(sorted_string.data(), sorted_string.data() + sorted_string.size());
         dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
-        dss_schimek::mpi::execute_in_order([&] () {
-            dsss::mpi::environment env;
-            env.barrier();
+        //dss_schimek::mpi::execute_in_order([&] () {
+        //    dsss::mpi::environment env;
+        //    env.barrier();
 
-            std::cout << "merge  rank: " << env.rank() << std::endl;
+        //    std::cout << "merge  rank: " << env.rank() << std::endl;
+        //loser_tree.writeElementsToStream(out_, num_recv_elems);
+        //    });
         loser_tree.writeElementsToStream(out_, num_recv_elems);
-            });
-        std::cout << "\t\t\tmerging completed: " << std::endl;
         StringLcpContainer<StringSet> sorted_string_cont;
         sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
         sorted_string_cont.set(std::move(sorted_string));
@@ -454,7 +454,6 @@ namespace dss_schimek {
           }
           timer.add("num_received_chars", recv_string_cont.char_size() - recv_string_cont.size());
           
-          std::cout << "total fertig " << std::endl;
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
 

@@ -83,7 +83,6 @@ namespace dss_schimek {
 
           update_strings();
           lcps_ = std::move(lcp);
-          std::cout << "string lcp container completed " << std::endl;
         } 
 
       String operator[] (size_t i) { return strings_[i]; }
@@ -204,9 +203,7 @@ namespace dss_schimek {
 
       void update_strings()
       {
-        std::cout << " update_strings start " << std::endl;
         strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
-        std::cout << " update_strings completed " << std::endl;
       }
   };
 

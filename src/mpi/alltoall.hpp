@@ -729,8 +729,6 @@ namespace dsss::mpi {
         const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
 
         std::vector<unsigned char> buffer(send_data.char_size() - L);
-        std::cout << "buffer size " << send_data.char_size() - L << std::endl;
-        std::cout << "start send" << std::endl;
         unsigned char* curPos = buffer.data();
           size_t totalNumWrittenChars = 0;
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
@@ -744,7 +742,6 @@ namespace dsss::mpi {
           send_counts_char[interval] = numWrittenChars;
           stringsWritten += sendCountsString[interval];
         }
-        std::cout << "totalNumWrittenChars" << totalNumWrittenChars << std::endl;
 
         timer.end("all_to_all_strings_intern_copy", env);
         timer.start("all_to_all_strings_mpi", env);
@@ -755,8 +752,6 @@ namespace dsss::mpi {
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
         timer.end("all_to_all_strings_read", env);
-        std::cout << "end send" << std::endl;
-        std::cout << " ich bin hier " << std::endl;
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }

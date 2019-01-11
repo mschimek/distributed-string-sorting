@@ -39,12 +39,12 @@ template <typename StringSet, typename StringGenerator,
              StringGenerator rand_container(numOfStrings);
              StringLcpPtr rand_string_ptr = 
                rand_container.make_string_lcp_ptr();
-             dss_schimek::mpi::execute_in_order([&]() {
-                 env.barrier();
-                 std::cout << "rank: " << env.rank() << std::endl;
-                 multikey_quicksort(rand_container.make_string_lcp_ptr(), 0, 0);
-                 rand_container.make_string_set().print();
-                 });
+             //dss_schimek::mpi::execute_in_order([&]() {
+             //    env.barrier();
+             //    std::cout << "rank: " << env.rank() << std::endl;
+             //    multikey_quicksort(rand_container.make_string_lcp_ptr(), 0, 0);
+             //    rand_container.make_string_set().print();
+             //    });
              const size_t numGeneratedChars = rand_container.char_size();
 
              timer.start("sorting_overall");
@@ -55,12 +55,13 @@ template <typename StringSet, typename StringGenerator,
 
              timer.end("sorting_overall");
 
-             dss_schimek::mpi::execute_in_order([&]() {
-                 env.barrier();
+             //dss_schimek::mpi::execute_in_order([&]() {
+             //    env.barrier();
+             //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_lcp_ptr());
+             //    std::cout << "rank: " << env.rank() << std::endl;
+             //    sorted_string_cont.make_string_set().print();
+             //    });
                  sorted_string_cont.extendPrefix(sorted_string_cont.make_string_lcp_ptr());
-                 std::cout << "rank: " << env.rank() << std::endl;
-                 sorted_string_cont.make_string_set().print();
-                 });
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
                  numGeneratedChars,
