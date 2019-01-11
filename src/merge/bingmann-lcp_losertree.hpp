@@ -161,6 +161,7 @@ public:
 
             size_t winnerIdx = nodes[1].idx;
             //std::cout << "winnerIdx " << winnerIdx << std::endl;
+
             outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
             ++outStream;
 
@@ -215,6 +216,8 @@ class LcpStringLoserTree_
 private:
     Stream streams[K + 1];
     Node nodes[K + 1];
+    std::vector<size_t> offset;
+    std::vector<bool> isOffsetSet;
 
     //! play one comparison edge game: contender is the node below
     //! defender. After the game, defender contains the lower index, contender
@@ -244,8 +247,10 @@ private:
             // CASE 1: compare more characters
             lcp_t lcp = defender.lcp;
 
-            CharIt s1 = defenderStream.firstStringChars() + lcp;
-            CharIt s2 = contenderStream.firstStringChars() + lcp;
+            CharIt s1 = defenderStream.firstStringChars() + (lcp - defenderStream.firstLcp());
+            CharIt s2 = contenderStream.firstStringChars() + (lcp - contenderStream.firstLcp());
+            //std::cout << "\t\tdefender: " << s1 << std::endl;
+            //std::cout << "\t\tcontender: " << s2 << std::endl;
 
             // check the strings starting after lcp and calculate new lcp
             while (*s1 != 0 && *s1 == *s2)
@@ -300,7 +305,7 @@ private:
 
 public:
     LcpStringLoserTree_(const dss_schimek::StringLcpPtrMergeAdapter<StringSet>& input, const std::pair<size_t, size_t>* ranges,
-                       lcp_t knownCommonLcp = 0)
+                       lcp_t knownCommonLcp = 0) : offset(), isOffsetSet(K + 1, false)
     {
         for (size_t i = 1; i <= K; i++)
         {
@@ -317,12 +322,24 @@ public:
     void writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
     {
         const dss_schimek::StringLcpPtrMergeAdapter<StringSet> end = outStream.sub(length, 0);
-        while (outStream < end)
+        size_t i = 0;
+                while (outStream < end)
         {
-            // take winner and put into output
+          // take winner and put into output
+          //std::cout << "after tournament" << std::endl;
+          //for (size_t i = 1; i < K + 1; ++i) {
+          //  std::cout << i << " idx: " << nodes[i].idx << " string: " << streams[nodes[i].idx].firstStringChars() << " lcp: " << nodes[i].lcp << std::endl;
+          //}
+          //std::cout << "\n\n";
 
-            size_t winnerIdx = nodes[1].idx;
-            outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
+          size_t winnerIdx = nodes[1].idx;
+          if (!isOffsetSet[winnerIdx]) {
+            isOffsetSet[winnerIdx] = true;
+            offset.push_back(i);
+          }
+          //outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
+            //std::cout << streams[winnerIdx].firstStringChars() << " lcp: " << streams[winnerIdx].firstLcp() << std::endl;
+            outStream.setFirst(streams[winnerIdx].firstString(), streams[winnerIdx].firstLcp());
             ++outStream;
 
             // advance winner stream
@@ -338,12 +355,17 @@ public:
 
             size_t nodeIdx = winnerIdx + K;
             //std::cout << "nodeIdx " << nodeIdx << "\n";
-
-              while (nodeIdx > 2) {
-                nodeIdx = (nodeIdx + 1) / 2;
-                //std::cout << "play against " << nodeIdx << "\n";
-                updateNode(contender, nodes[nodeIdx]);
+            //std::cout << "before tournament" << std::endl;
+            //for (size_t i = 1; i < K + 1; ++i) {
+            //  std::cout << i << " idx: " << nodes[i].idx << " string: " << streams[nodes[i].idx].firstStringChars() << " lcp: " << nodes[i].lcp << std::endl;
+            //}
+            //std::cout << "\n\n";
+            while (nodeIdx > 2) {
+              nodeIdx = (nodeIdx + 1) / 2;
+              //std::cout << "play against " << nodeIdx << "\n";
+              updateNode(contender, nodes[nodeIdx]);
             }
+            ++i;
             //std::cout << "play against " << nodeIdx << "\n";
 
             // for (size_t nodeIdx = (K + winnerIdx) >> 1; nodeIdx >= 1; nodeIdx >>= 1)

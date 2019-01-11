@@ -721,11 +721,18 @@ namespace dsss::mpi {
         std::vector<size_t> send_counts_lcp(sendCountsString);
         std::vector<size_t> send_counts_char(sendCountsString.size());
 
-        const std::vector<size_t>& lcps = send_data.lcps();
+        std::vector<size_t>& lcps = send_data.lcps();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(lcps.data() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
         const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
 
         std::vector<unsigned char> buffer(send_data.char_size() - L);
+        std::cout << "buffer size " << send_data.char_size() - L << std::endl;
+        std::cout << "start send" << std::endl;
         unsigned char* curPos = buffer.data();
+          size_t totalNumWrittenChars = 0;
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
           auto begin = ss.begin() + stringsWritten;
           StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
@@ -733,9 +740,11 @@ namespace dsss::mpi {
           std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
               subSet, lcps.data() + stringsWritten);
 
+          totalNumWrittenChars += numWrittenChars;
           send_counts_char[interval] = numWrittenChars;
           stringsWritten += sendCountsString[interval];
         }
+        std::cout << "totalNumWrittenChars" << totalNumWrittenChars << std::endl;
 
         timer.end("all_to_all_strings_intern_copy", env);
         timer.start("all_to_all_strings_mpi", env);
@@ -743,9 +752,11 @@ namespace dsss::mpi {
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
         timer.end("all_to_all_strings_mpi", env);
 
-        // no bytes are read in this version only for evaluation layout
+        //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
         timer.end("all_to_all_strings_read", env);
+        std::cout << "end send" << std::endl;
+        std::cout << " ich bin hier " << std::endl;
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }

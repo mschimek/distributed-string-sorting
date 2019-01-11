@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <memory>
 #include <numa.h>
+#include <numeric>
+
 #include "strings/stringset.hpp"
 #include <iostream>
 #include <tlx/logger.hpp>
@@ -77,10 +79,11 @@ namespace dss_schimek {
         }
 
       explicit StringLcpContainer(std::vector<Char>&& raw_strings, std::vector<size_t>&& lcp) : 
-        raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
+    raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
 
           update_strings();
           lcps_ = std::move(lcp);
+          std::cout << "string lcp container completed " << std::endl;
         } 
 
       String operator[] (size_t i) { return strings_[i]; }
@@ -95,7 +98,55 @@ namespace dss_schimek {
       std::vector<Char>& raw_strings() { return *raw_strings_; }
       const std::vector<Char>& raw_strings() const { return *raw_strings_; }
       
-      
+      template <typename StringSet>
+      void extendPrefix(const dss_schimek::StringLcpPtr<StringSet> strptr) {
+        using String = typename StringSet::String;
+        using Char = typename StringSet::Char;
+        using CharIt = typename StringSet::CharIterator;
+        const StringSet ss = strptr.active();
+
+        const size_t L = std::accumulate(lcps_.begin(), lcps_.end(), 0);
+        std::cout << "L: " << L << std::endl;
+        std::vector<Char> extendedRawStrings(char_size() + L);
+        std::vector<Char> curPrefix;
+        Char* curPos = extendedRawStrings.data();
+
+        //first String is always complete in memory as its lcp == 0
+        String curString = ss[ss.begin()];
+        CharIt startCurString = ss.get_chars(curString, 0);
+        size_t stringLength = ss.get_length(curString) + 1;
+        std::copy(startCurString, startCurString + stringLength, curPos);
+        curPos += stringLength; 
+        for (size_t i = 1; i < ss.size(); ++i) {
+          int64_t lcp_diff = strptr.lcp(i) - strptr.lcp(i - 1);
+          //std::cout << "lcp_diff: " << lcp_diff << std::endl;
+          if (lcp_diff <= 0) {
+            while(lcp_diff++ < 0)
+              curPrefix.pop_back();
+          } else {
+            String prevString = ss[ss.begin() + i - 1];
+            CharIt commonPrefix = ss.get_chars(prevString, 0);
+            for (size_t j = 0; j < lcp_diff; ++j) 
+              curPrefix.push_back(*(commonPrefix + j));
+          }
+          std::copy(curPrefix.begin(), curPrefix.end(), curPos);
+          curPos += curPrefix.size();
+          //std::cout << "curPrefix: " ;
+          //for (size_t j = 0; j < curPrefix.size(); ++j)
+          //  std::cout << curPrefix[j];
+          //std::cout << std::endl;
+
+
+          String curString = ss[ss.begin() + i];
+          CharIt startCurString = ss.get_chars(curString, 0);
+          size_t stringLength = ss.get_length(curString) + 1;
+          //std::cout << "string: " << startCurString << std::endl;
+          std::copy(startCurString, startCurString + stringLength, curPos);
+          //std::cout << "copied string: " << (curPos - curPrefix.size()) << std::endl;
+          curPos += stringLength;
+        }
+        update(std::move(extendedRawStrings));
+      } 
 
       StringSet make_string_set() {
         return StringSet(strings(), strings() + size());
@@ -153,7 +204,9 @@ namespace dss_schimek {
 
       void update_strings()
       {
+        std::cout << " update_strings start " << std::endl;
         strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
+        std::cout << " update_strings completed " << std::endl;
       }
   };
 
