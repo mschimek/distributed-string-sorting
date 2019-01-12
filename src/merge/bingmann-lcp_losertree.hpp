@@ -319,10 +319,11 @@ public:
 
 
 
-    void writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
+    std::vector<size_t> writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
     {
         const dss_schimek::StringLcpPtrMergeAdapter<StringSet> end = outStream.sub(length, 0);
-        size_t i = 0;
+        std::vector<size_t> oldLcps;
+        oldLcps.reserve(length);
                 while (outStream < end)
         {
           // take winner and put into output
@@ -333,13 +334,12 @@ public:
           //std::cout << "\n\n";
 
           size_t winnerIdx = nodes[1].idx;
-          if (!isOffsetSet[winnerIdx]) {
-            isOffsetSet[winnerIdx] = true;
-            offset.push_back(i);
-          }
+          
           //outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
             //std::cout << streams[winnerIdx].firstStringChars() << " lcp: " << streams[winnerIdx].firstLcp() << std::endl;
             outStream.setFirst(streams[winnerIdx].firstString(), streams[winnerIdx].firstLcp());
+            oldLcps.emplace_back(streams[winnerIdx].firstLcp());
+
             ++outStream;
 
             // advance winner stream
@@ -365,7 +365,6 @@ public:
               //std::cout << "play against " << nodeIdx << "\n";
               updateNode(contender, nodes[nodeIdx]);
             }
-            ++i;
             //std::cout << "play against " << nodeIdx << "\n";
 
             // for (size_t nodeIdx = (K + winnerIdx) >> 1; nodeIdx >= 1; nodeIdx >>= 1)
@@ -373,6 +372,7 @@ public:
             //     updateNode(contender, nodes[nodeIdx]);
             // }
         }
+        return oldLcps;
     }
 };
 }

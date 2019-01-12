@@ -61,7 +61,8 @@ template <typename StringSet, typename StringGenerator,
              //    std::cout << "rank: " << env.rank() << std::endl;
              //    sorted_string_cont.make_string_set().print();
              //    });
-                 sorted_string_cont.extendPrefix(sorted_string_cont.make_string_lcp_ptr());
+
+                 sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
                  numGeneratedChars,
@@ -73,11 +74,11 @@ template <typename StringSet, typename StringGenerator,
                std::cout << "not sorted" << std::endl;
                std::abort(); 
              }
-             std::stringstream buffer;
-             timer.writeToStream(buffer);
-             if (env.rank() == 0) {
-               std::cout << buffer.str() << std::endl;
-             }
+             //std::stringstream buffer;
+             //timer.writeToStream(buffer);
+             //if (env.rank() == 0) {
+             //  std::cout << buffer.str() << std::endl;
+             //}
            }
 
 namespace PolicyEnums {

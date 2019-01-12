@@ -308,14 +308,25 @@ namespace dss_schimek {
         //    std::cout << "merge  rank: " << env.rank() << std::endl;
         //loser_tree.writeElementsToStream(out_, num_recv_elems);
         //    });
-        loser_tree.writeElementsToStream(out_, num_recv_elems);
-        StringLcpContainer<StringSet> sorted_string_cont;
+        std::vector<size_t> oldLcps = loser_tree.writeElementsToStream(out_, num_recv_elems);
+        StringLcpContainer<StringSet> sorted_string_cont;//(std::move(recv_string_cont));
+        dss_schimek::mpi::execute_in_order([&]() {
+            dsss::mpi::environment env;
+            std::cout << "rank after merge: " << env.rank() << std::endl;
+            for (size_t i = 0 ; i < oldLcps.size(); ++i) {
+            std::cout << i << " " << oldLcps[i] << std::endl;
+            }
+            for (size_t i = 0 ; i < sorted_lcp.size(); ++i) {
+            std::cout << i << " " << sorted_lcp[i] << std::endl;
+            }
+
+            });
         sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
         sorted_string_cont.set(std::move(sorted_string));
         sorted_string_cont.set(std::move(sorted_lcp));
+        sorted_string_cont.setSavedLcps(std::move(oldLcps));
 
         return sorted_string_cont;
-
       }
     template<size_t K, typename StringSet>
       static inline StringLcpContainer<StringSet> merge_old(

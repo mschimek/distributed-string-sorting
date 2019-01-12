@@ -79,7 +79,7 @@ namespace dss_schimek {
         }
 
       explicit StringLcpContainer(std::vector<Char>&& raw_strings, std::vector<size_t>&& lcp) : 
-    raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
+    raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))), savedLcps_() {
 
           update_strings();
           lcps_ = std::move(lcp);
@@ -92,19 +92,23 @@ namespace dss_schimek {
       size_t size() const { return strings_.size(); }
       size_t char_size() const { return raw_strings_->size(); }
       std::vector<size_t>& lcps() { return lcps_; }
+      std::vector<size_t>& savedLcps() { return savedLcps_; }
       const std::vector<size_t>& lcps() const { return lcps_; }
       size_t* lcp_array() { return lcps_.data(); }
       std::vector<Char>& raw_strings() { return *raw_strings_; }
       const std::vector<Char>& raw_strings() const { return *raw_strings_; }
+
+      void saveLcps() {
+        savedLcps_ = lcps_;
+      }
       
       template <typename StringSet>
-      void extendPrefix(const dss_schimek::StringLcpPtr<StringSet> strptr) {
+      void extendPrefix(StringSet ss, const std::vector<size_t>& lcps) {
         using String = typename StringSet::String;
         using Char = typename StringSet::Char;
         using CharIt = typename StringSet::CharIterator;
-        const StringSet ss = strptr.active();
 
-        const size_t L = std::accumulate(lcps_.begin(), lcps_.end(), 0);
+        const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
         std::cout << "L: " << L << std::endl;
         std::vector<Char> extendedRawStrings(char_size() + L);
         std::vector<Char> curPrefix;
@@ -117,7 +121,7 @@ namespace dss_schimek {
         std::copy(startCurString, startCurString + stringLength, curPos);
         curPos += stringLength; 
         for (size_t i = 1; i < ss.size(); ++i) {
-          int64_t lcp_diff = strptr.lcp(i) - strptr.lcp(i - 1);
+          int64_t lcp_diff = lcps[i] - lcps[i - 1];
           //std::cout << "lcp_diff: " << lcp_diff << std::endl;
           if (lcp_diff <= 0) {
             while(lcp_diff++ < 0)
@@ -163,6 +167,7 @@ namespace dss_schimek {
       void set(std::vector<Char>&& raw_strings) { *raw_strings_ = std::move(raw_strings); }
       void set(std::vector<String>&& strings) { strings_ = std::move(strings);  }
       void set(std::vector<size_t>&& lcps) { lcps_ = std::move(lcps); }
+      void setSavedLcps(std::vector<size_t>&& savedLcps) { savedLcps_ = std::move(savedLcps); }
       
       bool operator==(const StringLcpContainer<StringSet_>& other) {
         return (raw_strings() == other.raw_strings()) && (lcps() == other.lcps());
@@ -200,6 +205,7 @@ namespace dss_schimek {
       std::unique_ptr<std::vector<Char>> raw_strings_;
       std::vector<String> strings_;
       std::vector<size_t> lcps_;
+      std::vector<size_t> savedLcps_;
 
       void update_strings()
       {
@@ -208,4 +214,5 @@ namespace dss_schimek {
   };
 
   using StringLcpContainerUChar = StringLcpContainer<UCharStringSet>;
+
 }
