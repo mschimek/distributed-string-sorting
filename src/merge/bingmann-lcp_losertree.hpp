@@ -337,7 +337,7 @@ public:
           
           //outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
             //std::cout << streams[winnerIdx].firstStringChars() << " lcp: " << streams[winnerIdx].firstLcp() << std::endl;
-            outStream.setFirst(streams[winnerIdx].firstString(), streams[winnerIdx].firstLcp());
+            outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
             oldLcps.emplace_back(streams[winnerIdx].firstLcp());
 
             ++outStream;

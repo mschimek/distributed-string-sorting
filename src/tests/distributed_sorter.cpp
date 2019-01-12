@@ -74,11 +74,11 @@ template <typename StringSet, typename StringGenerator,
                std::cout << "not sorted" << std::endl;
                std::abort(); 
              }
-             //std::stringstream buffer;
-             //timer.writeToStream(buffer);
-             //if (env.rank() == 0) {
-             //  std::cout << buffer.str() << std::endl;
-             //}
+             std::stringstream buffer;
+             timer.writeToStream(buffer);
+             if (env.rank() == 0) {
+               std::cout << buffer.str() << std::endl;
+             }
            }
 
 namespace PolicyEnums {

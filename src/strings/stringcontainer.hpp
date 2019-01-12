@@ -109,7 +109,7 @@ namespace dss_schimek {
         using CharIt = typename StringSet::CharIterator;
 
         const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
-        std::cout << "L: " << L << std::endl;
+        //std::cout << "L: " << L << std::endl;
         std::vector<Char> extendedRawStrings(char_size() + L);
         std::vector<Char> curPrefix;
         Char* curPos = extendedRawStrings.data();
