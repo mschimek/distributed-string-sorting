@@ -48,7 +48,7 @@ template <typename StringSet, typename StringGenerator,
              const size_t numGeneratedChars = rand_container.char_size();
 
              timer.start("sorting_overall");
-             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, dss_schimek::EmptyLcpByteEncoderMemCpy, Timer>;
+             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder, Timer>;
              DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
              StringLcpContainer<StringSet> sorted_string_cont = 
                sorter.sort(rand_string_ptr, std::move(rand_container), timer);
@@ -62,7 +62,10 @@ template <typename StringSet, typename StringGenerator,
              //    sorted_string_cont.make_string_set().print();
              //    });
 
+             timer.start("prefix_decompression");
+             if (AllToAllPolicy::PrefixCompression)
                  sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
+             timer.end("prefix_decompression");
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
                  numGeneratedChars,
@@ -114,7 +117,7 @@ namespace PolicyEnums {
       default : std::abort();
     }
   }
-  enum class ByteEncoder { emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4 };
+  enum class ByteEncoder { emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4, emptyLcpByteEncoderMemCpy = 5};
   ByteEncoder getByteEncoder(size_t i) {
     switch(i) {
       case 0 : return ByteEncoder::emptyByteEncoderCopy;
@@ -122,7 +125,8 @@ namespace PolicyEnums {
       case 2 : return ByteEncoder::sequentialDelayedByteEncoder;
       case 3 : return ByteEncoder::sequentialByteEncoder;
       case 4 : return ByteEncoder::interleavedByteEncoder;
-      default : std::abort();
+      case 5 : return ByteEncoder::emptyLcpByteEncoderMemCpy;
+      default : std::cout << "Enum ByteEncoder not defined" << std::endl; std::abort();
     }
   }
 }
@@ -221,6 +225,12 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
           sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder>(key, args);
           break;
         }
+      case PolicyEnums::ByteEncoder::emptyLcpByteEncoderMemCpy : 
+        {
+          using ByteEncoder = dss_schimek::EmptyLcpByteEncoderMemCpy;
+          sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder>(key, args);
+          break;
+        }
     };
   }
 template<typename StringSet, typename StringGenerator, typename SampleString>
@@ -301,7 +311,7 @@ int main(std::int32_t argc, char const *argv[]) {
   cp.set_author("Matthias Schimek");
   cp.add_unsigned('s', "size", numberOfStrings, " number of strings to be generated");
   cp.add_unsigned('p', "sampleStringsPolicy", sampleStringsPolicy, "0 = NumStrings, 1 = NumChars");
-  cp.add_unsigned('b', "byteEncoder", byteEncoder, "emptyByteEncoder = 0, sequentialDelayedByteEncoder = 1, sequentialByteEncoder = 2, interleavedByteEncoder = 3");
+  cp.add_unsigned('b', "byteEncoder", byteEncoder, "emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4, emptyLcpByteEncoderMemCpy = 5");
   cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll, "small = 0, directMessages = 1, combined = 2");
   cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
   cp.add_flag('c', "checkSortedness", check, " ");

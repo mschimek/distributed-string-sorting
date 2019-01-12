@@ -278,7 +278,7 @@ namespace dss_schimek {
 
         return ranges;
       }
-    template<size_t K, typename StringSet>
+    template<typename AllToAllStringPolicy, size_t K, typename StringSet>
       static inline StringLcpContainer<StringSet> merge(
           dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
           const std::vector<std::pair<size_t, size_t>>& ranges,
@@ -308,7 +308,13 @@ namespace dss_schimek {
         //    std::cout << "merge  rank: " << env.rank() << std::endl;
         //loser_tree.writeElementsToStream(out_, num_recv_elems);
         //    });
-        std::vector<size_t> oldLcps = loser_tree.writeElementsToStream(out_, num_recv_elems);
+        std::vector<size_t> oldLcps;
+        if (AllToAllStringPolicy::PrefixCompression) {
+          loser_tree.writeElementsToStream(out_, num_recv_elems, oldLcps);
+        }
+        else {
+          loser_tree.writeElementsToStream(out_, num_recv_elems);
+        }
         StringLcpContainer<StringSet> sorted_string_cont;//(std::move(recv_string_cont));
         
         sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
@@ -318,69 +324,47 @@ namespace dss_schimek {
 
         return sorted_string_cont;
       }
-    template<size_t K, typename StringSet>
-      static inline StringLcpContainer<StringSet> merge_old(
-          dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
-          const std::vector<std::pair<size_t, size_t>>& ranges,
-          const size_t num_recv_elems) {
+    
 
-        stringtools::LcpStringPtr lt_all_strings(recv_string_cont.strings(),
-            recv_string_cont.lcp_array(),
-            recv_string_cont.size());
-
-        std::vector<unsigned char*> sorted_string(recv_string_cont.size());
-        std::vector<size_t> sorted_lcp(recv_string_cont.size());
-        bingmann::LcpStringLoserTree<K> loser_tree_(lt_all_strings, ranges.data());
-        stringtools::LcpStringPtr out_(sorted_string.data(),
-            sorted_lcp.data(),
-            num_recv_elems);
-        loser_tree_.writeElementsToStream(out_, num_recv_elems);
-
-        StringLcpContainer<StringSet> sorted_string_cont;
-        sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
-        sorted_string_cont.set(std::move(sorted_string));
-        sorted_string_cont.set(std::move(sorted_lcp));
-        return sorted_string_cont;
-      }
-
-    template<typename StringLcpContainer>
+    template<typename AllToAllStringPolicy, typename StringLcpContainer>
     static inline StringLcpContainer choose_merge(StringLcpContainer&& recv_string_cont,
         std::vector<std::pair<size_t, size_t>> ranges,
         size_t num_recv_elems,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
       switch (env.size()) {
-        case 1 :  return merge<1>(std::move(recv_string_cont),
+        case 1 :  return merge<AllToAllStringPolicy,1>(std::move(recv_string_cont),
                       ranges,
                       num_recv_elems);
-        case 2 : return merge<2>(std::move(recv_string_cont),
+        case 2 : return merge<AllToAllStringPolicy,2>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-        case 4 : return merge<4>(std::move(recv_string_cont),
+        case 4 : return merge<AllToAllStringPolicy,4>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-        case 8 : return merge<8>(std::move(recv_string_cont),
+        case 8 : return merge<AllToAllStringPolicy,8>(std::move(recv_string_cont),
                      ranges,
                      num_recv_elems);
-        case 16 : return merge<16>(std::move(recv_string_cont),
+        case 16 : return merge<AllToAllStringPolicy,16>(std::move(recv_string_cont),
                       ranges,
                       num_recv_elems);
-        case 32 : return merge<32>(std::move(recv_string_cont),
+        case 32 : return merge<AllToAllStringPolicy,32>(std::move(recv_string_cont),
                       ranges,
                       num_recv_elems);
-        case 64 : return merge<64>(std::move(recv_string_cont),
+        case 64 : return merge<AllToAllStringPolicy,64>(std::move(recv_string_cont),
                       ranges,
                       num_recv_elems);
-        case 128 : return merge<128>(std::move(recv_string_cont),
+        case 128 : return merge<AllToAllStringPolicy,128>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        case 264 : return merge<264>(std::move(recv_string_cont),
+        case 264 : return merge<AllToAllStringPolicy,264>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        case 512 : return merge<512>(std::move(recv_string_cont),
+        case 512 : return merge<AllToAllStringPolicy,512>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        default : std::abort();
+        default : std::cout << "Error in merge: K is not 2^i for i in {0,...,9} " << std::endl; 
+                  std::abort();
       }
       return StringLcpContainer();
     }
@@ -466,7 +450,7 @@ namespace dss_schimek {
           timer.end("compute_ranges");
 
           timer.start("merge_ranges");
-          auto sorted_container = choose_merge(std::move(recv_string_cont), ranges, num_recv_elems);
+          auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont), ranges, num_recv_elems);
           timer.end("merge_ranges");
           return sorted_container;
         }

@@ -556,6 +556,7 @@ namespace dsss::mpi {
     }
   template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy, typename Timer>
     struct AllToAllStringImpl : private ByteEncoderPolicy {
+      static constexpr bool PrefixCompression = false;
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
           const std::vector<size_t>& sendCountsString,
@@ -601,6 +602,7 @@ namespace dsss::mpi {
 
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderCopy, Timer> {
+      static constexpr bool PrefixCompression = false;
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& send_counts,
@@ -650,6 +652,7 @@ namespace dsss::mpi {
   
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderMemCpy, Timer> {
+      static constexpr bool PrefixCompression = false;
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& sendCountsString,
@@ -700,6 +703,7 @@ namespace dsss::mpi {
   
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyLcpByteEncoderMemCpy, Timer> {
+      static constexpr bool PrefixCompression = true;
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& sendCountsString,
@@ -762,6 +766,7 @@ namespace dsss::mpi {
       AllToAllPolicy,
       dss_schimek::SequentialDelayedByteEncoder,
       Timer> {
+      static constexpr bool PrefixCompression = false;
 
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,

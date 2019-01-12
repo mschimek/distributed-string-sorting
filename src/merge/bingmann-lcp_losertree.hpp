@@ -222,7 +222,7 @@ private:
     //! play one comparison edge game: contender is the node below
     //! defender. After the game, defender contains the lower index, contender
     //! the winning index, and defender.lcp = lcp(s_loser,s_winner).
-    void updateNode(Node& contender, Node& defender)
+    void updateNodeCompressedPrefix(Node& contender, Node& defender)
     {
         const Stream& defenderStream = streams[defender.idx];
 
@@ -249,6 +249,61 @@ private:
 
             CharIt s1 = defenderStream.firstStringChars() + (lcp - defenderStream.firstLcp());
             CharIt s2 = contenderStream.firstStringChars() + (lcp - contenderStream.firstLcp());
+            //std::cout << "\t\tdefender: " << s1 << std::endl;
+            //std::cout << "\t\tcontender: " << s2 << std::endl;
+
+            // check the strings starting after lcp and calculate new lcp
+            while (*s1 != 0 && *s1 == *s2)
+                s1++, s2++, lcp++;
+
+            if (*s1 < *s2) // CASE 1.1: curr < contender
+                std::swap(defender, contender);
+
+            // update inner node with lcp(s_1,s_2)
+            defender.lcp = lcp;
+        }
+        else {
+            // CASE 3: curr->lcp < contender->lcp => contender < curr  => nothing to do
+        }
+#else
+        lcp_compare(contender.idx, contenderStream.firstString(), contender.lcp,
+                    defender.idx, defenderStream.firstString(), defender.lcp,
+                    contender.idx, contender.lcp, defender.idx, defender.lcp);
+#endif
+        assert(scmp(streams[contender.idx].firstStringChars(),
+                    streams[defender.idx].firstStringChars()) <= 0);
+
+        assert(calc_lcp(streams[contender.idx].firstStringChars(),
+                        streams[defender.idx].firstStringChars()) == defender.lcp);
+    }
+    
+    void updateNode(Node& contender, Node& defender)
+    {
+        const Stream& defenderStream = streams[defender.idx];
+
+        if (TLX_UNLIKELY(defenderStream.empty()))
+            return;
+
+        const Stream& contenderStream = streams[contender.idx];
+
+        if (TLX_UNLIKELY(contenderStream.empty()))
+        {
+            std::swap(defender, contender);
+            return;
+        }
+#if 1
+        if (defender.lcp > contender.lcp)
+        {
+            // CASE 2: curr->lcp > contender->lcp => curr < contender
+            std::swap(defender, contender);
+        }
+        else if (defender.lcp == contender.lcp)
+        {
+            // CASE 1: compare more characters
+            lcp_t lcp = defender.lcp;
+
+            CharIt s1 = defenderStream.firstStringChars() + lcp;
+            CharIt s2 = contenderStream.firstStringChars() + lcp;
             //std::cout << "\t\tdefender: " << s1 << std::endl;
             //std::cout << "\t\tcontender: " << s2 << std::endl;
 
@@ -317,12 +372,10 @@ public:
         initTree(knownCommonLcp);
     }
 
-
-
-    std::vector<size_t> writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
+    void writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length, std::vector<size_t>& oldLcps)
     {
         const dss_schimek::StringLcpPtrMergeAdapter<StringSet> end = outStream.sub(length, 0);
-        std::vector<size_t> oldLcps;
+        oldLcps.clear();
         oldLcps.reserve(length);
                 while (outStream < end)
         {
@@ -363,6 +416,57 @@ public:
             while (nodeIdx > 2) {
               nodeIdx = (nodeIdx + 1) / 2;
               //std::cout << "play against " << nodeIdx << "\n";
+              updateNodeCompressedPrefix(contender, nodes[nodeIdx]);
+            }
+            //std::cout << "play against " << nodeIdx << "\n";
+
+            // for (size_t nodeIdx = (K + winnerIdx) >> 1; nodeIdx >= 1; nodeIdx >>= 1)
+            // {
+            //     updateNode(contender, nodes[nodeIdx]);
+            // }
+        }
+    }
+    void writeElementsToStream(dss_schimek::StringLcpPtrMergeAdapter<StringSet> outStream, const size_t length)
+    {
+        const dss_schimek::StringLcpPtrMergeAdapter<StringSet> end = outStream.sub(length, 0);
+                while (outStream < end)
+        {
+          // take winner and put into output
+          //std::cout << "after tournament" << std::endl;
+          //for (size_t i = 1; i < K + 1; ++i) {
+          //  std::cout << i << " idx: " << nodes[i].idx << " string: " << streams[nodes[i].idx].firstStringChars() << " lcp: " << nodes[i].lcp << std::endl;
+          //}
+          //std::cout << "\n\n";
+
+          size_t winnerIdx = nodes[1].idx;
+          
+          //outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
+            //std::cout << streams[winnerIdx].firstStringChars() << " lcp: " << streams[winnerIdx].firstLcp() << std::endl;
+            outStream.setFirst(streams[winnerIdx].firstString(), nodes[1].lcp);
+
+            ++outStream;
+
+            // advance winner stream
+
+            Stream& stream = streams[winnerIdx];
+            ++stream;
+            // run new items from winner stream up the tree
+
+            Node& contender = nodes[1];
+
+            if (!stream.empty()) 
+              contender.lcp = streams[winnerIdx].firstLcp();
+
+            size_t nodeIdx = winnerIdx + K;
+            //std::cout << "nodeIdx " << nodeIdx << "\n";
+            //std::cout << "before tournament" << std::endl;
+            //for (size_t i = 1; i < K + 1; ++i) {
+            //  std::cout << i << " idx: " << nodes[i].idx << " string: " << streams[nodes[i].idx].firstStringChars() << " lcp: " << nodes[i].lcp << std::endl;
+            //}
+            //std::cout << "\n\n";
+            while (nodeIdx > 2) {
+              nodeIdx = (nodeIdx + 1) / 2;
+              //std::cout << "play against " << nodeIdx << "\n";
               updateNode(contender, nodes[nodeIdx]);
             }
             //std::cout << "play against " << nodeIdx << "\n";
@@ -372,7 +476,6 @@ public:
             //     updateNode(contender, nodes[nodeIdx]);
             // }
         }
-        return oldLcps;
     }
 };
 }
