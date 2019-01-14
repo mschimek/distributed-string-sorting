@@ -8,6 +8,22 @@
 #include <tlx/cmdline_parser.hpp>
 
 
+struct GeneratedStringsArgs{
+  size_t numOfStrings = 0;
+  size_t stringLength = 0;
+  size_t minStringLength = 0;
+  size_t maxStringLength = 0;
+  double dToNRatio = 0.5;
+};
+
+template <typename StringGenerator, typename StringSet>
+StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
+  if constexpr(std::is_same_v<StringGenerator, dss_schimek::DNRatioGenerator<StringSet>>) {
+    return StringGenerator(args.numOfStrings, args.stringLength, args.dToNRatio); 
+  }
+  return StringGenerator(args.numOfStrings);
+}
+
 
 
 template <typename StringSet, typename StringGenerator, 
@@ -15,7 +31,7 @@ template <typename StringSet, typename StringGenerator,
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
          typename Timer>
-           void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling,
+           void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, const GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
              using namespace dss_schimek;
@@ -34,24 +50,26 @@ template <typename StringSet, typename StringGenerator,
 
              dss_schimek::Timer timer(prefix);
 
-             if (strongScaling)
-               numOfStrings /= env.size();
-             StringGenerator rand_container(numOfStrings);
+             if (!strongScaling)
+               numOfStrings *= env.size();
+             
+             StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
              StringLcpPtr rand_string_ptr = 
-               rand_container.make_string_lcp_ptr();
+               generatedContainer.make_string_lcp_ptr();
              //dss_schimek::mpi::execute_in_order([&]() {
              //    env.barrier();
              //    std::cout << "rank: " << env.rank() << std::endl;
              //    multikey_quicksort(rand_container.make_string_lcp_ptr(), 0, 0);
              //    rand_container.make_string_set().print();
              //    });
-             const size_t numGeneratedChars = rand_container.char_size();
+             const size_t numGeneratedChars = generatedContainer.char_size();
+             const size_t numGeneratedStrings = generatedContainer.size();
 
              timer.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder, Timer>;
              DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
              StringLcpContainer<StringSet> sorted_string_cont = 
-               sorter.sort(rand_string_ptr, std::move(rand_container), timer);
+               sorter.sort(rand_string_ptr, std::move(generatedContainer), timer);
 
              timer.end("sorting_overall");
 
@@ -70,7 +88,7 @@ template <typename StringSet, typename StringGenerator,
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
                  numGeneratedChars,
                  sorted_string_cont.char_size(),
-                 numOfStrings,
+                 numGeneratedStrings,
                  sorted_string_cont.size()); 
              
              if (!is_complete_and_sorted) {
@@ -93,10 +111,11 @@ namespace PolicyEnums {
       default: std::abort();
     }
   }
-  enum class StringGenerator {skewedRandomStringLcpContainer = 0};
+  enum class StringGenerator {skewedRandomStringLcpContainer = 0, DNRatioGenerator = 1};
   StringGenerator getStringGenerator(size_t i) {
     switch(i) {
       case 0 : return StringGenerator::skewedRandomStringLcpContainer;
+      case 1 : return StringGenerator::DNRatioGenerator;
       default: std::abort();
     }
   }
@@ -172,6 +191,7 @@ struct SorterArgs {
   bool checkInput;
   size_t iteration;
   bool strongScaling;
+  GeneratedStringsArgs generatorArgs;
 };
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -182,13 +202,13 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling);
+                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    execute_sorter<StringSet,
                   StringGenerator,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling);
+                  EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    }
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
@@ -276,8 +296,15 @@ template<typename StringSet>
 void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
   switch(key.stringGenerator_) {
     case PolicyEnums::StringGenerator::skewedRandomStringLcpContainer : 
-      using StringGenerator = dss_schimek::SkewedRandomStringLcpContainer<StringSet>; 
-      thirdArg<StringSet, StringGenerator>(key, args); break;
+      {
+        using StringGenerator = dss_schimek::SkewedRandomStringLcpContainer<StringSet>; 
+        thirdArg<StringSet, StringGenerator>(key, args); break;
+      }
+    case PolicyEnums::StringGenerator::DNRatioGenerator : 
+      {
+        using StringGenerator = dss_schimek::DNRatioGenerator<StringSet>; 
+        thirdArg<StringSet, StringGenerator>(key, args); break;
+      }
   };
 }
 
@@ -286,7 +313,7 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringSet::UCharLengthStringSet : 
       secondArg<UCharLengthStringSet>(key, args); break;
     case PolicyEnums::StringSet::UCharStringSet : 
-      secondArg<UCharStringSet>(key, args); 
+      //secondArg<UCharStringSet>(key, args); 
       break;
   };
 }
@@ -298,25 +325,29 @@ int main(std::int32_t argc, char const *argv[]) {
   dsss::mpi::environment env;
 
   bool check = true;
-  bool skewedInput = false;
+  unsigned int generator = 0;
   bool strongScaling = false;
   unsigned int sampleStringsPolicy = static_cast<int>(PolicyEnums::SampleString::numStrings);
   unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderMemCpy);
   unsigned int mpiRoutineAllToAll = static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
   unsigned int numberOfStrings = 100000;
   unsigned int numberOfIterations = 5;
+  unsigned int stringLength = 50;
+  double dToNRatio = 0.5;
 
   tlx::CmdlineParser cp;
   cp.set_description("a distributed sorter");
   cp.set_author("Matthias Schimek");
+  cp.add_double('r', "dToNRatio", dToNRatio, "D/N ratio");
   cp.add_unsigned('s', "size", numberOfStrings, " number of strings to be generated");
   cp.add_unsigned('p', "sampleStringsPolicy", sampleStringsPolicy, "0 = NumStrings, 1 = NumChars");
   cp.add_unsigned('b', "byteEncoder", byteEncoder, "emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4, emptyLcpByteEncoderMemCpy = 5");
   cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll, "small = 0, directMessages = 1, combined = 2");
   cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
   cp.add_flag('c', "checkSortedness", check, " ");
-  cp.add_flag('k', "skewed", skewedInput, " ");
+  cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
   cp.add_flag('x', "strongScaling", strongScaling, " ");
+  cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
 
   if (!cp.process(argc, argv)) {
     return -1;
@@ -324,13 +355,16 @@ int main(std::int32_t argc, char const *argv[]) {
   
   PolicyEnums::CombinationKey key(
       PolicyEnums::StringSet::UCharLengthStringSet, 
-      PolicyEnums::StringGenerator::skewedRandomStringLcpContainer,
+      PolicyEnums::getStringGenerator(generator),
       PolicyEnums::getSampleString(sampleStringsPolicy),
       PolicyEnums::getMPIRoutineAllToAll(mpiRoutineAllToAll),
       PolicyEnums::getByteEncoder(byteEncoder));
-  
+  GeneratedStringsArgs generatorArgs;
+  generatorArgs.numOfStrings = numberOfStrings;
+  generatorArgs.stringLength = stringLength;
+  generatorArgs.dToNRatio = dToNRatio; 
   for (size_t i = 0; i < numberOfIterations; ++i) {
-    SorterArgs args =  {numberOfStrings, check, i, strongScaling};
+    SorterArgs args =  {numberOfStrings, check, i, strongScaling, generatorArgs};
     firstArg(key, args);
   }
   env.finalize();

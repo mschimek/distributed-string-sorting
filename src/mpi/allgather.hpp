@@ -18,7 +18,20 @@
 #include "util/string_set.hpp"
 
 namespace dsss::mpi {
+template <typename DataType>
+inline DataType broadcast(DataType& send_data,
+  environment env = environment()) {
 
+  data_type_mapper<DataType> dtm;
+  DataType recvElem = send_data;
+  MPI_Bcast(
+    &recvElem,
+    1,
+    dtm.get_mpi_type(),
+    0,
+    env.communicator());
+  return recvElem;
+}
 template <typename DataType>
 inline std::vector<DataType> allgather(DataType& send_data,
   environment env = environment()) {
