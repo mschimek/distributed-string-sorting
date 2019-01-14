@@ -34,7 +34,7 @@ scatterPlot <- function(data_, operations_, type_, pointSize, title) {
 plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
   plot <- plot + geom_point(mapping = aes(x = operation, y = value, colour = ByteEncoder),
                             size = pointSize, position = "jitter")
-  plot <- plot + facet_wrap(~ MPIAllToAllRoutine)
+  plot <- plot + facet_wrap(~ ByteEncoder)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title)
   return(plot)
@@ -108,7 +108,7 @@ scatterPlotOnOperationProcsOnXAxis <- function(data_, operation_, pointSize, tit
 scatterPlotOnOperationProcsOnXAxisType <- function(data_, operation_, type_, pointSize, title) {
   plot <- ggplot(data = filter(data_, operation == operation_, type %in% type_))
   plot <- plot + geom_point(mapping = aes(x = numberProcessors, y = value, colour = type),
-                            size = pointSize, position = "jitter"
+                            size = pointSize, position = "jitter")
 
   plot <- plot + facet_wrap(~ samplePolicy)
   plot <- plot + ggtitle(title)
@@ -125,22 +125,42 @@ scatterPlotAllProcessors <- function(data_, operations_, type_) {
   }
 }
 
+barPlot <- function(data_, operations_, type_, size_, title = " ") {
+  filteredData <- filter(data_, !(operation %in% operations_), type == type_, size == size_)
+  group <- group_by(filteredData, numberProcessors, samplePolicy, ByteEncoder, size, operation, type)
+  valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
+  valueMean$size <- as.factor(valueMean$size)
+  plot <- ggplot(data = valueMean)
+  plot <- plot + geom_bar(mapping = aes(x = ByteEncoder, y = value, fill = operation), stat="identity")
+  plot <- plot + facet_wrap(~ numberProcessors, labeller = label_both, nrow=1)
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  plot <- plot + ggtitle(title)
+  return(plot)
+}
+
 pureDirName <- str_sub(args, start = 1, end = -2)
-pdf(paste(pureDirName, "_plots_alltoall.pdf",sep=""), width=10, height=5)
+pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
 operations <- c("all_to_all_strings")
-data <- allDataWithoutIt1_EmptyTimer
+data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
 scatterPlotAllProcessors(data, operations, "avgTime")
-scatterPlotAllProcessors(data, operations, "maxTime")
-scatterPlotAllProcessors(data, operations, "avgLoss")
-scatterPlotAllProcessors(data, operations, "maxLoss")
+#scatterPlotAllProcessors(data, operations, "maxTime")
+#scatterPlotAllProcessors(data, operations, "avgLoss")
+#scatterPlotAllProcessors(data, operations, "maxLoss")
 
 operations <- c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi")
-data <- allDataWithoutIt1_Timer
+data <- filter(allDataWithoutIt1_Timer, size == 1000000)
 scatterPlotAllProcessors(data, operations, "avgTime")
-scatterPlotAllProcessors(data, operations, "maxTime")
-scatterPlotAllProcessors(data, operations, "avgLoss")
-scatterPlotAllProcessors(data, operations, "maxLoss")
+#scatterPlotAllProcessors(data, operations, "maxTime")
+#scatterPlotAllProcessors(data, operations, "avgLoss")
+#scatterPlotAllProcessors(data, operations, "maxLoss")
+
+operations <- c("prefix_decompression")
+data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
+scatterPlotAllProcessors(data, operations, "avgTime")
+
+barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
+barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
 #
 #plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
 #plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")

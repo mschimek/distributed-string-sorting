@@ -26,3 +26,6 @@ target_link_libraries(send_test ${MPI_LIBRARIES} tlx)
 
 add_executable(lcp_compression lcp_compression.cpp ../mpi/environment.cpp)
 target_link_libraries(lcp_compression ${MPI_LIBRARIES} tlx)
+
+add_executable(generator generator.cpp ../mpi/environment.cpp)
+target_link_libraries(generator ${MPI_LIBRARIES} tlx)

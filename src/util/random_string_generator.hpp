@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <limits>
 #include <random>
+#include <cmath>
+#include <algorithm>
 
 #include "util/indexed_string_set.hpp"
 #include "util/string.hpp"
@@ -49,6 +51,88 @@ namespace dss_schimek {
 
     static std::string getName() {
       return "PrefixStringGenerator";
+    }
+  };
+  
+  template <typename StringSet>
+  class DNRationGeneratorStringLcpContainer : public StringLcpContainer<StringSet>
+  {
+    using Char = typename StringSet::Char;
+    public:
+    std::vector<unsigned char> nextChar(const std::vector<unsigned char>& lastChar, const size_t min, const size_t max) {
+      std::vector<unsigned char> nextChar(lastChar.size(), min);
+      int64_t i = lastChar.size() - 1;
+      for (; i >= 0; --i) {
+        if (lastChar[i] < max) {
+          nextChar[i] = lastChar[i] + 1;
+          std::copy(lastChar.begin(), lastChar.begin() + i, nextChar.begin());
+          break;
+        }
+      }
+      return nextChar;
+    }
+
+    std::pair<std::vector<unsigned char>, size_t> rawStrings(size_t numStrings, size_t desiredStringLength, double dToN) {
+      std::vector<unsigned char> rawStrings;
+      const size_t minInternChar = 65;
+      const size_t maxInternChar = 90;
+      const size_t numberInternChars = maxInternChar - minInternChar + 1;
+      const size_t charLength = std::ceil(0.5 * std::log(numStrings) / log(numberInternChars));
+      std::cout << "charLength: " << charLength << std::endl;
+      const size_t commonPrefixLength = std::max(static_cast<int64_t>(desiredStringLength * dToN - 2 * charLength), 0l);
+      std::cout << "commonPrefixLength: " << commonPrefixLength << std::endl;
+      const size_t paddingLength = std::max(static_cast<int64_t>(desiredStringLength - (commonPrefixLength + 2 * charLength)), 0l);
+      std::cout << "paddingLength: " << paddingLength << std::endl;
+      const size_t stringLength = commonPrefixLength + 2 * charLength + paddingLength;
+      const size_t wrap = std::pow(static_cast<double>(maxInternChar - minInternChar + 1), charLength);
+      std::cout << "wrap: " << wrap << std::endl;
+      std::vector<unsigned char> curFirstChar(charLength, minInternChar);
+      std::vector<unsigned char> curSecondChar(charLength, minInternChar);
+
+      for (size_t i = 0; i < numStrings; ++i) {
+        for (size_t j = 0; j < commonPrefixLength; ++j)
+          rawStrings.emplace_back(maxInternChar);
+
+        for (size_t j = 0; j < charLength; ++j) 
+          rawStrings.emplace_back(curFirstChar[j]);
+        for (size_t j = 0; j < charLength; ++j) 
+          rawStrings.emplace_back(curSecondChar[j]);
+
+        for (size_t j = 0; j < paddingLength; ++j)
+          rawStrings.emplace_back(maxInternChar);
+        rawStrings.emplace_back(0);
+
+        if ((i + 1)% wrap == 0)
+          curFirstChar = nextChar(curFirstChar, minInternChar, maxInternChar);
+        curSecondChar = nextChar(curSecondChar, minInternChar, maxInternChar);
+      }
+      std::cout << "finished call" << std::endl;
+      return make_pair(rawStrings, stringLength);
+    }
+
+    public:
+    DNRationGeneratorStringLcpContainer(const size_t size,
+          const size_t min_length = 10,
+          const size_t max_length = 20)
+    {
+      std::vector<Char> random_raw_string_data;
+      std::random_device rand_seed;
+      std::mt19937 rand_gen(rand_seed());
+      std::uniform_int_distribution<Char> char_dis(65, 90);
+      
+      std::uniform_int_distribution<size_t> length_dis(min_length, max_length);
+      random_raw_string_data.reserve(size + 1);
+      for (size_t i = 0; i < size; ++i) {
+        size_t length = length_dis(rand_gen);
+        for (size_t j = 0; j < length; ++j)
+          random_raw_string_data.emplace_back(char_dis(rand_gen));
+        random_raw_string_data.emplace_back(Char(0));
+      }
+      this->update(std::move(random_raw_string_data));
+    }
+
+    static std::string getName() {
+      return "DNRationGeneratorStringLcpContainer";
     }
   };
 
