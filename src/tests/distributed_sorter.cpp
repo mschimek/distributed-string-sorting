@@ -40,6 +40,8 @@ template <typename StringSet, typename StringGenerator,
                " numberProcessors=" + std::to_string(env.size()) +
                " samplePolicy=" + SampleSplittersPolicy::getName() +
                " StringGenerator=" + StringGenerator::getName() +
+               " dToNRatio=" + std::to_string(genStringArgs.dToNRatio) + 
+               " stringLength=" + std::to_string(genStringArgs.stringLength) + 
                " MPIAllToAllRoutine=" + MPIAllToAllRoutine::getName() + 
                " ByteEncoder=" + ByteEncoder::getName() + 
                " Timer=" + Timer::getName() + 
