@@ -80,14 +80,10 @@ namespace dss_schimek {
       const size_t maxInternChar = 90;
       const size_t numberInternChars = maxInternChar - minInternChar + 1;
       const size_t charLength = std::ceil(0.5 * std::log(numStrings) / log(numberInternChars));
-      std::cout << "charLength: " << charLength << std::endl;
       const size_t commonPrefixLength = std::max(static_cast<int64_t>(desiredStringLength * dToN - 2 * charLength), 0l);
-      std::cout << "commonPrefixLength: " << commonPrefixLength << std::endl;
       const size_t paddingLength = std::max(static_cast<int64_t>(desiredStringLength - (commonPrefixLength + 2 * charLength)), 0l);
-      std::cout << "paddingLength: " << paddingLength << std::endl;
       const size_t stringLength = commonPrefixLength + 2 * charLength + paddingLength;
       const size_t wrap = std::pow(static_cast<double>(maxInternChar - minInternChar + 1), charLength);
-      std::cout << "wrap: " << wrap << std::endl;
 
       std::mt19937 randGen(getSameSeedGlobally());
       std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
