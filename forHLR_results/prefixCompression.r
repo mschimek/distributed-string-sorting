@@ -23,6 +23,7 @@ POINTSIZE = 0.1
 
 filename = paste(args[[1]], "/data.txt", sep="")
 allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+allData <- filter(allData, numberProcesso)
 allData$numberProcessors <- as.factor(allData$numberProcessors)
 allDataWithoutIt1_Timer <- filter(allData, iteration != 0, Timer == "Timer")
 allDataWithoutIt1_EmptyTimer <- filter(allData, iteration != 0, Timer == "EmptyTimer")
@@ -127,12 +128,13 @@ scatterPlotAllProcessors <- function(data_, operations_, type_) {
 
 barPlot <- function(data_, operations_, type_, size_, title = " ") {
   filteredData <- filter(data_, !(operation %in% operations_), type == type_, size == size_)
-  group <- group_by(filteredData, numberProcessors, samplePolicy, ByteEncoder, size, operation, type)
+  filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
+  group <- group_by(filteredData, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type)
   valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
   valueMean$size <- as.factor(valueMean$size)
   plot <- ggplot(data = valueMean)
   plot <- plot + geom_bar(mapping = aes(x = ByteEncoder, y = value, fill = operation), stat="identity")
-  plot <- plot + facet_wrap(~ numberProcessors, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(~ dToNRatio, labeller = label_both, nrow=1)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title)
   return(plot)
@@ -159,9 +161,9 @@ operations <- c("prefix_decompression")
 data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
 scatterPlotAllProcessors(data, operations, "avgTime")
 
-barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
-barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
-#
+barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, numberProcessors==2), operations_ = c("sorting_overall"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
+barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, numberProcessors==2), operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
+barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, numberProcessors==2), operations_ = c("sorting_overall", "prefix_decompression", "sort_locally"), type_ = "avgTime", size_ = 1000000, title = "overall Time") #
 #plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
 #plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
 #plot3 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
