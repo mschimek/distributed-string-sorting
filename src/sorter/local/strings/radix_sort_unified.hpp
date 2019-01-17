@@ -101,8 +101,6 @@ radixsort_CE0(const StringShadowPtr& str_shadow_ptr, size_t depth, size_t memory
               // done
             }
             else if (bkt_size < g_inssort_threshold) {
-              //std::cout << "insetion_sort rs.pos: " << rs.pos << " bkt_size: " << bkt_size << std::endl;
-              //std::cout << "lcp_adress: " << rs.strptr.lcp_array() << " original array: " << str_shadow_ptr.lcp_array() << std::endl;
               dss_schimek::insertion_sort(
                     rs.strptr.flip(rs.pos, bkt_size).copy_back(),
                     depth + radixstack.size(),
@@ -352,14 +350,8 @@ struct RadixStep_CE3_lcp {
         
         while(second < RADIX)
         {
-          if ((first >> 8) == (second >> 8))
-          {
-              strptr.set_lcp((bkt_index[first] - bkt_index[0]) + bkt_size[first], depth + 1);
-          }
-          else{
-              strptr.set_lcp((bkt_index[first] - bkt_index[0]) + bkt_size[first], depth);
-          }
-
+          size_t bothCharsEqual = (first >> 8) == (second >> 8);
+          strptr.set_lcp((bkt_index[first] - bkt_index[0]) + bkt_size[first], depth + bothCharsEqual);
           first = second;
           second = get_next_non_empty_bucket_index(bkt_size, RADIX, second + 1);
         }
@@ -375,6 +367,7 @@ struct RadixStep_CE3_lcp {
 
         // copy back finished strings in zeroth bucket
         strptr.flip(0, pos).copy_back();
+        // set lcp values of first bucket
         for(size_t i = 1; i < pos; ++i)
           strptr.set_lcp(i, depth); 
 
@@ -541,6 +534,7 @@ struct RadixStep_CI2_lcp {
 
         pos = ss.begin() + bkt_size[0];
         idx = 0; // will increment to 1 on first process, bkt 0 is not sorted further
+        // set lcp values of first bucket
         for(size_t i = 1; i < bkt_size[0]; ++i)
           strptr.set_lcp(i, depth); 
     }
@@ -669,11 +663,8 @@ struct RadixStep_CI3_lcp {
         
         while(second < RADIX)
         {
-          if ((first >> 8) == (second >> 8))
-            strptr.set_lcp(bkt[first], depth + 1); 
-          else
-            strptr.set_lcp(bkt[first], depth); 
-
+          size_t bothCharsEqual = (first >> 8) == (second >> 8);
+          strptr.set_lcp(bkt[first], depth + bothCharsEqual); 
           first = second;
           second = get_next_non_empty_bucket_index(bkt_size, RADIX, second + 1);
         }
@@ -695,6 +686,7 @@ struct RadixStep_CI3_lcp {
         // will increment to 1 on first process, bkt 0 is not sorted further
         idx = 0;
         pos = ss.begin() + bkt_size[0];
+        // set lcp values of first bucket
         for(size_t i = 1; i < bkt_size[0]; ++i)
           strptr.set_lcp(i, depth);
     }

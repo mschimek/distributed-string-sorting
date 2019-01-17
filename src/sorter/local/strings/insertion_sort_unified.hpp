@@ -59,6 +59,8 @@
 
           ss[j] = std::move(tmp);
         }
+        
+        // there should be a better solution but then strptr.lcp(i) cannot result in an abort() if strptr is not an StringLcpPtr
         n = ss.size();
         size_t index = 1;
         for (Iterator i = begin + 1; TLX_UNLIKELY(--n != 0); ++i)

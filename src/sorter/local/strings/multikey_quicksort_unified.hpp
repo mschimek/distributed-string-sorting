@@ -115,9 +115,8 @@ static inline void multikey_quicksort(
         vec_swap<StringSet>(pb, pn - r, r);
         if (!pivot)
         {
-          
           for (auto it =  pe_start_index + 1; it < pe_end_index; ++it)
-            strptr.set_lcp(it , depth);//*it = depth; 
+            strptr.set_lcp(it , depth);
         }
     }
     r = pb - pa;
