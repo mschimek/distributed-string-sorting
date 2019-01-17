@@ -31,7 +31,7 @@ template <typename StringSet, typename StringGenerator,
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
          typename Timer>
-           void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, const GeneratedStringsArgs genStringArgs,
+           void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
              using namespace dss_schimek;
@@ -53,7 +53,7 @@ template <typename StringSet, typename StringGenerator,
              dss_schimek::Timer timer(prefix);
 
              if (!strongScaling)
-               numOfStrings *= env.size();
+                genStringArgs.numOfStrings *= env.size();
              
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
              StringLcpPtr rand_string_ptr = 
@@ -323,8 +323,10 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
 int main(std::int32_t argc, char const *argv[]) {
   using namespace dss_schimek;
   using StringSet = UCharLengthStringSet;
+  std::cout << "start program" << std::endl;
 
   dsss::mpi::environment env;
+  env.barrier();
 
   bool check = true;
   unsigned int generator = 0;
