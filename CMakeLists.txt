@@ -22,7 +22,7 @@ option(DSSS_OVERSUBSCRIBE
   This may be necessary for environments with less than four cores." OFF)
 
 # needs to be set on fedora?
-set(CMAKE_PREFIX_PATH /usr/lib64/openmpi)
+#set(CMAKE_PREFIX_PATH /usr/lib64/openmpi)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
