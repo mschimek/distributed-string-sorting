@@ -24,6 +24,7 @@ namespace dss_schimek {
           dsss::mpi::environment env = dsss::mpi::environment()) {}
       void end(const std::string& description,
           dsss::mpi::environment env = dsss::mpi::environment()) {}
+      void add(const std::string& , size_t) {}
 
   };
   class Timer {

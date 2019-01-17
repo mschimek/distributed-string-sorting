@@ -592,6 +592,8 @@ namespace dsss::mpi {
         timer.start("all_to_all_strings_mpi", env);
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
         timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", totalNumberSendBytes);
+
         timer.start("all_to_all_strings_read", env);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
         timer.end("all_to_all_strings_read", env);
@@ -641,6 +643,7 @@ namespace dsss::mpi {
         receive_buffer_char = AllToAllPolicy::alltoallv(send_buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts, env);
         timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", send_data.char_size() + send_data.size());
 
         // no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
@@ -692,6 +695,7 @@ namespace dsss::mpi {
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
         timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", send_data.char_size() + send_data.size());
 
         // no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
@@ -732,7 +736,8 @@ namespace dsss::mpi {
         }
         const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
 
-        std::vector<unsigned char> buffer(send_data.char_size() - L);
+        const size_t numCharsToSend = send_data.char_size() - L;
+        std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
           size_t totalNumWrittenChars = 0;
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
@@ -752,6 +757,7 @@ namespace dsss::mpi {
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
         timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", numCharsToSend + send_data.lcps().size());
 
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
@@ -821,6 +827,8 @@ namespace dsss::mpi {
         timer.start("all_to_all_strings_mpi", env);
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
         timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", totalNumberSendBytes);
+
         timer.start("all_to_all_strings_read", env);
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
         timer.end("all_to_all_strings_read", env);
