@@ -6,6 +6,7 @@
 
 #include "sorter/local/strings/insertion_sort_unified.hpp"
 #include "sorter/local/strings/multikey_quicksort_unified.hpp"
+#include "sorter/local/strings/radix_sort_unified.hpp"
 
 #include "mpi/alltoall.hpp"
 #include "mpi/allgather.hpp"
@@ -388,7 +389,7 @@ namespace dss_schimek {
           
           // sort locally
           timer.start("sort_locally");
-          dss_schimek::multikey_quicksort(local_string_ptr, 0, 0);
+          dss_schimek::radixsort_CE3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
           //size_t lcp_sum = 0;

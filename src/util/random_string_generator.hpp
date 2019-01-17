@@ -74,6 +74,42 @@ namespace dss_schimek {
       return nextChar;
     }
 
+    std::tuple<std::vector<unsigned char>, size_t, size_t> getRawStringsTimoStyle(size_t numStrings, size_t desiredStringLength, double dToN, dsss::mpi::environment env = dsss::mpi::environment()) {
+      const size_t minInternChar = 65;
+      const size_t maxInternChar = 90;
+      const size_t numberInternChars = maxInternChar - minInternChar + 1;
+      const size_t k = std::max(desiredStringLength * dToN, std::ceil(std::log(numStrings) / std::log(numberInternChars)));
+      const size_t stringLength = std::max(desiredStringLength, k);
+      const size_t charLength = std::ceil(0.5 * std::log(numStrings) / log(numberInternChars));
+      std::vector<unsigned char> rawStrings(numStrings * (stringLength + 1), minInternChar);
+
+      std::mt19937 randGen(getSameSeedGlobally());
+      std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
+
+      size_t numGenStrings = 0;
+      size_t curOffset = 0;
+      for (size_t i = 0; i < numStrings; ++i) {
+        size_t PEIndex = dist(randGen);
+        if (PEIndex == env.rank()) { 
+          // only create your own strings
+          ++numGenStrings; 
+          size_t curIndex = i;
+          for (size_t j = 0; j < k; ++j) {
+            if (curIndex == 0)
+              break;
+            rawStrings[curOffset + k - 1 - j] = minInternChar + (curIndex % numberInternChars);
+            curIndex /= numberInternChars;
+          } 
+          rawStrings[curOffset + stringLength] = 0;
+          curOffset += stringLength + 1;
+        }
+      }
+      rawStrings.resize(curOffset);
+      std::cout << "rawStrings: " << rawStrings.size() << std::endl;
+
+      return make_tuple(rawStrings, numGenStrings, stringLength);
+    }
+
     std::tuple<std::vector<unsigned char>, size_t, size_t> getRawStrings(size_t numStrings, size_t desiredStringLength, double dToN, dsss::mpi::environment env = dsss::mpi::environment()) {
       std::vector<unsigned char> rawStrings;
       const size_t minInternChar = 65;
@@ -132,10 +168,11 @@ namespace dss_schimek {
       size_t genStrings = 0;
       size_t genStringLength = 0; 
       std::vector<Char> rawStrings;
-      std::tie(rawStrings, genStrings, genStringLength)= getRawStrings(size, stringLength, dToN); 
+      std::tie(rawStrings, genStrings, genStringLength)= getRawStringsTimoStyle(size, stringLength, dToN); 
       this->update(std::move(rawStrings));
       String* begin = this->strings(); 
       std::random_shuffle(begin, begin + genStrings);
+      std::cout << "chars: " << this->char_size() << std::endl;
     }
 
     static std::string getName() {

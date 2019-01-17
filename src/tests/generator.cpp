@@ -5,7 +5,7 @@ int main() {
   using namespace dss_schimek;
   dsss::mpi::environment env;
 
-  DNRationGeneratorStringLcpContainer<UCharLengthStringSet> generator(19);
+  DNRatioGenerator<UCharLengthStringSet> generator(19);
   std::vector<unsigned char> initialChar{'A', 'A', 0};
 
   //std::vector<unsigned char> curChar(initialChar);
@@ -29,7 +29,7 @@ int main() {
         offset += stringLength + 1;
         }
         });
-  DNRatioGenerator<UCharLengthStringSet> gen(200,60, 0.2);
+  DNRatioGenerator<UCharLengthStringSet> gen(100,20, 0.0);
   UCharLengthStringSet ss = gen.make_string_set();
   dss_schimek::mpi::execute_in_order([&] () {
       std::cout << "rank: " << env.rank() << std::endl;
