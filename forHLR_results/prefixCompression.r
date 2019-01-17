@@ -173,6 +173,13 @@ numBytesSent <- function(data_) {
 pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
+operations <- c("allgather_splitters")
+data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
+scatterPlotAllProcessors(data, operations, "avgTime")
+scatterPlotAllProcessors(data, operations, "minTime")
+scatterPlotAllProcessors(data, operations, "maxTime")
+scatterPlotAllProcessors(data, operations, "avgLoss")
+
 operations <- c("all_to_all_strings")
 data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
 scatterPlotAllProcessors(data, operations, "avgTime")

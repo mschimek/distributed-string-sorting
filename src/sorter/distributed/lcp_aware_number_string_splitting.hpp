@@ -406,10 +406,14 @@ namespace dss_schimek {
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample_splitters");
 
+          asm volatile("" ::: "memory");
+          timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
           timer.start("allgather_splitters");
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
           timer.end("allgather_splitters");
+          asm volatile("" ::: "memory");
+           
 
           timer.start("choose_splitters");
           dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
