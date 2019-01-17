@@ -170,6 +170,22 @@ numBytesSent <- function(data_) {
   return(plot)
 }
 
+numAllgatherBytesSent <- function(data_) {
+  data_ = filter(data_, operation == "allgather_splitters_bytes_sent", size == 1000000)
+  data_$dToNRatio <- as.factor(data_$dToNRatio)
+
+  group <- group_by(data_, numberProcessors, samplePolicy, size, dToNRatio, ByteEncoder)
+  valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
+  valueSum <- summarise(group, value = sum(value, rm.na = TRUE))
+  print(valueSum)
+
+  plot <- ggplot(data = valueSum)
+  plot <- plot + geom_point(mapping = aes(x = ByteEncoder, y = value), size = 0.1, position = "jitter")
+  plot <- plot + facet_wrap(dToNRatio ~ numberProcessors)
+  plot <- plot + ggtitle("sum bytes sent")
+  return(plot)
+}
+
 pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
@@ -203,6 +219,7 @@ barPlot(data_ = allDataWithoutIt1_EmptyTimer,  operations_ = c("sorting_overall"
 barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally"), type_ = "avgTime", size_ = 1000000, title = "overall Time") #
 
 numBytesSent(allDataWithoutIt1_Timer)
+numAllgatherBytesSent(allDataWithoutIt1_EmptyTimer)
 #plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
 #plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
 #plot3 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")

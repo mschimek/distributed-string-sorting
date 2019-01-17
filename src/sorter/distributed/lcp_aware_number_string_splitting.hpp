@@ -406,6 +406,10 @@ namespace dss_schimek {
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample_splitters");
 
+          env.barrier();
+          volatile int i = 0; 
+          std::cout << "i = " << i << std::endl;
+
           asm volatile("" ::: "memory");
           timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
           timer.start("allgather_splitters");
@@ -413,6 +417,12 @@ namespace dss_schimek {
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
           timer.end("allgather_splitters");
           asm volatile("" ::: "memory");
+
+          i += splitters.size();
+          env.barrier();
+          std::cout << "i = " << i << std::endl;
+
+
            
 
           timer.start("choose_splitters");
