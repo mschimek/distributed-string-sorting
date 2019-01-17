@@ -23,7 +23,6 @@ POINTSIZE = 0.1
 
 filename = paste(args[[1]], "/data.txt", sep="")
 allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
-allData <- filter(allData, numberProcesso)
 allData$numberProcessors <- as.factor(allData$numberProcessors)
 allDataWithoutIt1_Timer <- filter(allData, iteration != 0, Timer == "Timer")
 allDataWithoutIt1_EmptyTimer <- filter(allData, iteration != 0, Timer == "EmptyTimer")
@@ -35,8 +34,10 @@ scatterPlot <- function(data_, operations_, type_, pointSize, title) {
 plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
   plot <- plot + geom_point(mapping = aes(x = operation, y = value, colour = ByteEncoder),
                             size = pointSize, position = "jitter")
-  plot <- plot + facet_wrap(~ ByteEncoder)
-  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  plot <- plot + facet_wrap(~ dToNRatio )
+  plot <- plot + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+                       legend.text = element_text(size = 5),
+                       legend.title = element_text(size =  6))
   plot <- plot + ggtitle(title)
   return(plot)
 }

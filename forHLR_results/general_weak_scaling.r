@@ -122,7 +122,6 @@ numChars <- function(data_) {
     for (i in myvar) {
       distance <- distance + abs(mean - i)
     }
-    print(distance)
     distance
   }
   group <- group_by(data_, numberProcessors, samplePolicy, size, operation, type, iteration)
@@ -137,7 +136,7 @@ numChars <- function(data_) {
   plot <- ggplot(data = valueBlaBla)
   plot <- plot + geom_point(mapping = aes(x = samplePolicy, y = value), size = 0.1, position = "jitter")
   plot <- plot + facet_wrap(~ numberProcessors)
-  plot <- plot + ggtitle("number received chars")
+  plot <- plot + ggtitle("Average distance to mean per iteration")
   return(plot)
 }
 
