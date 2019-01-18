@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <type_traits>
+#include <random>
+
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
 #include "strings/stringtools.hpp"
@@ -407,7 +409,21 @@ namespace dss_schimek {
           timer.end("sample_splitters");
 
           env.barrier();
-          volatile int i = 0; 
+          std::mt19937 gen;
+          std::random_device rand;
+          gen.seed(rand());
+          std::vector<unsigned char> vec;
+          std::uniform_int_distribution<> dis(1, 240);
+          for (size_t i = 0; i < raw_splitters.size(); ++i) {
+            vec.push_back(dis(gen)); 
+          }
+          timer.start("allgather_test");
+          std::vector<unsigned char> test =
+            dss_schimek::mpi::allgather_strings(vec, env);
+          timer.end("allgather_test");
+          volatile int i = test[0]; 
+          std::cout << test[0] << std::endl;
+
           std::cout << "i = " << i << std::endl;
 
           asm volatile("" ::: "memory");
