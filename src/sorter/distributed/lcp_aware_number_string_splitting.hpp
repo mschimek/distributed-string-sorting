@@ -420,13 +420,19 @@ namespace dss_schimek {
           for (size_t i = 0; i < raw_splitters.size(); ++i) {
             vec.push_back(dis(gen)); 
           }
-          timer.start("allgather_test_before");
+          timer.start("allgatherv_test_before");
           std::vector<unsigned char> test =
             dss_schimek::mpi::allgather_strings(vec, env);
-          timer.end("allgather_test_before");
-          volatile int i = test[0]; 
-          
+          timer.end("allgatherv_test_before");
           std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
+          volatile int i = test[0]; 
+
+          timer.start("allgather_test_before");
+          test =
+            dss_schimek::mpi::allgather(vec[0], env);
+          timer.end("allgather_test_before");
+          std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
+
 
           std::cout << "i = " << i << std::endl;
 
@@ -452,11 +458,19 @@ namespace dss_schimek {
           for (size_t i = 0; i < raw_splitters.size(); ++i) {
             vec.push_back(dis(gen)); 
           }
-          timer.start("allgather_test_after");
+          timer.start("allgatherv_test_after");
           test =
             dss_schimek::mpi::allgather_strings(vec, env);
-          timer.end("allgather_test_after");
+          timer.end("allgatherv_test_after");
           i = test[0]; 
+          std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
+          
+          
+
+          timer.start("allgather_test_after");
+          test =
+            dss_schimek::mpi::allgather(vec[0], env);
+          timer.end("allgather_test_after");
           std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
 
           std::cout << "i = " << i << std::endl;
