@@ -425,7 +425,8 @@ namespace dss_schimek {
             dss_schimek::mpi::allgather_strings(vec, env);
           timer.end("allgather_test_before");
           volatile int i = test[0]; 
-          std::cout << test[0] << std::endl;
+          
+          std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
 
           std::cout << "i = " << i << std::endl;
 
@@ -456,7 +457,7 @@ namespace dss_schimek {
             dss_schimek::mpi::allgather_strings(vec, env);
           timer.end("allgather_test_after");
           i = test[0]; 
-          std::cout << test[0] << std::endl;
+          std::cout << std::accumulate(test.begin(), test.end(), 0) << std::endl;
 
           std::cout << "i = " << i << std::endl;
 
