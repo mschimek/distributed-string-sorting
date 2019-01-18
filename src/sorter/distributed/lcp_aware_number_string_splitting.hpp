@@ -408,23 +408,32 @@ namespace dss_schimek {
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample_splitters");
 
+          /***
+           * TEST
+           */
           env.barrier();
           std::mt19937 gen;
           std::random_device rand;
           gen.seed(rand());
           std::vector<unsigned char> vec;
-          std::uniform_int_distribution<> dis(1, 240);
+          std::uniform_int_distribution<> dis(65, 80);
           for (size_t i = 0; i < raw_splitters.size(); ++i) {
             vec.push_back(dis(gen)); 
           }
-          timer.start("allgather_test");
+          timer.start("allgather_test_before");
           std::vector<unsigned char> test =
             dss_schimek::mpi::allgather_strings(vec, env);
-          timer.end("allgather_test");
+          timer.end("allgather_test_before");
           volatile int i = test[0]; 
           std::cout << test[0] << std::endl;
 
           std::cout << "i = " << i << std::endl;
+
+          /*
+           *
+           * TEST ende
+           *
+           */
 
           asm volatile("" ::: "memory");
           timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
@@ -434,8 +443,21 @@ namespace dss_schimek {
           timer.end("allgather_splitters");
           asm volatile("" ::: "memory");
 
+          
           i += splitters.size();
           env.barrier();
+          std::cout << "i = " << i << std::endl;
+          vec.clear();
+          for (size_t i = 0; i < raw_splitters.size(); ++i) {
+            vec.push_back(dis(gen)); 
+          }
+          timer.start("allgather_test_after");
+          test =
+            dss_schimek::mpi::allgather_strings(vec, env);
+          timer.end("allgather_test_after");
+          i = test[0]; 
+          std::cout << test[0] << std::endl;
+
           std::cout << "i = " << i << std::endl;
 
 
