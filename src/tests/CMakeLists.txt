@@ -29,3 +29,6 @@ target_link_libraries(lcp_compression ${MPI_LIBRARIES} tlx)
 
 add_executable(generator generator.cpp ../mpi/environment.cpp)
 target_link_libraries(generator ${MPI_LIBRARIES} tlx)
+
+add_executable(prefix_doubling prefix_doubling.cpp ../mpi/environment.cpp)
+target_link_libraries(prefix_doubling ${MPI_LIBRARIES} tlx)
