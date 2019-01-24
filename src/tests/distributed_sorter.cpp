@@ -79,6 +79,10 @@ template <typename StringSet, typename StringGenerator,
              for (size_t i = 0; i < 500000000; ++i)
                tmpSum += i;
              std::cout << tmpSum << std::endl;
+             env.barrier();
+             env.barrier();
+             
+
 
              //dss_schimek::mpi::execute_in_order([&]() {
              //    env.barrier();
