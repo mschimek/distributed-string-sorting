@@ -410,9 +410,12 @@ namespace dss_schimek {
           // spend time here
           env.barrier();
           volatile size_t tmpSum = 0;
-          for (size_t i = 0; i < 50000000; ++i) {
-            tmpSum += i;
+          for (volatile size_t i = 0; i < 50000000; ++i) {
+	    for (volatile size_t j = 0; j < 10; ++j)
+            tmpSum += j;
           }
+          std::cout << tmpSum << std::endl;
+          env.barrier();
           env.barrier();
 
           /***
@@ -432,10 +435,10 @@ namespace dss_schimek {
           timer.end("allgatherv_test_before");
           volatile int i = std::accumulate(test.begin(), test.end(), 0);
 
-          timer.start("allgather_test_before");
-          test = dss_schimek::mpi::allgather(vec[0], env);
-          timer.end("allgather_test_before");
-          i += std::accumulate(test.begin(), test.end(), 0);
+          //jtimer.start("allgather_test_before");
+          //jtest = dss_schimek::mpi::allgather(vec[0], env);
+          //jtimer.end("allgather_test_before");
+          //ji += std::accumulate(test.begin(), test.end(), 0);
 
 
           asm volatile("" ::: "memory");
@@ -447,74 +450,82 @@ namespace dss_schimek {
           asm volatile("" ::: "memory");
 
 
-          i += splitters.size();
+          //i += splitters.size();
           env.barrier();
 
-          vec.clear();
-          for (size_t i = 0; i < raw_splitters.size(); ++i) {
-            vec.push_back(dis(gen)); 
+	  tmpSum = 0;
+          for (volatile size_t i = 0; i < 50000000; ++i) {
+	    for (volatile size_t j = 0; j < 10; ++j)
+            tmpSum += j;
           }
-          timer.start("allgatherv_test_after");
-          test =
-            dss_schimek::mpi::allgather_strings(vec, env);
-          timer.end("allgatherv_test_after");
-          i = test[0]; 
-          i += std::accumulate(test.begin(), test.end(), 0);
-          
-          
+          std::cout << tmpSum << std::endl;
+          env.barrier();
+          env.barrier();
 
-          timer.start("allgather_test_after");
-          test =
-            dss_schimek::mpi::allgather(vec[0], env);
-          timer.end("allgather_test_after");
-          i = std::accumulate(test.begin(), test.end(), 0); 
-
-
-
+		
           return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
-          //timer.start("choose_splitters");
-          //dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
-          //timer.end("choose_splitters");
-
-
-          //const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
-          //    chosen_splitters_cont.strings() + chosen_splitters_cont.size());
-
-          //timer.start("compute_interval_sizes");
-          //std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
-          //std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
-          //timer.end("compute_interval_sizes");
-          ////print_interval_sizes(interval_sizes, receiving_interval_sizes);
-
-          //dss_schimek::StringLcpContainer<StringSet> recv_string_cont; 
-          //if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
-          //  timer.start("all_to_all_strings");
-          //  recv_string_cont = 
-          //    AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
-          //  timer.end("all_to_all_strings");
-          //} else {
-          //  timer.start("all_to_all_strings");
-          //  EmptyTimer emptyTimer;
-          //  recv_string_cont = 
-          //    AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, emptyTimer);
-          //  timer.end("all_to_all_strings");
+          //vec.clear();
+          //for (size_t i = 0; i < raw_splitters.size(); ++i) {
+          //  vec.push_back(dis(gen)); 
           //}
-          //timer.add("num_received_chars", recv_string_cont.char_size() - recv_string_cont.size());
+          //timer.start("allgatherv_test_after");
+          //test =
+          //  dss_schimek::mpi::allgather_strings(vec, env);
+          //timer.end("allgatherv_test_after");
+          //i = test[0]; 
+          //i += std::accumulate(test.begin(), test.end(), 0);
           //
-          //size_t num_recv_elems = 
-          //  std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
+          //
 
-          //assert(num_recv_elems == recv_string_cont.size());
+          //timer.start("allgather_test_after");
+          //test =
+          //  dss_schimek::mpi::allgather(vec[0], env);
+          //timer.end("allgather_test_after");
+          //i = std::accumulate(test.begin(), test.end(), 0); 
 
-          //timer.start("compute_ranges");
-          //std::vector<std::pair<size_t, size_t>> ranges = 
-          //  compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont, receiving_interval_sizes);
-          //timer.end("compute_ranges");
+          timer.start("choose_splitters");
+          dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
+          timer.end("choose_splitters");
 
-          //timer.start("merge_ranges");
-          //auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont), ranges, num_recv_elems);
-          //timer.end("merge_ranges");
-          //return sorted_container;
+
+          const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
+              chosen_splitters_cont.strings() + chosen_splitters_cont.size());
+
+          timer.start("compute_interval_sizes");
+          std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
+          std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
+          timer.end("compute_interval_sizes");
+          //print_interval_sizes(interval_sizes, receiving_interval_sizes);
+
+          dss_schimek::StringLcpContainer<StringSet> recv_string_cont; 
+          if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
+            timer.start("all_to_all_strings");
+            recv_string_cont = 
+              AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, timer);
+            timer.end("all_to_all_strings");
+          } else {
+            timer.start("all_to_all_strings");
+            EmptyTimer emptyTimer;
+            recv_string_cont = 
+              AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, emptyTimer);
+            timer.end("all_to_all_strings");
+          }
+          timer.add("num_received_chars", recv_string_cont.char_size() - recv_string_cont.size());
+          
+          size_t num_recv_elems = 
+            std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
+
+          assert(num_recv_elems == recv_string_cont.size());
+
+          timer.start("compute_ranges");
+          std::vector<std::pair<size_t, size_t>> ranges = 
+            compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont, receiving_interval_sizes);
+          timer.end("compute_ranges");
+
+          timer.start("merge_ranges");
+          auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont), ranges, num_recv_elems);
+          timer.end("merge_ranges");
+          return sorted_container;
         }
   };
 

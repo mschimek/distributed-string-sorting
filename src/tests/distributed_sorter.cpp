@@ -110,12 +110,17 @@ template <typename StringSet, typename StringGenerator,
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
-           }
+
+	     for (size_t i = 0; i < 500000000; ++i)
+		     tmpSum += i;
+	     env.barrier();
+	     env.barrier();
+	   }
 
 namespace PolicyEnums {
-  enum class StringSet {UCharLengthStringSet = 0, UCharStringSet = 1};
-  StringSet getStringSet(size_t i) {
-    switch (i) {
+	enum class StringSet {UCharLengthStringSet = 0, UCharStringSet = 1};
+	StringSet getStringSet(size_t i) {
+		switch (i) {
       case 0: return StringSet::UCharLengthStringSet;
       case 1: return StringSet::UCharStringSet;
       default: std::abort();
@@ -207,12 +212,12 @@ struct SorterArgs {
 template<typename StringSet, typename StringGenerator, typename SampleString,
   typename MPIRoutineAllToAll, typename ByteEncoder>
    void sixthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
-   execute_sorter<StringSet,
-                  StringGenerator,
-                  SampleString,
-                  MPIRoutineAllToAll,
-                  ByteEncoder,
-                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
+   //execute_sorter<StringSet,
+   //               StringGenerator,
+   //               SampleString,
+   //               MPIRoutineAllToAll,
+   //               ByteEncoder,
+   //               Timer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    execute_sorter<StringSet,
                   StringGenerator,
                   SampleString,

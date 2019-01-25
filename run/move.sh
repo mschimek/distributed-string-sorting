@@ -1,10 +1,10 @@
 #!/bin/bash
-dir="$(date +'%Y_%m_%d_H%H_%M')_$1"
+dir="$(date +'%Y_%m_%d_H%H_%M')_$2"
 echo $dir
 mkdir $dir
 counter=1
 
-grep -oE '[^ ]+$' jobIds.txt > processedJobIds.txt
+grep -oE '[^ ]+$' $1 > processedJobIds.txt
 
 for jobid in $(cat processedJobIds.txt)
 do
@@ -16,5 +16,5 @@ do
   mv $jobFile $dir/$newName
 done
 
-rm jobIds.txt
+rm $1
 rm processedJobIds.txt
