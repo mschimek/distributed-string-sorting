@@ -55,6 +55,14 @@ static inline std::vector<DataType> allgatherv_small(
 
   int32_t local_size = send_data.size();
   std::vector<int32_t> receiving_sizes = allgather(local_size);
+  return allgatherv_small(send_data, receiving_sizes, env);
+}
+
+template <typename DataType>
+static inline std::vector<DataType> allgatherv_small(
+  std::vector<DataType>& send_data, std::vector<int32_t>& receiving_sizes, environment env = environment()) {
+
+  int32_t local_size = send_data.size();
 
   std::vector<int32_t> receiving_offsets(env.size(), 0);
   for (size_t i = 1; i < receiving_sizes.size(); ++i) {
@@ -77,7 +85,6 @@ static inline std::vector<DataType> allgatherv_small(
 
   return receiving_data;
 }
-
 template <typename DataType>
 static inline std::vector<DataType> allgatherv(
   std::vector<DataType>& send_data, environment env = environment()) {
@@ -91,7 +98,10 @@ static inline std::vector<DataType> allgatherv(
   }
 
   if (receiving_sizes.back() + receiving_offsets.back() < env.mpi_max_int()) {
-    return allgatherv_small(send_data);
+    std::vector<int32_t> receiving_sizes_small(receiving_sizes.size());
+    for (size_t i = 0; i < receiving_sizes.size(); ++i)
+      receiving_sizes_small[i] = receiving_sizes[i];
+    return allgatherv_small(send_data, receiving_sizes_small, env);
   } else {
     std::vector<MPI_Request> mpi_requests(2 * env.size());
     std::vector<DataType> receiving_data(
