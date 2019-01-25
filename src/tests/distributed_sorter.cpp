@@ -78,8 +78,6 @@ template <typename StringSet, typename StringGenerator,
              volatile size_t tmpSum = 0;
              for (size_t i = 0; i < 500000000; ++i)
                tmpSum += i;
-             if (env.rank() == 0)
-               std::cout << tmpSum << std::endl;
              env.barrier();
              env.barrier();
 
