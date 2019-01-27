@@ -391,7 +391,7 @@ namespace dss_schimek {
           
           // sort locally
           timer.start("sort_locally");
-          dss_schimek::radixsort_CE3(local_string_ptr, 0, 0);
+          dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
           
