@@ -32,3 +32,6 @@ target_link_libraries(generator ${MPI_LIBRARIES} tlx)
 
 add_executable(prefix_doubling prefix_doubling.cpp ../mpi/environment.cpp)
 target_link_libraries(prefix_doubling ${MPI_LIBRARIES} tlx)
+
+add_executable(mpitest mpi.cpp ../mpi/environment.cpp)
+target_link_libraries(mpitest ${MPI_LIBRARIES} tlx)

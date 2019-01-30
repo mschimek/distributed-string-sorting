@@ -90,21 +90,21 @@ template <typename StringSet, typename StringGenerator,
              //    sorted_string_cont.make_string_set().print();
              //    });
 
-             //timer.start("prefix_decompression");
-             //if (AllToAllPolicy::PrefixCompression)
-             //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
-             //timer.end("prefix_decompression");
-             //const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-             //const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-             //    numGeneratedChars,
-             //    sorted_string_cont.char_size(),
-             //    numGeneratedStrings,
-             //    sorted_string_cont.size()); 
-             //
-             //if (!is_complete_and_sorted) {
-             //  std::cout << "not sorted" << std::endl;
-             //  std::abort(); 
-             //}
+             timer.start("prefix_decompression");
+             if (AllToAllPolicy::PrefixCompression)
+                 sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
+             timer.end("prefix_decompression");
+             const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
+             const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
+                 numGeneratedChars,
+                 sorted_string_cont.char_size(),
+                 numGeneratedStrings,
+                 sorted_string_cont.size()); 
+             
+             if (!is_complete_and_sorted) {
+               std::cout << "not sorted" << std::endl;
+               std::abort(); 
+             }
              std::stringstream buffer;
              timer.writeToStream(buffer);
              if (env.rank() == 0) {

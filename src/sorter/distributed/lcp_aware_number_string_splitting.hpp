@@ -107,7 +107,7 @@ namespace dss_schimek {
       dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
       const StringSet& all_splitters_set = all_splitters_strptr.active();
 
-      insertion_sort(all_splitters_strptr, 0, 0);
+      radixsort_CI3(all_splitters_strptr, 0, 0);
 
       const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
       const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
@@ -463,7 +463,7 @@ namespace dss_schimek {
           env.barrier();
 
 		
-          return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
+          //return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
           //vec.clear();
           //for (size_t i = 0; i < raw_splitters.size(); ++i) {
           //  vec.push_back(dis(gen)); 
