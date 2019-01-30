@@ -12,6 +12,7 @@
 #include <algorithm>
 #include "strings/stringptr.hpp"
 #include "strings/stringtools.hpp"
+#include <tlx/sort/strings/string_ptr.hpp>
 
 namespace dss_schimek {
 
@@ -155,12 +156,12 @@ namespace dss_schimek {
         return StringSet(strings(), strings() + size());
       }
 
-      dss_schimek::StringPtr<StringSet> make_string_ptr() {
-        return dss_schimek::StringPtr(make_string_set());
+      tlx::sort_strings_detail::StringPtr<StringSet> make_string_ptr() {
+        return tlx::sort_strings_detail::StringPtr(make_string_set());
       }
 
-      dss_schimek::StringLcpPtr<StringSet> make_string_lcp_ptr() {
-        return dss_schimek::StringLcpPtr(make_string_set(), lcp_array());
+      tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t> make_string_lcp_ptr() {
+        return tlx::sort_strings_detail::StringLcpPtr(make_string_set(), lcp_array());
       }
 
 

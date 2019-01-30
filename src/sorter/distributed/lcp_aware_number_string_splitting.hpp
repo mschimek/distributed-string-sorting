@@ -6,9 +6,9 @@
 #include "strings/stringset.hpp"
 #include "strings/stringtools.hpp"
 
-#include "sorter/local/strings/insertion_sort_unified.hpp"
-#include "sorter/local/strings/multikey_quicksort_unified.hpp"
-#include "sorter/local/strings/radix_sort_unified.hpp"
+//#include "sorter/local/strings/insertion_sort_unified.hpp"
+//#include "sorter/local/strings/multikey_quicksort_unified.hpp"
+//#include "sorter/local/strings/radix_sort_unified.hpp"
 
 #include "mpi/alltoall.hpp"
 #include "mpi/allgather.hpp"
@@ -20,6 +20,8 @@
 #include "merge/bingmann-lcp_losertree.hpp"
 
 #include "util/timer.hpp"
+#include <tlx/sort/strings/radix_sort.hpp>
+#include <tlx/sort/strings/string_ptr.hpp>
 
 namespace dss_schimek {
 
@@ -104,10 +106,10 @@ namespace dss_schimek {
       using String = typename StringSet::String;
 
       StringLcpContainer<StringSet> all_splitters_cont(std::move(all_splitters));
-      dss_schimek::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
+      tlx::sort_strings_detail::StringLcpPtr all_splitters_strptr = all_splitters_cont.make_string_lcp_ptr();
       const StringSet& all_splitters_set = all_splitters_strptr.active();
 
-      radixsort_CI3(all_splitters_strptr, 0, 0);
+      tlx::sort_strings_detail::radixsort_CI3(all_splitters_strptr, 0, 0);
 
       const size_t nr_splitters = std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
       const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
@@ -391,7 +393,9 @@ namespace dss_schimek {
           
           // sort locally
           timer.start("sort_locally");
-          dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
+          tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
+
+          //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
           

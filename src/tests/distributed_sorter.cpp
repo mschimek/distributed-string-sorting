@@ -33,7 +33,7 @@ template <typename StringSet, typename StringGenerator,
          typename Timer>
            void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
-             using StringLcpPtr = typename dss_schimek::StringLcpPtr<StringSet>;
+             using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
              using namespace dss_schimek;
 
              std::string prefix = std::string("RESULT") +
