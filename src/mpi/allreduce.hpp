@@ -27,8 +27,8 @@ static inline bool allreduce_and(bool& send_data,
   MPI_Allreduce(
     &send_data,
     &receive_data,
-    type_mapper<bool>::factor(),
-    type_mapper<bool>::type(),
+    1, 
+    MPI::BOOL,
     MPI_LAND,
     env.communicator());
   return receive_data;
