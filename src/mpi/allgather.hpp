@@ -49,6 +49,50 @@ inline std::vector<DataType> allgather(DataType& send_data,
   return receive_data;
 }
 
+template<typename DataType>
+std::vector<DataType> allgatherv_my(DataType* data, size_t size,
+                dsss::mpi::environment env = dsss::mpi::environment()) {
+
+  std::vector<size_t> sendCounts = dsss::mpi::allgather(size);
+  std::vector<size_t> offsets;
+  offsets.reserve(env.size());
+  offsets.emplace_back(0);
+  for (size_t i = 1; i < env.size(); ++i) {
+    offsets.emplace_back(offsets.back() + sendCounts[i -  1]);
+  }
+  //if (env.rank() == 0)
+  //for (size_t i = 0; i < offsets.size(); ++i) {
+  //  std::cout << i <<  "offset: " << offsets[i] << std::endl;
+  //}
+
+  std::vector<DataType> recvBuffer(offsets.back() + sendCounts.back());
+  std::copy_n(data, size, recvBuffer.data() + offsets[env.rank()]);
+
+  dsss::mpi::data_type_mapper<DataType> dtm;
+  std::vector<MPI_Request> mpiRequest(2 * (env.size() - 1));
+  for (size_t i = 1; i < env.size(); ++i) {
+    int partner = (env.rank() + i) % env.size();
+    MPI_Isend(data, 
+        size, 
+        dtm.get_mpi_type(),
+        partner,
+        42,
+        env.communicator(),
+        &mpiRequest[2*(i - 1)]);
+
+    MPI_Irecv(
+        recvBuffer.data() + offsets[partner],
+        sendCounts[partner],
+        dtm.get_mpi_type(),
+        partner,
+        42,
+        env.communicator(),
+        &mpiRequest[2*(i -1) + 1]);
+  }
+  MPI_Waitall(2 * env.size() - 2, mpiRequest.data(), MPI_STATUSES_IGNORE);
+  return recvBuffer;
+}
+
 template <typename DataType>
 static inline std::vector<DataType> allgatherv_small(
   std::vector<DataType>& send_data, environment env = environment()) {

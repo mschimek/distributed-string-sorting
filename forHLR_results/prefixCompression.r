@@ -24,14 +24,17 @@ POINTSIZE = 0.1
 filename = paste(args[[1]], "/data.txt", sep="")
 allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
 allData$numberProcessors <- as.factor(allData$numberProcessors)
-allDataWithoutIt1_Timer <- filter(allData, iteration != 0, Timer == "Timer")
-allDataWithoutIt1_EmptyTimer <- filter(allData, iteration != 0, Timer == "EmptyTimer")
+allDataWithoutIt1_Timer <- filter(allData,  Timer == "Timer", iteration != 0)
+allDataWithoutIt1_EmptyTimer <- filter(allData,  Timer == "EmptyTimer", iteration != 0)
 
 availableProcessorCounts <- unique(allData$numberProcessors)
 availableByteEncoders <- unique(allData$ByteEncoder)
 
 scatterPlot <- function(data_, operations_, type_, pointSize, title) {
-plot <- ggplot(data = filter(data_, operation %in% operations_, type ==  type_))
+  print(operations_)
+  data_ <- filter(data_, operation %in% operations_, type ==  type_)
+  print(data_)
+plot <- ggplot(data = data_) 
   plot <- plot + geom_point(mapping = aes(x = operation, y = value, colour = ByteEncoder),
                             size = pointSize, position = "jitter")
   plot <- plot + facet_wrap(~ dToNRatio )
@@ -173,53 +176,74 @@ numBytesSent <- function(data_) {
 numAllgatherBytesSent <- function(data_) {
   data_ = filter(data_, operation == "allgather_splitters_bytes_sent", size == 1000000)
   data_$dToNRatio <- as.factor(data_$dToNRatio)
+  data_$value <- as.factor(data_$value)
 
-  group <- group_by(data_, numberProcessors, samplePolicy, size, dToNRatio, ByteEncoder)
-  valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
-  valueSum <- summarise(group, value = sum(value, rm.na = TRUE))
-  print(valueSum)
+  #group <- group_by(data_, numberProcessors, samplePolicy, size, dToNRatio, ByteEncoder)
+  #valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
+  #valueSum <- summarise(group, value = sum(value, rm.na = TRUE))
+  #print(valueSum)
 
-  plot <- ggplot(data = valueSum)
-  plot <- plot + geom_point(mapping = aes(x = ByteEncoder, y = value), size = 0.1, position = "jitter")
+  print(data_)
+  plot <- ggplot(data = data_)
+  plot <- plot + geom_point(mapping = aes(x = ByteEncoder, y = value, colour = ByteEncoder), size = 0.1, position = "jitter")
   plot <- plot + facet_wrap(dToNRatio ~ numberProcessors)
-  plot <- plot + ggtitle("sum bytes sent")
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  plot <- plot + ggtitle("Bytes Sent in allGather splitters")
   return(plot)
 }
 
 pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
-operations <- c("allgather_splitters")
-data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
-scatterPlotAllProcessors(data, operations, "avgTime")
-scatterPlotAllProcessors(data, operations, "minTime")
-scatterPlotAllProcessors(data, operations, "maxTime")
-scatterPlotAllProcessors(data, operations, "avgLoss")
+#numAllgatherBytesSent(filter(allDataWithoutIt1_EmptyTimer, numberProcessors %in% c(2,4) ))
+numAllgatherBytesSent(filter(allDataWithoutIt1_EmptyTimer, numberProcessors %in% c(8, 16) ))
 
 operations <- c("all_to_all_strings")
 data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
 scatterPlotAllProcessors(data, operations, "avgTime")
+
+
+operations <- c("allgather_splitters")
+data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
+scatterPlotAllProcessors(data, operations, "avgTime")
+
+operations <- c("allgatherv_test_before")
+scatterPlotAllProcessors(data, operations, "avgTime")
+#operations <- c("allgather_test_before")
+#scatterPlotAllProcessors(data, operations, "avgTime")
+#operations <- c("allgatherv_test_after")
+#scatterPlotAllProcessors(data, operations, "avgTime")
+#operations <- c("allgather_test_after")
+#scatterPlotAllProcessors(data, operations, "avgTime")
+
+
+
+operations <- c("all_to_all_strings")
+data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
+#scatterPlotAllProcessors(data, operations, "avgTime")
 #scatterPlotAllProcessors(data, operations, "maxTime")
 #scatterPlotAllProcessors(data, operations, "avgLoss")
 #scatterPlotAllProcessors(data, operations, "maxLoss")
 
 operations <- c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi")
 data <- filter(allDataWithoutIt1_Timer, size == 1000000)
-scatterPlotAllProcessors(data, operations, "avgTime")
+#scatterPlotAllProcessors(data, operations, "avgTime")
 #scatterPlotAllProcessors(data, operations, "maxTime")
 #scatterPlotAllProcessors(data, operations, "avgLoss")
 #scatterPlotAllProcessors(data, operations, "maxLoss")
 
 operations <- c("prefix_decompression")
+
 data <- filter(allDataWithoutIt1_EmptyTimer, size == 1000000)
-scatterPlotAllProcessors(data, operations, "avgTime")
+#scatterPlotAllProcessors(data, operations, "avgTime")
 
 barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
 barPlot(data_ = allDataWithoutIt1_EmptyTimer,  operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = 1000000, title = "overall Time")
 barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally"), type_ = "avgTime", size_ = 1000000, title = "overall Time") #
+barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = 1000000, title = "overall Time") #
+barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("choose_splitters","allgatherv_test_before", "sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = 1000000, title = "overall Time") #
 
-numBytesSent(allDataWithoutIt1_Timer)
-numAllgatherBytesSent(allDataWithoutIt1_EmptyTimer)
+#numBytesSent(allDataWithoutIt1_Timer)
 #plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
 #plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
 #plot3 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 8), c("all_to_all_strings"), 0.5, " 8 procs")
