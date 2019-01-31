@@ -338,7 +338,9 @@ int main(std::int32_t argc, char const *argv[]) {
   using StringSet = UCharLengthStringSet;
   std::cout << "start program" << std::endl;
 
-  dsss::mpi::environment env;
+  dsss::mpi::environment env; 
+  std::cout << "env initialized" << std::endl;
+  std::cout << "env.size() = " << env.size() << std::endl;
   env.barrier();
 
   bool check = true;
