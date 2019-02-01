@@ -1,0 +1,27 @@
+#include <vector>
+#include <iostream>
+#include <random>
+#include "mpi/alltoall.hpp"
+
+namespace dss_schimek {
+  namespace mpi {
+    size_t randomDataAllToAllExchange(size_t sizeInBytesPerPE) {
+      dsss::mpi::environment env;
+      std::random_device rd;
+      std::mt19937 randGenerator(rd());
+      std::uniform_int_distribution<unsigned char> dist(65, 90);
+      std::vector<unsigned char> randDataToSend;
+      std::vector<size_t> sendCounts(env.size(), sizeInBytesPerPE);
+      randDataToSend.reserve(sizeInBytesPerPE * env.size());
+
+
+      for (size_t i = 0; i < sizeInBytesPerPE * env.size(); ++i)
+        randDataToSend.emplace_back(dist(randGenerator)); 
+
+      std::vector<unsigned char> recvData = dsss::mpi::alltoallv_small(randDataToSend, sendCounts);
+      volatile size_t sum = std::accumulate(recvData.begin(), recvData.end(), 0);
+      return sum;
+    }
+  }
+}
+

@@ -1,4 +1,5 @@
 #include "sorter/distributed/lcp_aware_number_string_splitting.hpp"
+#include "mpi/warmup.hpp"
 
 #include "util/random_string_generator.hpp"
 #include "util/timer.hpp"
@@ -66,6 +67,14 @@ template <typename StringSet, typename StringGenerator,
              //    });
              const size_t numGeneratedChars = generatedContainer.char_size();
              const size_t numGeneratedStrings = generatedContainer.size();
+
+             /*
+              * MPI WARMUP 
+              */
+             std::cout << "MPI_Warmup_sum: " << dss_schimek::mpi::randomDataAllToAllExchange(numOfStrings) << std::endl;
+             /*
+              * END MPI WARMUP
+              */
 
              timer.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder, Timer>;
@@ -338,9 +347,7 @@ int main(std::int32_t argc, char const *argv[]) {
   using StringSet = UCharLengthStringSet;
   std::cout << "start program" << std::endl;
 
-  dsss::mpi::environment env; 
-  std::cout << "env initialized" << std::endl;
-  std::cout << "env.size() = " << env.size() << std::endl;
+  dsss::mpi::environment env;
   env.barrier();
 
   bool check = true;
