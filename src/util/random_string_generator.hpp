@@ -227,8 +227,8 @@ namespace dss_schimek {
     using Char = typename StringSet::Char;
     public:
     SkewedRandomStringLcpContainer(const size_t size,
-          const size_t min_length = 10,
-          const size_t max_length = 20)
+          const size_t min_length = 100,
+          const size_t max_length = 200)
     {
       std::vector<Char> random_raw_string_data;
       std::random_device rand_seed;
