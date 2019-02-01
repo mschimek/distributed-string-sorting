@@ -202,10 +202,12 @@ namespace dss_schimek {
       std::random_device rand_seed;
       std::mt19937 rand_gen(rand_seed());
       std::uniform_int_distribution<Char> char_dis(65, 90);
-      
+     
+      size_t effectiveSize = size / env.size();
+      std::cout << "effective size: " << effectiveSize << std::endl; 
       std::uniform_int_distribution<size_t> length_dis(min_length, max_length);
-      random_raw_string_data.reserve(size / env.size() + 1);
-      for (size_t i = 0; i < size / env.size(); ++i) {
+      random_raw_string_data.reserve(effectiveSize + 1);
+      for (size_t i = 0; i < effectiveSize; ++i) {
         size_t length = length_dis(rand_gen);
         for (size_t j = 0; j < length; ++j)
           random_raw_string_data.emplace_back(char_dis(rand_gen));
@@ -238,14 +240,16 @@ namespace dss_schimek {
       std::uniform_int_distribution<size_t> normal_length_dis(min_length, max_length);
       std::uniform_int_distribution<size_t> large_length_dis(min_length + 100, max_length + 100);
 
+      std::size_t sizePerPE = size / env.size();
+
       random_raw_string_data.reserve(size + 1);
-      for (size_t i = 0; i < size / 4; ++i) {
+      for (size_t i = 0; i < sizePerPE / 4; ++i) {
         size_t length = large_length_dis(rand_gen);
         for (size_t j = 0; j < length; ++j)
           random_raw_string_data.emplace_back(small_char_dis(rand_gen));
         random_raw_string_data.emplace_back(Char(0));
       }
-      for (size_t i = size / 4; i < size; ++i) {
+      for (size_t i = sizePerPE / 4; i < sizePerPE; ++i) {
         size_t length = normal_length_dis(rand_gen);
         for (size_t j = 0; j < length; ++j)
           random_raw_string_data.emplace_back(char_dis(rand_gen));
