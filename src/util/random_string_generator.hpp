@@ -197,14 +197,15 @@ namespace dss_schimek {
           const size_t min_length = 10,
           const size_t max_length = 20)
     {
+      dsss::mpi::environment env;
       std::vector<Char> random_raw_string_data;
       std::random_device rand_seed;
       std::mt19937 rand_gen(rand_seed());
       std::uniform_int_distribution<Char> char_dis(65, 90);
       
       std::uniform_int_distribution<size_t> length_dis(min_length, max_length);
-      random_raw_string_data.reserve(size + 1);
-      for (size_t i = 0; i < size; ++i) {
+      random_raw_string_data.reserve(size / env.size() + 1);
+      for (size_t i = 0; i < size / env.size(); ++i) {
         size_t length = length_dis(rand_gen);
         for (size_t j = 0; j < length; ++j)
           random_raw_string_data.emplace_back(char_dis(rand_gen));
