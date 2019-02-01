@@ -435,7 +435,7 @@ namespace dss_schimek {
           }
           timer.start("allgatherv_test_before");
           std::vector<unsigned char> test =
-            dss_schimek::mpi::allgatherv_my(vec.data(), vec.size(), env);
+            dss_schimek::mpi::allgatherv(vec, env);
           timer.end("allgatherv_test_before");
           volatile int i = std::accumulate(test.begin(), test.end(), 0);
 
@@ -449,7 +449,7 @@ namespace dss_schimek {
           timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
           timer.start("allgather_splitters");
           std::vector<Char> splitters =
-            dss_schimek::mpi::allgatherv_my(raw_splitters.data(), raw_splitters.size(), env);
+            dss_schimek::mpi::allgather_strings(raw_splitters, env);
           timer.end("allgather_splitters");
           asm volatile("" ::: "memory");
 

@@ -71,7 +71,7 @@ template <typename StringSet, typename StringGenerator,
              /*
               * MPI WARMUP 
               */
-             std::cout << "MPI_Warmup_sum: " << dss_schimek::mpi::randomDataAllToAllExchange(numOfStrings) << std::endl;
+             std::cout << "MPI_Warmup_sum: " << dss_schimek::mpi::randomDataAllToAllExchange(std::min<size_t>(numOfStrings * 5, 100000u)) << std::endl;
              /*
               * END MPI WARMUP
               */
