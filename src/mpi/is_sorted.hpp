@@ -75,6 +75,9 @@ namespace dss_schimek {
       size_t current_local_num_strings,
       dsss::mpi::environment env = dsss::mpi::environment())
   {
+      if (env.size() == 0)
+        return is_sorted(strptr);
+
       const size_t initial_total_num_chars = dsss::mpi::allreduce_sum(initial_local_num_chars);
       const size_t initial_total_num_strings = dsss::mpi::allreduce_sum(initial_local_num_strings);
 
