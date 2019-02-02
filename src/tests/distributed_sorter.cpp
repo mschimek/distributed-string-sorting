@@ -57,6 +57,7 @@ template <typename StringSet, typename StringGenerator,
                 genStringArgs.numOfStrings *= env.size();
              
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+             std::cout << "container: " << generatedContainer.size() << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
              //dss_schimek::mpi::execute_in_order([&]() {
@@ -100,7 +101,7 @@ template <typename StringSet, typename StringGenerator,
              //    });
 
              timer.start("prefix_decompression");
-             if (AllToAllPolicy::PrefixCompression)
+             if (AllToAllPolicy::PrefixCompression && env.size() > 1)
                  sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
              timer.end("prefix_decompression");
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
