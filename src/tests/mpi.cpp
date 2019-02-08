@@ -59,7 +59,7 @@ std::vector<unsigned char> alltoall(const size_t sizeInBytesPerPE, dss_schimek::
   sendData.reserve(sizeInBytesPerPE * env.size());
 
   for (size_t j = 0; j < env.size(); ++j) {
-    for (size_t i = 0; i < sizeInBytesPerPE - 1; ++i) 
+    for (size_t i = 0; i + 1 < sizeInBytesPerPE; ++i) 
       sendData.push_back(dist());
     sendData.push_back(0);
   }
@@ -78,8 +78,8 @@ void runIteration(const size_t sizeInBytesAllgather, const size_t sizeInBytesAll
   dsss::mpi::environment env;
   std::string prefix = std::string("RESULT") +
     " numberProcessors=" + std::to_string(env.size()) +
-    " iteration=" + std::to_string(curIteration);
-  " sizeInBytesAllgather=" + std::to_string(sizeInBytesAllgather) +
+    " iteration=" + std::to_string(curIteration) + 
+    " sizeInBytesAllgather=" + std::to_string(sizeInBytesAllgather) +
     " sizeInBytesAllToAll=" + std::to_string(sizeInBytesAllToAll);
 
   dss_schimek::Timer timer(prefix);
