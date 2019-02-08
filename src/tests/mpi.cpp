@@ -54,12 +54,13 @@ std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Tim
 std::vector<unsigned char> alltoall(const size_t sizeInBytesPerPE, dss_schimek::Timer& timer) {
   dsss::mpi::environment env;
   InitializedUniformIntDistribution dist(65, 90);
-  std::vector<size_t> sendCounts(env.size(), sizeInBytesPerPE);
+  const size_t localSizeInBytesPerPE = sizeInBytesPerPE / env.size();
+  std::vector<size_t> sendCounts(env.size(), localSizeInBytesPerPE);
   std::vector<unsigned char> sendData;
-  sendData.reserve(sizeInBytesPerPE * env.size());
+  sendData.reserve(localSizeInBytesPerPE);
 
   for (size_t j = 0; j < env.size(); ++j) {
-    for (size_t i = 0; i + 1 < sizeInBytesPerPE; ++i) 
+    for (size_t i = 0; i + 1 < localSizeInBytesPerPE; ++i) 
       sendData.push_back(dist());
     sendData.push_back(0);
   }
