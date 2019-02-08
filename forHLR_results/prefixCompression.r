@@ -147,6 +147,8 @@ barPlot <- function(data_, operations_, type_, size_, title = " ") {
   return(plot)
 }
 
+# Groups data such that a group consists of all operations in operations_
+# values of each group are added up
 sumOperations <- function(data_, operations_) {
   filteredData <- filter(data_, operation %in% operations_)
   valueSum <- group_by(filteredData, iteration, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, type) %>% summarise(value = sum(value, rm.na = TRUE))
@@ -154,65 +156,36 @@ sumOperations <- function(data_, operations_) {
   return(valueSum)
 }
 
-efficiency_sum <- function(data_, type_, size_, title = " ") {
-  filteredData <- filter(data_, type == type_, size == size_)
-  filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
-  operations <- unique(filteredData)
-  valueSum <- sumOperations(filteredData, operations)
-  #group <- group_by(valueSum, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, type)
-  #valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
-  #ungroup(valueMean)
-  #valueMean$size <- as.factor(valueMean$size)
-  #valueMean <- group_by(valueMean, dToNRatio, samplePolicy, ByteEncoder, size, type)
-  #
-  #myFunc <- function(vec) {
-  # tmp <- filter(vec, numberProcessors == 1)$value
-  #vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
-  # #vec$numberProcessors <- as.numeric(vec$numberProcessors)
-  # print(vec)
-  # print(vec$numberProcessors)
-  # print(vec$value)
-  # print(tmp)
-  # vec$value <- (tmp / vec$value) / (as.numeric(vec$numberProcessors))
-  # print(vec$value)
-  # print("-----")
-  # return(vec)
-  #} 
-  #valueMean <- do(valueMean, myFunc(.))
-  #print(valueMean)
-
-  #plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, colour = dToNRatio, shape=ByteEncoder))
-  #plot <- plot + geom_line()
-  #plot <- plot + geom_point()
-  ##plot <- plot + facet_wrap(~ dToNRatio, labeller = label_both, nrow=1)
-  #plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  #plot <- plot + ggtitle(title)
-  #return(plot)
-}
-
+# calculate speedup
 divideByPE0 <- function(vec) {
   valueBase <- filter(vec, numberProcessors == 1)$value
   vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
   vec$value <- (valueBase / vec$value) 
   return(vec)
 }
+
+# calculate efficiency
 divideByPE0AndPENumber <- function(vec) {
   valueBase <- filter(vec, numberProcessors == 1)$value
   vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
   vec$value <- (valueBase / vec$value) / vec$numberProcessors
   return(vec)
 }
-speedup <- function(data_, operation_, type_, size_, title = " ", procedure = divideByPE0) {
+
+#Group: Mean of all iterations of operation_ -> all means are grouped such that a group consists of all numberOfProcessors with which operation_ is run
+applyProcedurePerGroup <- function(data_, operation_, type_, size_, title = " ", procedure = divideByPE0) {
   filteredData <- filter(data_, operation == operation_, type == type_, size == size_)
+  
+  #Not sure whether the following two lines are really needed
   filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
   filteredData$size <- as.factor(filteredData$size)
 
+  # Calculate mean of each group
   group <- group_by(filteredData, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type)
   valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
 
+  # new Grouping: each group must contain multiple processor numbers -> want to apply procedure per PE
   speedup <- group_by(valueMean, dToNRatio, samplePolicy, ByteEncoder, size, operation, type)
-
-   
   speedup <- do(speedup, procedure(.))
 
   plot <- ggplot(data = speedup, mapping = aes(x = numberProcessors, y = value, colour = dToNRatio, shape=ByteEncoder))
@@ -222,6 +195,14 @@ speedup <- function(data_, operation_, type_, size_, title = " ", procedure = di
   plot <- plot + ggtitle(title)
   return(plot)
 }
+
+speedup <- function(data_, operation_, type_, size_, title = " ") {
+  applyProcedurePerGroup(data_, operation_, type_, size_, title, procedure = divideByPE0)
+ }
+
+efficiency <- function(data_, operation_, type_, size_, title = " ") {
+  applyProcedurePerGroup(data_, operation_, type_, size_, title, procedure = divideByPE0AndPENumber)
+ }
 
 speedup_sum <- function(data_, type_, size_, title = " ") {
   filteredData <- filter(data_, type == type_, size == size_)
@@ -240,36 +221,7 @@ efficiency_sum <- function(data_, type_, size_, title = " ") {
 
   operations <- unique(filteredData$operation)
   valueSum <- sumOperations(filteredData, operations)
-  return (speedup(valueSum, "unified", type_, size_, title, procedure = divideByPE0AndPENumber) )
-  #group <- group_by(valueSum, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, type)
-  #valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
-  #ungroup(valueMean)
-  #valueMean$size <- as.factor(valueMean$size)
-  #valueMean <- group_by(valueMean, dToNRatio, samplePolicy, ByteEncoder, size, type)
-  #
-  #myFunc <- function(vec) {
-  # tmp <- filter(vec, numberProcessors == 1)$value
-  #vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
-  # #vec$numberProcessors <- as.numeric(vec$numberProcessors)
-  # print(vec)
-  # print(vec$numberProcessors)
-  # print(vec$value)
-  # print(tmp)
-  # vec$value <- (tmp / vec$value) / (as.numeric(vec$numberProcessors))
-  # print(vec$value)
-  # print("-----")
-  # return(vec)
-  #} 
-  #valueMean <- do(valueMean, myFunc(.))
-  #print(valueMean)
-
-  #plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, colour = dToNRatio, shape=ByteEncoder))
-  #plot <- plot + geom_line()
-  #plot <- plot + geom_point()
-  ##plot <- plot + facet_wrap(~ dToNRatio, labeller = label_both, nrow=1)
-  #plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  #plot <- plot + ggtitle(title)
-  #return(plot)
+  return (efficiency(valueSum, "unified", type_, size_, title) )
 }
 
 sumData <- function(data_, type_, size_, title = " ") {
@@ -277,8 +229,8 @@ sumData <- function(data_, type_, size_, title = " ") {
   filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
 
   #Sum over all operations of one iteration
-  valueSum <- group_by(filteredData, iteration, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, type)
-  valueSum <- summarise(valueSum, value=sum(value, rm.na = TRUE))
+  operations <- unique(filteredData$operation)
+  valueSum <- sumOperations(filteredData, operations)
 
   #Mean over the iterations
   valueMean <- group_by(valueSum, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, type)
