@@ -36,7 +36,7 @@ class InitializedUniformIntDistribution {
 };
 
 
-std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Timer& timer) {
+std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Timer& timer, const std::string& timerDescription) {
   dsss::mpi::environment env;
   InitializedUniformIntDistribution dist(65, 90);
   std::vector<unsigned char> sendData;
@@ -45,9 +45,9 @@ std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Tim
     for (size_t i = 0; i + 1 < sizeInBytes; ++i) 
       sendData.push_back(dist());
     sendData.push_back(0);
-  timer.start("allgatherv");
+  timer.start(timerDescription);
   std::vector<unsigned char> recvData = dsss::mpi::allgatherv(sendData);
-  timer.end("allgatherv");
+  timer.end(timerDescription);
   return recvData; 
 }
 
@@ -83,7 +83,8 @@ void runIteration(const size_t sizeInBytesAllgather, const size_t sizeInBytesAll
     " sizeInBytesAllToAll=" + std::to_string(sizeInBytesAllToAll);
 
   dss_schimek::Timer timer(prefix);
-  doNotOptimizeAway(allgatherv(sizeInBytesAllgather, timer));
+  doNotOptimizeAway(allgatherv(sizeInBytesAllgather, timer, "allgatherv_1"));
+  doNotOptimizeAway(allgatherv(sizeInBytesAllgather, timer, "allgatherv_2"));
   doNotOptimizeAway(alltoall(sizeInBytesAllToAll, timer));
 
   std::stringstream buffer;
