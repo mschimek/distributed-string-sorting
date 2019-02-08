@@ -42,7 +42,7 @@ std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Tim
   std::vector<unsigned char> sendData;
   sendData.reserve(sizeInBytes);
 
-    for (size_t i = 0; i < sizeInBytes - 1; ++i) 
+    for (size_t i = 0; i + 1 < sizeInBytes; ++i) 
       sendData.push_back(dist());
     sendData.push_back(0);
   timer.start("allgatherv");
