@@ -406,12 +406,12 @@ namespace dss_schimek {
           std::vector<size_t> results(ss.size(), 0);
           std::vector<size_t> candidates(ss.size());
           std::iota(candidates.begin(), candidates.end(), 0);
-          BloomFilter<StringSet, AllToAllHashValuesNaive> bloomFilter;
+          BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
           if (env.rank() == 0)
             ss.print();
           for (size_t i = 1; i < 10; ++i) {
             env.barrier();
-            candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
+            candidates = bloomFilter.filter_new(local_string_ptr, i, candidates, results);
             if (env.rank() == 0) {
               std::cout << "results:" << std::endl;
               for (size_t j = 0; j < results.size(); ++j) {
