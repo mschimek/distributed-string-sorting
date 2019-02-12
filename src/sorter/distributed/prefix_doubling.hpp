@@ -403,23 +403,54 @@ namespace dss_schimek {
           //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
+          dss_schimek::mpi::execute_in_order([&]() {
+              std::cout << "rank: " << env.rank()  << std::endl;
+              ss.print();
+              });
+
+         
           std::vector<size_t> results(ss.size(), 0);
           std::vector<size_t> candidates(ss.size());
           std::iota(candidates.begin(), candidates.end(), 0);
           BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
-          if (env.rank() == 0)
-            ss.print();
+
+
+          std::vector<size_t> results_(ss.size(), 0);
+          std::vector<size_t> candidates_(ss.size());
+          std::iota(candidates_.begin(), candidates_.end(), 0);
+          BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter_;
           for (size_t i = 1; i < 10; ++i) {
             env.barrier();
             candidates = bloomFilter.filter_new(local_string_ptr, i, candidates, results);
-            if (env.rank() == 0) {
-              std::cout << "results:" << std::endl;
-              for (size_t j = 0; j < results.size(); ++j) {
-                std::cout << j << " " << results[j] << std::endl;
-              }
+            candidates_ = bloomFilter_.filter_simple(local_string_ptr, i, candidates_, results_);
+            std::sort(candidates.begin(), candidates.end());
+            std::sort(candidates_.begin(), candidates_.end());
+
+            std::cout << "iteration: " << i << std::endl;
+            std::cout << "#candidates: " << candidates.size() << " #candidates_: " << candidates_.size() << std::endl; 
+            dss_schimek::mpi::execute_in_order( [&]() {
+                std::cout << "compare candidates: rank: " << env.rank() << std::endl;
+                for (size_t i = 0; i < candidates.size(); ++i) {
+                std::cout << i << " " << candidates[i] << " " << candidates_[i] << std::endl;
+                }});
+            if (candidates != candidates_) {
+              std::cout<< " different candidate sets" << std::endl;
+              std::abort();
             }
+            dss_schimek::mpi::execute_in_order( [&]() {
+                std::cout << "compare results: rank: " << env.rank() << std::endl;
+                for (size_t i = 0; i < ss.size(); ++i) {
+                std::cout << i << " " << results[i] << " " << results_[i] << std::endl;
+                if (results[i] != results_[i])
+                std::abort();
+                }});
+            if (results != results_) {
+              std::cout << "see above " << std::endl;
+              std::abort();
+            }   
           }         
 
+          
 
 
           // There is only one PE, hence there is no need for distributed sorting 
@@ -438,7 +469,7 @@ namespace dss_schimek {
 	    for (volatile size_t j = 0; j < 10; ++j)
             tmpSum += j;
           }
-          std::cout << tmpSum << std::endl;
+          std::cout << tmpSum << " rank: " << env.rank() << std::endl;
           env.barrier();
           env.barrier();
 
