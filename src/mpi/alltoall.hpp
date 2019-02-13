@@ -155,8 +155,8 @@ namespace dsss::mpi {
               env.communicator());
           return receive_data;
         }
-
-  };
+      
+    };
 
   class AllToAllvDirectMessages {
     public:

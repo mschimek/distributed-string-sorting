@@ -67,7 +67,7 @@ static inline DataType allreduce_min(DataType& send_data,
 }
 
 template <typename DataType>
-static inline DataType allreduce_sum(DataType& send_data,
+static inline DataType allreduce_sum(const DataType& send_data,
   environment env = environment()) {
   static_assert(std::is_arithmetic<DataType>(),
     "Only arithmetic types are allowed for allreduce_sum.");

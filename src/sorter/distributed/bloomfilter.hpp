@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <numeric>
 #include <type_traits>
 #include <random>
 
@@ -77,6 +78,14 @@ namespace dss_schimek {
     }
     return indices;
   }
+  struct RecvData {
+    std::vector<size_t> data;
+    std::vector<size_t> intervalSizes;
+    std::vector<size_t> globalOffsets;
+    RecvData(std::vector<size_t>&& data, std::vector<size_t>&& intervalSizes, std::vector<size_t>&& globalOffsets)
+      : data(std::move(data)), intervalSizes(std::move(intervalSizes)), globalOffsets(std::move(globalOffsets)) 
+    {}
+  };
 
 
   template<typename SendPolicy>
@@ -91,18 +100,40 @@ namespace dss_schimek {
       return hashValues;
     }
 
-    static inline std::pair<std::vector<SendType>, std::vector<size_t>> sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
+    static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
       std::vector<size_t> sendValues = extractSendValues(hashes);//TODO return computeIntervalSizes
       std::vector<size_t> intervalSizes = computeIntervalSizes(sendValues, bloomfilterSize);
+      std::vector<size_t> offsets;
+      offsets.reserve(intervalSizes.size());
+      offsets.push_back(0);
+      std::partial_sum(intervalSizes.begin(), intervalSizes.end() - 1, std::back_inserter(offsets));
+      dsss::mpi::environment env;
+      std::cout << "pos 0 " << std::endl;
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "interval sizes : rank: " << env.rank() << std::endl;
+          for(const auto& elem : intervalSizes)
+          std::cout << elem << std::endl;
+          std::cout << "end interval sizes rank: " << env.rank() << std::endl;
+          });
+      std::cout << "pos 1" << std::endl;
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "partial sum : rank: " << env.rank() << std::endl;
+          for(const auto& elem : offsets)
+          std::cout << elem << std::endl;
+          std::cout << "end partial sum rank: " << env.rank() << std::endl;
+          });
+      offsets = dsss::mpi::alltoall(offsets);
+
+
+
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
       std::vector<size_t> result = SendPolicy::alltoallv(sendValues.data(), intervalSizes);
-      auto p = std::make_pair(result, recvIntervalSizes);
-      return p;
+      return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
     }
 
-    static inline std::vector<HashPEIndex> addPEIndex(const std::vector<size_t>& hashes, const std::vector<size_t>& intervalSizes) {
+    static inline std::vector<HashPEIndex> addPEIndex(const RecvData& recvData) {
       std::vector<HashPEIndex> hashesPEIndex;
-      hashesPEIndex.reserve(hashes.size());
+      hashesPEIndex.reserve(recvData.data.size());
 
       //dsss::mpi::environment env;
       //dss_schimek::mpi::execute_in_order([&]() {
@@ -113,11 +144,11 @@ namespace dss_schimek {
       //    });
 
       size_t curPE = 0;
-      size_t curBoundary = intervalSizes[0];
-      for (size_t i = 0; i < hashes.size(); ++i) {
+      size_t curBoundary = recvData.intervalSizes[0];
+      for (size_t i = 0; i < recvData.data.size(); ++i) {
         while (i == curBoundary) 
-          curBoundary += intervalSizes[++curPE];
-        hashesPEIndex.emplace_back(hashes[i], curPE);
+          curBoundary += recvData.intervalSizes[++curPE];
+        hashesPEIndex.emplace_back(recvData.data[i], curPE);
       }  
       return hashesPEIndex;
     }
@@ -128,22 +159,22 @@ namespace dss_schimek {
   struct FindDuplicates {
     using DataType = HashPEIndex;
     
-    static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, std::vector<size_t>& intervalSizes) {
+    static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, const RecvData& recvData) {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
       dsss::mpi::environment env;
       std::vector<IteratorPair> iteratorPairs;
 
-      size_t elementsToMerge = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
+      size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
       auto outputIt = std::back_inserter(mergedElements);
       Iterator it = hashPEIndices.begin(); 
       
 
-      for (size_t i = 0; i < intervalSizes.size(); ++i) {
-       iteratorPairs.emplace_back(it, it + intervalSizes[i]);
-       it += intervalSizes[i];
+      for (size_t i = 0; i < recvData.intervalSizes.size(); ++i) {
+       iteratorPairs.emplace_back(it, it + recvData.intervalSizes[i]);
+       it += recvData.intervalSizes[i];
       }
 
       //dss_schimek::mpi::execute_in_order([&]() {
@@ -165,9 +196,8 @@ namespace dss_schimek {
       //    });
 
 
-      std::vector<std::vector<size_t>> result_sets(intervalSizes.size());
-
-      std::vector<size_t> counters(intervalSizes.size(), 0);
+      std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
+      std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
 
       for (auto elem : mergedElements)
         std::cout << elem << std::endl;
@@ -213,10 +243,10 @@ namespace dss_schimek {
         for (size_t i = 0; i < result_sets.size(); ++i) {
           sendCounts_.push_back(result_sets[i].size());
           for (size_t j = 0; j < result_sets[i].size(); ++j) {
-            sendBuffer.push_back(result_sets[i][j]);
+            sendBuffer.push_back(result_sets[i][j] + recvData.globalOffsets[i]);
           }
         }
-
+      
       return dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
     }
     
@@ -593,9 +623,7 @@ namespace dss_schimek {
 
 
         //auto [recvHashValues, intervalSizes] = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
-        auto p = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
-        std::vector<size_t> recvHashValues = p.first;
-        std::vector<size_t> intervalSizes = p.second;
+        RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
 
         //dss_schimek::mpi::execute_in_order([&]() {
         //    std::cout << "recvHashValues rank: " << env.rank()  << std::endl;
@@ -604,8 +632,7 @@ namespace dss_schimek {
         //    std::cout << "recvHashValues end" << std::endl;
         //    });
 
-
-        std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvHashValues, intervalSizes);
+        std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
 
         dss_schimek::mpi::execute_in_order([&]() {
             std::cout << "recvHashPEIndices rank: " << env.rank()  << std::endl;
@@ -616,7 +643,7 @@ namespace dss_schimek {
 
 
     
-        std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, intervalSizes);
+        std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
         dss_schimek::mpi::execute_in_order([&]() {
             std::cout << "indicesOfDuplicates1 rank: " << env.rank()  << std::endl;
             for (size_t i = 0; i < indicesOfDuplicates.size(); ++i)
