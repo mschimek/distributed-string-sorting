@@ -421,7 +421,7 @@ namespace dss_schimek {
           BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter_;
           for (size_t i = 1; i < 10; ++i) {
             env.barrier();
-            candidates = bloomFilter.filter_new(local_string_ptr, i, candidates, results);
+            candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
             candidates_ = bloomFilter_.filter_simple(local_string_ptr, i, candidates_, results_);
             std::sort(candidates.begin(), candidates.end());
             std::sort(candidates_.begin(), candidates_.end());
@@ -448,9 +448,20 @@ namespace dss_schimek {
               std::cout << "see above " << std::endl;
               std::abort();
             }   
-          }         
-
+          }
           
+          std::vector<size_t> results_exact(ss.size(), 0);
+          std::vector<size_t> candidates_exact(ss.size());
+          std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         
+          bloomFilter.filter_exact(local_string_ptr, 10,candidates_exact, results_exact);
+
+          dss_schimek::mpi::execute_in_order( [&]() {
+                std::cout << "compare results: rank: " << env.rank() << std::endl;
+                for (size_t i = 0; i < ss.size(); ++i) {
+                std::cout << i << " " << results[i] << " " << results_[i] << " " << results_exact[i] << std::endl;
+                if (results[i] != results_[i] || results[i] != results_exact[i])
+                std::abort();
+                }});
 
 
           // There is only one PE, hence there is no need for distributed sorting 

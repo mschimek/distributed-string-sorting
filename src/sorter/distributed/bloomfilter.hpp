@@ -28,6 +28,79 @@
 #include <tlx/algorithm/multiway_merge.hpp>
 
 namespace dss_schimek {
+
+  template<typename DataType>
+    inline std::vector<DataType> flatten(const std::vector<std::vector<DataType>>& dataToFlatten) {
+      size_t totalSumElements = 0;
+      for (const auto& curVec : dataToFlatten)
+        totalSumElements += curVec.size();
+
+      return flatten(dataToFlatten, totalSumElements);
+    }
+
+  template<typename DataType>
+    inline std::vector<DataType> flatten(const std::vector<std::vector<DataType>>& dataToFlatten, const size_t totalSumElements) {
+      std::vector<DataType> flattenedData;
+      flattenedData.reserve(totalSumElements);
+      for (const auto& curVec : dataToFlatten) {
+        std::copy(curVec.begin(), curVec.end(), std::back_inserter(flattenedData));
+      }
+      return flattenedData;
+    }
+
+  struct Duplicate {
+    size_t index;
+    bool hasReachedEOS;
+    Duplicate(size_t index, bool hasReachedEOS) : index(index), hasReachedEOS(hasReachedEOS) {}
+  };
+
+  struct HashTriple {
+    size_t hashValue;
+    size_t stringIndex; 
+    size_t PEIndex;
+    HashTriple() = default;
+
+    HashTriple(size_t hashValue, size_t stringIndex, size_t PEIndex) : hashValue(hashValue), stringIndex(stringIndex), PEIndex(PEIndex) {}
+
+    bool operator<(const HashTriple& rhs) const {
+      return hashValue < rhs.hashValue;
+    }
+
+    friend std::ostream& operator<< (std::ostream& stream, const HashTriple& hashTriple) {
+      return stream << "[" << hashTriple.hashValue << ", " << hashTriple.stringIndex << ", "  << hashTriple.PEIndex << "]";
+    }
+    operator std::string() const { return "(" + std::to_string(hashValue) + ", " + std::to_string(stringIndex) + ", " +  std::to_string(PEIndex) + ")"; }
+  };
+  
+  struct StringTriple {
+    const unsigned char* string;
+    size_t stringIndex; 
+    size_t PEIndex;
+    StringTriple() = default;
+
+    StringTriple(const unsigned char* string_, size_t stringIndex, size_t PEIndex) : string(string_), stringIndex(stringIndex), PEIndex(PEIndex) {}
+
+    bool operator<(const StringTriple& rhs) const {
+      size_t i = 0;
+      while (string[i] != 0 && string[i] == rhs.string[i])
+        ++i;
+      return string[i] < rhs.string[i];
+    }
+
+    friend std::ostream& operator<< (std::ostream& stream, const StringTriple& stringTriple) {
+      return stream << "[" << stringTriple.string << ", " << stringTriple.stringIndex << ", " << stringTriple.PEIndex << "]" << std::endl;
+    }
+  };
+
+  struct HashTripleComp {
+    bool operator() (const HashTriple& lhs, const HashTriple& rhs) { 
+      const bool firstCrit = lhs.hashValue < rhs.hashValue;
+      const bool secondCrit = !firstCrit && lhs.stringIndex < rhs.stringIndex;
+      return firstCrit || secondCrit;
+    }
+    bool operator() (const size_t& lhs, const HashTriple& rhs) { return lhs < rhs.hashValue; }
+  };
+
   struct HashStringIndex {
     size_t hashValue;
     size_t stringIndex;
@@ -78,6 +151,7 @@ namespace dss_schimek {
     }
     return indices;
   }
+
   struct RecvData {
     std::vector<size_t> data;
     std::vector<size_t> intervalSizes;
@@ -86,7 +160,6 @@ namespace dss_schimek {
       : data(std::move(data)), intervalSizes(std::move(intervalSizes)), globalOffsets(std::move(globalOffsets)) 
     {}
   };
-
 
   template<typename SendPolicy>
   struct SendOnlyHashesToFilter : private SendPolicy {
@@ -101,30 +174,14 @@ namespace dss_schimek {
     }
 
     static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
-      std::vector<size_t> sendValues = extractSendValues(hashes);//TODO return computeIntervalSizes
+      std::vector<size_t> sendValues = extractSendValues(hashes);
       std::vector<size_t> intervalSizes = computeIntervalSizes(sendValues, bloomfilterSize);
       std::vector<size_t> offsets;
       offsets.reserve(intervalSizes.size());
       offsets.push_back(0);
       std::partial_sum(intervalSizes.begin(), intervalSizes.end() - 1, std::back_inserter(offsets));
       dsss::mpi::environment env;
-      std::cout << "pos 0 " << std::endl;
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "interval sizes : rank: " << env.rank() << std::endl;
-          for(const auto& elem : intervalSizes)
-          std::cout << elem << std::endl;
-          std::cout << "end interval sizes rank: " << env.rank() << std::endl;
-          });
-      std::cout << "pos 1" << std::endl;
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "partial sum : rank: " << env.rank() << std::endl;
-          for(const auto& elem : offsets)
-          std::cout << elem << std::endl;
-          std::cout << "end partial sum rank: " << env.rank() << std::endl;
-          });
       offsets = dsss::mpi::alltoall(offsets);
-
-
 
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
       std::vector<size_t> result = SendPolicy::alltoallv(sendValues.data(), intervalSizes);
@@ -134,14 +191,6 @@ namespace dss_schimek {
     static inline std::vector<HashPEIndex> addPEIndex(const RecvData& recvData) {
       std::vector<HashPEIndex> hashesPEIndex;
       hashesPEIndex.reserve(recvData.data.size());
-
-      //dsss::mpi::environment env;
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "intervalSizes  within addPEIndex rank: " << env.rank()  << std::endl;
-      //    for (size_t i = 0; i < intervalSizes.size(); ++i)
-      //    std::cout << i << " " << intervalSizes[i] << std::endl;
-      //    std::cout << "intervalSizes within addPEIndex end" << std::endl;
-      //    });
 
       size_t curPE = 0;
       size_t curBoundary = recvData.intervalSizes[0];
@@ -154,11 +203,11 @@ namespace dss_schimek {
     }
   };
 
-
+  
 
   struct FindDuplicates {
     using DataType = HashPEIndex;
-    
+
     static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, const RecvData& recvData) {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
@@ -177,49 +226,17 @@ namespace dss_schimek {
        it += recvData.intervalSizes[i];
       }
 
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "hashPEIndices within findDuplicates rank: " << env.rank()  << std::endl;
-      //    std::cout << "elementsToMerge " << elementsToMerge << std::endl;
-      //    for (size_t i = 0; i < hashPEIndices.size(); ++i)
-      //    std::cout << i << " " << hashPEIndices[i] << std::endl;
-      //    std::cout << "hashPEIndices within findDuplicates end" << std::endl;
-      //    });
-
-
       tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(), mergedElements.begin(), elementsToMerge);
-
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "mergedElements rank: " << env.rank()  << std::endl;
-      //    for (size_t i = 0; i < mergedElements.size(); ++i)
-      //    std::cout << i << " " << mergedElements[i] << std::endl;
-      //    std::cout << "mergedElements end" << std::endl;
-      //    });
-
 
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
-
-      for (auto elem : mergedElements)
-        std::cout << elem << std::endl;
 
       HashPEIndex prevHashTriple = mergedElements.empty() ? HashPEIndex{0, 0} : mergedElements[0];
       bool duplicate = false;
 
 
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "merge rank: " << env.rank() << std::endl;
       for(size_t i = 1; i < mergedElements.size(); ++i) {
         const HashPEIndex curHashTriple = mergedElements[i];
-        std::cout << "prev: " << prevHashTriple << std::endl;
-        std::cout << "cur: " << curHashTriple << std::endl;
-        for (size_t j = 0; j < counters.size(); ++j) {
-        std::cout << counters[j] << " ";
-        std::cout << "resultset: " << j;
-        for (auto elem : result_sets[j])
-          std::cout << elem << " ";
-        std::cout << std::endl;
-        }
-        std::cout << std::endl;
         if (prevHashTriple.hashValue == curHashTriple.hashValue) {
           result_sets[prevHashTriple.PEIndex].push_back(counters[prevHashTriple.PEIndex]++);
           duplicate = true;
@@ -231,7 +248,6 @@ namespace dss_schimek {
         }
         prevHashTriple = curHashTriple;
       }
-      });
 
       if (duplicate)
           result_sets[prevHashTriple.PEIndex].push_back(counters[prevHashTriple.PEIndex]++);
@@ -243,7 +259,7 @@ namespace dss_schimek {
         for (size_t i = 0; i < result_sets.size(); ++i) {
           sendCounts_.push_back(result_sets[i].size());
           for (size_t j = 0; j < result_sets[i].size(); ++j) {
-            sendBuffer.push_back(result_sets[i][j] + recvData.globalOffsets[i]);
+            sendBuffer.push_back(result_sets[i][j] + recvData.globalOffsets[i] );
           }
         }
       
@@ -269,37 +285,6 @@ namespace dss_schimek {
   struct SendHashesAndPEIndexToFilter {
     using SendType = HashStringIndex;
   };
-
-
-
-  struct HashTriple {
-    size_t hashValue;
-    size_t stringIndex; 
-    size_t PEIndex;
-    HashTriple() = default;
-
-    HashTriple(size_t hashValue, size_t stringIndex, size_t PEIndex) : hashValue(hashValue), stringIndex(stringIndex), PEIndex(PEIndex) {}
-
-    bool operator<(const HashTriple& rhs) const {
-      return hashValue < rhs.hashValue;
-    }
-
-    friend std::ostream& operator<< (std::ostream& stream, const HashTriple& hashTriple) {
-      return stream << "[" << hashTriple.hashValue << ", " << hashTriple.stringIndex << ", "  << hashTriple.PEIndex << "]";
-    }
-    operator std::string() const { return "(" + std::to_string(hashValue) + ", " + std::to_string(stringIndex) + ", " +  std::to_string(PEIndex) + ")"; }
-  };
-
-
-  struct HashTripleComp {
-    bool operator() (const HashTriple& lhs, const HashTriple& rhs) { 
-      const bool firstCrit = lhs.hashValue < rhs.hashValue;
-      const bool secondCrit = !firstCrit && lhs.stringIndex < rhs.stringIndex;
-      return firstCrit || secondCrit;
-    }
-    bool operator() (const size_t& lhs, const HashTriple& rhs) { return lhs < rhs.hashValue; }
-  };
-
 
   class AllToAllHashValuesNaive {
     public:
@@ -350,7 +335,7 @@ namespace dss_schimek {
       dsss::mpi::environment env;
       public:
 
-      const size_t bloomFilterSize = 100000;
+      const size_t bloomFilterSize = 10000;
 
       std::vector<size_t> computeIntervals(std::vector<HashTriple>& hashes) {
         std::vector<size_t> indices;
@@ -407,105 +392,76 @@ namespace dss_schimek {
 
         return duplicateIndices;
       }
-      std::vector<std::vector<size_t>> merge(const std::vector<HashTriple>& hashTriples) {
-        dsss::mpi::environment env;
-        std::vector<std::vector<size_t>> resultSets(env.size());
-        if (hashTriples.empty())
-          return resultSets;
 
-        HashTriple prevHashTriple = hashTriples[0];
+      void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std::vector<size_t>& distinguishingPrefixLength) {
+        dsss::mpi::environment env;
+        if (stringTriples.empty())
+          return;
+
+        std::stable_sort(stringTriples.begin(), stringTriples.end());
+        StringTriple prevHashTriple = stringTriples[0];
         bool duplicate = false;
 
-        for(size_t i = 1; i < hashTriples.size(); ++i) {
-          const HashTriple curHashTriple = hashTriples[i];
-          if (prevHashTriple.hashValue == curHashTriple.hashValue) {
-            resultSets[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
-            duplicate = true;
-          } else if (duplicate) {
-            resultSets[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
-            duplicate = false;
+        for (size_t i = 1; i < stringTriples.size(); ++i) {
+          const StringTriple prevStringTriple = stringTriples[i - 1];
+          const StringTriple curStringTriple = stringTriples[i];
+
+          const unsigned char * s1 = prevStringTriple.string;
+          const unsigned char * s2 = curStringTriple.string;
+
+          const size_t distValuePrevCur = 1 + dss_schimek::calc_lcp(s1, s2); 
+          if (prevStringTriple.PEIndex == env.rank()) {
+            const size_t oldValue = distinguishingPrefixLength[prevStringTriple.stringIndex];
+            distinguishingPrefixLength[prevStringTriple.stringIndex] = distValuePrevCur > oldValue ? distValuePrevCur : oldValue;
           }
-          prevHashTriple = curHashTriple;
+          if (curStringTriple.PEIndex == env.rank()) {
+            const size_t oldValue = distinguishingPrefixLength[curStringTriple.stringIndex];
+            distinguishingPrefixLength[curStringTriple.stringIndex] = distValuePrevCur > oldValue ? distValuePrevCur : oldValue;
+          }
         }
-        if (duplicate)
-          resultSets[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
+      }
 
-        return resultSets;
-      } 
-
-      std::vector<size_t> getLocalDuplicateIndices(const std::vector<HashTriple>& hashTriples) {
-
-        dsss::mpi::environment env;
-        std::vector<std::vector<size_t>> globalDuplicates = merge(hashTriples);
-        std::cout << "merge: rank: " << env.rank() << std::endl;
-        
+      struct ContainerSizesIndices {
+        using Container = dss_schimek::StringLcpContainer<StringSet>;
+        Container container;
         std::vector<size_t> intervalSizes;
-        size_t totalCounts = 0;
-        for (const auto& vec : globalDuplicates) {
-          intervalSizes.push_back(vec.size());
-          totalCounts += vec.size();
-        } 
-        std::cout << "merge: rank: " << env.rank() << " totalCounts: " << totalCounts << std::endl;
-        std::vector<size_t> sendBuffer;
-        sendBuffer.reserve(totalCounts);
+        std::vector<size_t> stringIndices;
+        ContainerSizesIndices(Container&& container, std::vector<size_t>&& intervalSizes, std::vector<size_t>&& stringIndices) 
+          : container(std::move(container)), intervalSizes(std::move(intervalSizes)), stringIndices(std::move(stringIndices)) {}
+      };
 
-        for (size_t i = 0; i < globalDuplicates.size(); ++i) {
-          for (size_t j = 0; j < globalDuplicates[i].size(); ++j) 
-            sendBuffer.push_back(globalDuplicates[i][j]);
+      
+      
+      std::vector<StringTriple> generateStringTriples(ContainerSizesIndices& containerSizesIndices, const size_t depth) {
+        const std::vector<size_t>& intervalSizes = containerSizesIndices.intervalSizes;
+        const StringSet globalSet = containerSizesIndices.container.make_string_set();
+        std::vector<size_t>& stringIndices = containerSizesIndices.stringIndices;
+
+        size_t totalNumSentStrings = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
+
+        std::vector<StringTriple> stringTriples;
+        if (totalNumSentStrings == 0) 
+          return stringTriples;
+
+        stringTriples.reserve(totalNumSentStrings);
+        size_t curOffset = 0; 
+        auto begin = globalSet.begin();
+
+        for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+          for (size_t i = 0; i < intervalSizes[curRank]; ++i) {
+            String curString = globalSet[begin + curOffset + i];
+            stringTriples.emplace_back(globalSet.get_chars(curString, 0), stringIndices[curOffset + i], curRank);
+          } 
+          curOffset += intervalSizes[curRank];
         }
-        return dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), intervalSizes);
+        return stringTriples;
       }
 
-      std::vector<HashTriple> collectOnPE0(std::vector<HashTriple>& hashTriples) {
-        std::vector<HashTriple> recvBuffer;
-        int32_t localSize = hashTriples.size();
-        std::vector<int32_t> intervalSizes = dsss::mpi::allgather(localSize);
-        const int32_t totalSize = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
-        std::vector<int32_t> sendDisplacements(intervalSizes.size(), 0);
-        for (size_t i = 1; i < sendDisplacements.size(); ++i) {
-          sendDisplacements[i] = sendDisplacements[i - 1] + intervalSizes[i - 1];
-        }
-        if (env.rank() == 0)
-          recvBuffer.resize(totalSize);
-
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "hashTriples rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < hashTriples.size(); ++i)
-            std::cout << i << " " << hashTriples[i] << std::endl;
-            std::cout << "hashTriples end" << std::endl;
-            });
-
-
-        dsss::mpi::data_type_mapper<HashTriple> dtm;
-        MPI_Gatherv(
-            hashTriples.data(),
-            hashTriples.size(),
-            dtm.get_mpi_type(),
-            recvBuffer.data(),
-            intervalSizes.data(),
-            sendDisplacements.data(),
-            dtm.get_mpi_type(),
-            0,
-            env.communicator());
-
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "recvBuffer rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < recvBuffer.size(); ++i)
-            std::cout << i << " " << recvBuffer[i] << std::endl;
-            std::cout << "recvBuffer end" << std::endl;
-            });
-
-
-        return recvBuffer; 
-      }
-
-      std::vector<HashTriple> collectOnPE0(StringLcpPtr strptr,
-          std::vector<size_t>& candidates,
-          const size_t depth) {
+      ContainerSizesIndices allgatherStrings(StringLcpPtr strptr,
+          std::vector<size_t>& candidates) {
 
         StringSet ss = strptr.active();
         std::vector<unsigned char> send_buffer;
-        std::vector<unsigned char> receive_buffer_char;
 
         for (size_t j = 0; j < candidates.size(); ++j) {
           String str = ss[ss.begin() + candidates[j]];
@@ -517,270 +473,143 @@ namespace dss_schimek {
         std::vector<size_t> recvCounts = dsss::mpi::allgather(numStrings);
         std::vector<size_t> stringIndices = dsss::mpi::allgatherv(candidates);
         std::vector<unsigned char> recvBuffer = dsss::mpi::allgatherv(send_buffer);
-        size_t totalCount = std::accumulate(recvCounts.begin(), recvCounts.end(), 0);
-        dss_schimek::StringLcpContainer<StringSet> container(std::move(recvBuffer));
-        StringSet globalSet = container.make_string_set();
+        return ContainerSizesIndices(std::move(recvBuffer), std::move(recvCounts), std::move(stringIndices));
+      }
 
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "print global Stringset rank: " << env.rank()  << std::endl;
-            globalSet.print();
-            std::cout << "end global Stringset " << std::endl;
-            });
+      template <typename T>
+        struct GeneratedHashStructuresEOSCandidates {
+          std::vector<T> data;
+          std::vector<size_t> eosCandidates;
+          GeneratedHashStructuresEOSCandidates(std::vector<T>&& data, std::vector<size_t>&& eosCandidates) 
+            : data(std::move(data)), eosCandidates(std::move(eosCandidates)) {}
+        };
+
+
+      GeneratedHashStructuresEOSCandidates<HashTriple> generateHashTriples(ContainerSizesIndices& containerSizesIndices, const size_t depth) {
+        const std::vector<size_t>& intervalSizes = containerSizesIndices.intervalSizes;
+        const StringSet globalSet = containerSizesIndices.container.make_string_set();
+        std::vector<size_t>& stringIndices = containerSizesIndices.stringIndices;
+        std::vector<size_t> eosCandidates;
+
+        size_t totalNumSentStrings = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
 
         std::vector<HashTriple> hashTriples;
-        if (totalCount == 0) 
-          return hashTriples;
+        if (totalNumSentStrings == 0) 
+          return GeneratedHashStructuresEOSCandidates<HashTriple>(std::move(hashTriples), std::move(eosCandidates));
 
-        hashTriples.reserve(totalCount);
+        hashTriples.reserve(totalNumSentStrings);
         size_t curOffset = 0; 
         auto begin = globalSet.begin();
 
         for (size_t curRank = 0; curRank < env.size(); ++curRank) {
-         for (size_t i = 0; i < recvCounts[curRank]; ++i) {
-          String curString = globalSet[begin + curOffset + i];
-          const size_t curHash = hash(globalSet.get_chars(curString, 0), depth, bloomFilterSize);
-          hashTriples.emplace_back(curHash, stringIndices[curOffset + i], curRank);
-         } 
-         curOffset += recvCounts[curRank];
+          for (size_t i = 0; i < intervalSizes[curRank]; ++i) {
+            String curString = globalSet[begin + curOffset + i];
+            const size_t length = globalSet.get_length(curString);
+            if (depth > length) {
+              if (curRank == env.rank())
+                eosCandidates.push_back(stringIndices[curOffset + i]);
+            } else {
+              const size_t curHash = hash(globalSet.get_chars(curString, 0), depth, bloomFilterSize);
+              hashTriples.emplace_back(curHash, stringIndices[curOffset + i], curRank);
+            }
+          } 
+          curOffset += intervalSizes[curRank];
         }
-
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "print global hashes rank: " << env.rank()  << std::endl;
-            for (const auto& hashTriple : hashTriples)
-            std::cout << hashTriple << std::endl;
-            std::cout << "end global hashes" << std::endl;
-            });
-
-
-        return hashTriples; 
+        return GeneratedHashStructuresEOSCandidates<HashTriple>(std::move(hashTriples), std::move(eosCandidates));
       }
+
+      GeneratedHashStructuresEOSCandidates<HashStringIndex> generateHashStringIndices(StringSet ss, const std::vector<size_t>& candidates, const size_t depth) {
+        std::vector<HashStringIndex> hashStringIndices;
+        std::vector<size_t> eosCandidates;
+        hashStringIndices.reserve(candidates.size());
+        const Iterator begin = ss.begin();
+
+        for (const size_t curCandidate : candidates) {
+          String curString = ss[begin + curCandidate];
+          const size_t length = ss.get_length(curString);
+          if (depth > length) {
+            eosCandidates.push_back(curCandidate);
+          } else {
+            const size_t curHash = hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+            hashStringIndices.emplace_back(curHash, curCandidate);
+          }
+        }
+        return GeneratedHashStructuresEOSCandidates(std::move(hashStringIndices), std::move(eosCandidates));
+      }
+      
+      void setDepth(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, 
+                    const std::vector<size_t>& eosCandidates, std::vector<size_t>& results) {
+
+        // eosCandidates is subset of candidates whose length is < depth
+        StringSet ss = strptr.active();
+        for (const size_t curCandidate : candidates)
+            results[curCandidate] = depth;
+
+        std::cout << "eosCandiates " << eosCandidates.size() << std::endl;
+        for (const size_t curEOSCandidate : eosCandidates) {
+          String str = ss[ss.begin() + curEOSCandidate];
+          size_t length = ss.get_length(str);
+            results[curEOSCandidate] = length;
+        }
+      }
+
+      void filter_exact(StringLcpPtr strptr, const size_t depth, 
+          std::vector<size_t>& candidates, std::vector<size_t>& results) {
+        ContainerSizesIndices containerSizesIndices = allgatherStrings(strptr, candidates);
+        std::vector<StringTriple> globalStringTriples = generateStringTriples(containerSizesIndices, depth);
+        computeExactDistPrefixLengths(globalStringTriples, results);
+      }
+
+      
 
       std::vector<size_t> filter_simple(StringLcpPtr strptr, const size_t depth, 
           std::vector<size_t>& candidates, std::vector<size_t>& results) {
 
-        std::vector<HashTriple> globalHashTriples = collectOnPE0(strptr, candidates, depth);
+        ContainerSizesIndices containerSizesIndices = allgatherStrings(strptr, candidates);
+        GeneratedHashStructuresEOSCandidates<HashTriple> generatedData = generateHashTriples(containerSizesIndices, depth);
+        std::vector<HashTriple>& globalHashTriples = generatedData.data;
+        const std::vector<size_t>& eosCandidates = generatedData.eosCandidates;
         std::vector<size_t> ownDuplicateIndices = getOwnDuplicates(globalHashTriples);
+        setDepth(strptr, depth, candidates, eosCandidates, results);
 
-        for (size_t i = 0; i < candidates.size(); ++i) {
-          results[candidates[i]] = depth;
-        }
         return ownDuplicateIndices;
       } 
 
-      std::vector<size_t> filter_naive(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
-        dsss::mpi::environment env;
-        std::cout << "filter_naive: rank: " << env.rank() << " depth: " << depth << std::endl;
-        std::vector<HashTriple> hashTriples;
-        const StringSet ss = strptr.active();
-        const Iterator begin = ss.begin();
-        for (size_t i = 0; i < candidates.size(); ++i) {
-          String curString = ss[begin + candidates[i]];
-          const size_t curHash = hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
-          hashTriples.emplace_back(curHash, candidates[i], env.rank());
-        }
-
-        std::sort(hashTriples.begin(), hashTriples.end());
-        std::vector<HashTriple> recvTriples = collectOnPE0(hashTriples);
-        std::sort(recvTriples.begin(), recvTriples.end());
-        std::vector<size_t> localDuplicateIndices = getLocalDuplicateIndices(recvTriples); 
-
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "localDuplicateIndices rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < localDuplicateIndices.size(); ++i)
-            std::cout << i << " " << localDuplicateIndices[i] << std::endl;
-            std::cout << "localDuplicateIndices end" << std::endl;
-            });
-
-        for (size_t i = 0; i < candidates.size(); ++i)
-          results[candidates[i]] = depth;
-        std::cout<< "set depth on rank: " << env.rank() << std::endl;
-
-        return localDuplicateIndices;
-      }
-
-      std::vector<size_t> filter_new(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
+      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
         dsss::mpi::environment env;
 
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "candidates rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < candidates.size(); ++i)
-            std::cout << i << " " << candidates[i] << std::endl;
-            std::cout << "candidates end" << std::endl;
-            });
+        GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = generateHashStringIndices(strptr.active(), candidates, depth);
 
-        std::vector<HashStringIndex> hashStringIndices;
-        const StringSet ss = strptr.active();
-        const Iterator begin = ss.begin();
-        for (size_t i = 0; i < candidates.size(); ++i) {
-          String curString = ss[begin + candidates[i]];
-
-          const size_t curHash = hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
-          hashStringIndices.emplace_back(curHash, candidates[i]);
-        }
+        std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
+        const std::vector<size_t> eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
 
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
-        std::cout<< "rank: " << env.rank() << " hashes are sorted " << std::endl;
 
-
-        //auto [recvHashValues, intervalSizes] = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
         RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
 
-        //dss_schimek::mpi::execute_in_order([&]() {
-        //    std::cout << "recvHashValues rank: " << env.rank()  << std::endl;
-        //    for (size_t i = 0; i < recvHashValues.size(); ++i)
-        //    std::cout << i << " " << recvHashValues[i] << std::endl;
-        //    std::cout << "recvHashValues end" << std::endl;
-        //    });
-
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
-
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "recvHashPEIndices rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < recvHashPEIndices.size(); ++i)
-            std::cout << i << " " << recvHashPEIndices[i] << std::endl;
-            std::cout << "recvHashPEIndices end" << std::endl;
-            });
-
-
-    
         std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "indicesOfDuplicates1 rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < indicesOfDuplicates.size(); ++i)
-            std::cout << i << " " << indicesOfDuplicates[i] << std::endl;
-            std::cout << "indicesOfDuplicates1 end" << std::endl;
-            });
-
-
         FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfDuplicates, hashStringIndices);
 
-dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "indicesOfDuplicates rank: " << env.rank()  << std::endl;
-            for (size_t i = 0; i < indicesOfDuplicates.size(); ++i)
-            std::cout << i << " " << indicesOfDuplicates[i] << std::endl;
-            std::cout << "indicesOfDuplicates end" << std::endl;
-            });
-
-
-       
-        // assume candidates are sorted
-        for (size_t i = 0; i < candidates.size(); ++i) {
-          results[candidates[i]] = depth;
-        }
+        setDepth(strptr, depth, candidates, eosCandidates, results);
 
         return indicesOfDuplicates;
-
       }
 
-      //std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
-      //  dsss::mpi::environment env;
-
-      //  dss_schimek::mpi::execute_in_order([&]() {
-      //      std::cout << "candidates rank: " << env.rank()  << std::endl;
-      //      for (size_t i = 0; i < candidates.size(); ++i)
-      //      std::cout << i << " " << candidates[i] << std::endl;
-      //      std::cout << "candidates end" << std::endl;
-      //      });
-
-      //  std::vector<HashTriple> hashes;
-      //  const StringSet ss = strptr.active();
-      //  const Iterator begin = ss.begin();
-      //  for (size_t i = 0; i < candidates.size(); ++i) {
-      //    String curString = ss[begin + candidates[i]];
-
-      //    const size_t curHash = hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
-      //    hashes.emplace_back(curHash, i, env.rank());
-      //  }
-
-      //  std::sort(hashes.begin(), hashes.end(), comp);
-      //  std::cout<< "rank: " << env.rank() << " hashed are sorted " << std::endl;
-      //  std::vector<size_t> intervalSizes= computeIntervals(hashes);
-
-      //  dss_schimek::mpi::execute_in_order([&]() {
-      //      std::cout << "filter boundaries for rank: " << env.rank() << std::endl;
-      //      for (size_t i = 0; i < intervalSizes.size(); ++i)
-      //      std::cout << i << " " << intervalSizes[i] << std::endl;
-      //      });
-
-      //  std::vector<HashTriple> recvHashTriples = AllToAllHashValuePolicy::allToAllHashTriples(hashes, intervalSizes);
-      //  dss_schimek::mpi::execute_in_order([&]() {
-      //      std::cout << "recv hashes for  rank: " << env.rank() << std::endl;
-      //      for (size_t i = 0; i < recvHashTriples.size(); ++i) {
-      //      std::string str = recvHashTriples[i];
-      //      std::cout << i << " " << str << std::endl;
-      //      }
-      //      });
-
-
-      //  std::sort(recvHashTriples.begin(), recvHashTriples.end(), comp);
-
-      //  dss_schimek::mpi::execute_in_order([&]() {
-      //      std::cout << "sorted hashes for  rank: " << env.rank() << std::endl;
-      //      for (size_t i = 0; i < recvHashTriples.size(); ++i) {
-      //      std::string str = recvHashTriples[i];
-      //      std::cout << i << " " << str << std::endl;
-      //      }
-      //      });
-
-
-      //  // find duplicates
-      //  std::vector<std::vector<size_t>> duplicates(env.size(), std::vector<size_t>());
-      //  HashTriple prevHashTriple = recvHashTriples.empty() ? HashTriple() : recvHashTriples[0];
-      //  bool duplicate = false;
-
-      //  for(size_t i = 1; i < recvHashTriples.size(); ++i) {
-      //    const HashTriple curHashTriple = recvHashTriples[i];
-      //    if (prevHashTriple.hashValue == curHashTriple.hashValue) {
-      //      duplicates[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
-      //      duplicate = true;
-      //    } else if (duplicate) {
-      //      duplicates[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
-      //      duplicate = false;
-      //    }
-      //    prevHashTriple = curHashTriple;
-      //  }
-      //  std::cout << "rank: " << env.rank() << " rearrange indices" << std::endl;
-      //  if (duplicate)
-      //    duplicates[prevHashTriple.PEIndex].push_back(prevHashTriple.stringIndex);
-
-      //  size_t size = 0;
-      //  std::vector<size_t> sendCounts(env.size());
-      //  for (size_t i = 0; i < duplicates.size(); ++i) {
-      //    size += duplicates[i].size();
-      //    sendCounts[i] = duplicates[i].size();
-      //  }
-
-      //  std::cout << "rank: " << env.rank() << " write back to sendBuffer " << std::endl;
-      //  std::vector<size_t> sendBuffer;
-      //  sendBuffer.reserve(size);
-      //  // write back to PEs
-      //  for (size_t i = 0; i < duplicates.size(); ++i) {
-      //    for (size_t j = 0; j < duplicates[i].size(); ++j) {
-      //      sendBuffer.push_back(duplicates[i][j]);
-      //    }
-      //  }
-
-      //  std::vector<size_t> recvDuplicateIndices = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts); // should I sort recvDuplicateIndices?
-
-      //  dss_schimek::mpi::execute_in_order([&] () { 
-      //      std::cout << "recv duplicates rank: " << env.rank() << std::endl;
-      //      for (size_t i = 0; i < recvDuplicateIndices.size(); ++i) 
-      //      std::cout << i << " " << recvDuplicateIndices[i] << std::endl;
-      //      std::cout << "recv duplicates end " << std::endl;
-      //      });
-
-      //  for (size_t i = 0; i < candidates.size(); ++i) {
-      //    results[candidates[i]] = depth;
-      //  }
-      //  for (size_t i = 0; i < recvDuplicateIndices.size(); ++i) {
-      //    results[recvDuplicateIndices[i]] = 0;
-      //  }
-
-      //  return recvDuplicateIndices;
-      //} 
-
-      std::vector<size_t> filter(StringLcpPtr strptr) {
-        return {};
+      struct RemoveEOSIndices {};
+      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results, RemoveEOSIndices) {
+        std::vector<size_t> indicesOfDuplicates = filter(strptr, depth, candidates, results);
+        StringSet ss = strptr.active();
+        std::vector<size_t> indicesOfDuplicatesWithoutEOS;
+        indicesOfDuplicatesWithoutEOS.reserve(indicesOfDuplicates.size());
+        for (const size_t curIndex : indicesOfDuplicatesWithoutEOS) {
+          String str = ss[ss.begin() + curIndex];
+          size_t length = ss.get_length(str) + 1;
+          if (depth > length)
+            indicesOfDuplicatesWithoutEOS.push_back(curIndex);
+        }
+        return indicesOfDuplicatesWithoutEOS;
       }
-    };
+
+                        };
 }

@@ -168,6 +168,14 @@ static inline unsigned int calc_lcp(const string _s1, const string _s2)
     return h;
 }
 
+static inline unsigned int calc_lcp(const unsigned char* _s1, const unsigned char* _s2)
+{
+    size_t h = 0;
+    while (_s1[h] != 0 && _s1[h] == _s2[h])
+        ++h;
+    return h;
+}
+
 /// calculate lcp by scanning
 template <typename StringSet>
 static inline
