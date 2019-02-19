@@ -12,6 +12,7 @@
 //#include "sorter/local/strings/insertion_sort_unified.hpp"
 //#include "sorter/local/strings/multikey_quicksort_unified.hpp"
 //#include "sorter/local/strings/radix_sort_unified.hpp"
+#include "encoding/golomb_encoding.hpp"
 
 #include "mpi/alltoall.hpp"
 #include "mpi/allgather.hpp"
@@ -203,7 +204,18 @@ namespace dss_schimek {
     }
   };
 
-  
+  std::vector<size_t> getEncoding(const std::vector<size_t>& values, const std::vector<size_t>& intervalSizes) {
+      std::vector<size_t> encodedValues; 
+      encodedValues.reserve(values.size()); // should i do this? 
+      auto outIt = std::back_inserter(encodedValues);
+      size_t offset = 0;
+      auto inputIterator = values.begin();
+      for (const size_t curIntervalSize : intervalSizes) {
+        getDeltaEncoding(inputIterator, inputIterator + curIntervalSize, outIt);
+        inputIterator += curIntervalSize;
+      }
+      return encodedValues;
+    }
 
   struct FindDuplicates {
     using DataType = HashPEIndex;
@@ -335,7 +347,7 @@ namespace dss_schimek {
       dsss::mpi::environment env;
       public:
 
-      const size_t bloomFilterSize = 10000;
+      const size_t bloomFilterSize = 1000000;
 
       std::vector<size_t> computeIntervals(std::vector<HashTriple>& hashes) {
         std::vector<size_t> indices;
@@ -356,7 +368,7 @@ namespace dss_schimek {
         size_t c = 0, i = 0;
 
         while ((c = *str++) && i < maxDepth) {
-          hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+          hash = ((hash << 5) + hash) + c * 33; /* hash * 33 + c */
           ++i;
         }
         return hash % m;
@@ -540,7 +552,7 @@ namespace dss_schimek {
       void setDepth(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, 
                     const std::vector<size_t>& eosCandidates, std::vector<size_t>& results) {
 
-        // eosCandidates is subset of candidates whose length is < depth
+        // eosCandidates is subset of candidates whose length is <= depth
         StringSet ss = strptr.active();
         for (const size_t curCandidate : candidates)
             results[curCandidate] = depth;
@@ -612,4 +624,5 @@ namespace dss_schimek {
       }
 
                         };
+
 }

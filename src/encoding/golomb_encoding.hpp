@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include <bitset>
 
 #include "golomb_bit_stream.hpp"
 #include "delta_stream.hpp"
@@ -9,6 +10,21 @@ struct BlockWriter {
   std::vector<size_t> data;
 
   void PutRaw(const size_t value) { data.push_back(value); }
+  size_t block_size() { return sizeof(size_t); };
+};
+
+template<typename T>
+struct PrintMe;
+
+template <typename OutputIterator>
+struct BlockWriterIt {
+  using outItValueType = typename OutputIterator::container_type::value_type;
+  using type = typename std::enable_if<std::is_same<outItValueType, size_t>::value, size_t>::type;
+
+  OutputIterator outIt;
+  BlockWriterIt(OutputIterator outIt) : outIt(outIt) {}
+
+  void PutRaw(const type value) { outIt = value; }
   size_t block_size() { return sizeof(size_t); };
 };
 
@@ -31,24 +47,30 @@ void printBits(const T& value) {
   std::cout << std::bitset<sizeof(T) * 8>(value) << std::endl;
 }
 
-
-inline void getDeltaEncoding(const std::vector<size_t>& values, BlockWriter& blockWriter) {
+template <typename InputIterator, typename OutputIterator>
+inline void getDeltaEncoding(InputIterator begin, InputIterator end, BlockWriterIt<OutputIterator>& blockWriter) {
+  using BlockWriter = BlockWriterIt<OutputIterator>;
   using GolombWriter = thrill::core::GolombBitStreamWriter<BlockWriter>;
   using DeltaStreamWriter = thrill::core::DeltaStreamWriter<GolombWriter, size_t>;
+
   GolombWriter golombWriter(blockWriter, 8);
   DeltaStreamWriter deltaStreamWriter(golombWriter);
-  for (const size_t& value : values) {
-    deltaStreamWriter.Put(value);
-    std::cout << value << std::endl;
+  InputIterator it = begin;
+  while (it != end) {
+    deltaStreamWriter.Put(*it);
+    std::cout << *it << std::endl;
+    ++it;
   }
 }
 
-std::vector<size_t> getDeltaEncoding(const std::vector<size_t>& values) {
+
+template <typename InputIterator, typename OutputIterator>
+inline void getDeltaEncoding(InputIterator begin, InputIterator end, OutputIterator out) {
   using StreamWriter = thrill::core::GolombBitStreamWriter<BlockWriter>;
-  BlockWriter blockWriter;
-  getDeltaEncoding(values, blockWriter);
-  return blockWriter.data;
+  BlockWriterIt<OutputIterator> blockWriter(out);
+  getDeltaEncoding(begin, end, blockWriter);
 }
+
 std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
   using GolombReader = thrill::core::GolombBitStreamReader<BlockReader>;
 

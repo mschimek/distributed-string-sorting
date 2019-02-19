@@ -14,23 +14,23 @@
 class InitializedUniformIntDistribution {
   public:
     InitializedUniformIntDistribution(const size_t min, const size_t max) 
-    : min(min), max(max), generator(initialSeed()), dist(min, max) {};
+      : min(min), max(max), generator(initialSeed()), dist(min, max) {};
 
-  size_t operator() () {
-    return dist(generator);
-  }
+    size_t operator() () {
+      return dist(generator);
+    }
 
   private: 
-  size_t min;
-  size_t max;
-  std::mt19937 generator;
-  std::uniform_int_distribution<unsigned char> dist;
+    size_t min;
+    size_t max;
+    std::mt19937 generator;
+    std::uniform_int_distribution<unsigned char> dist;
 
-  size_t initialSeed() {
-    static std::random_device rd;
-    static size_t seed(rd());
-    return seed;
-  }
+    size_t initialSeed() {
+      static std::random_device rd;
+      static size_t seed(rd());
+      return seed;
+    }
 
 
 };
@@ -42,9 +42,9 @@ std::vector<unsigned char> allgatherv(const size_t sizeInBytes, dss_schimek::Tim
   std::vector<unsigned char> sendData;
   sendData.reserve(sizeInBytes);
 
-    for (size_t i = 0; i + 1 < sizeInBytes; ++i) 
-      sendData.push_back(dist());
-    sendData.push_back(0);
+  for (size_t i = 0; i + 1 < sizeInBytes; ++i) 
+    sendData.push_back(dist());
+  sendData.push_back(0);
   timer.start(timerDescription);
   std::vector<unsigned char> recvData = dsss::mpi::allgatherv(sendData);
   timer.end(timerDescription);
@@ -70,7 +70,7 @@ std::vector<unsigned char> alltoall(const size_t sizeInBytesPerPE, dss_schimek::
   return recvData; 
 }
 
-void doNotOptimizeAway(const std::vector<unsigned char> data) {
+void doNotOptimizeAway(const std::vector<unsigned char>& data) {
   volatile size_t sum = 0;
   sum = std::accumulate(data.begin(), data.end(), 0);
 }
@@ -113,7 +113,7 @@ int main (int argc, char *argv[]) {
   cp.add_unsigned('_', "sizeAllGather", sizeInBytesAllgather, " number of bytes to send");
   cp.add_unsigned('_', "sizeAllToAll", sizeInBytesAllToAll, " number of bytes to send");
   cp.add_unsigned('i', "numberOfIterations", iterations, "");
-  
+
 
   if (!cp.process(argc, argv)) {
     return -1;
@@ -123,8 +123,8 @@ int main (int argc, char *argv[]) {
     std::cout << "startup info:" << std::endl;
     cp.print_result();
   }
- 
+
   run(sizeInBytesAllgather, sizeInBytesAllToAll, iterations);
- 
+
   env.finalize();
 }

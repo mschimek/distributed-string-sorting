@@ -12,6 +12,7 @@
 //#include "sorter/local/strings/multikey_quicksort_unified.hpp"
 //#include "sorter/local/strings/radix_sort_unified.hpp"
 #include "sorter/distributed/bloomfilter.hpp"
+#include "sorter/distributed/tracker.hpp"
 
 #include "mpi/alltoall.hpp"
 #include "mpi/allgather.hpp"
@@ -418,11 +419,19 @@ namespace dss_schimek {
           std::vector<size_t> results_(ss.size(), 0);
           std::vector<size_t> candidates_(ss.size());
           std::iota(candidates_.begin(), candidates_.end(), 0);
+          std::vector<size_t> results_tracker(ss.size(), 0);
+          std::vector<size_t> candidates_tracker(ss.size());
+          std::iota(candidates_tracker.begin(), candidates_tracker.end(), 0);
           BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter_;
-          for (size_t i = 1; i < 10; ++i) {
+          for (size_t i = 1; i < 15; ++i) {
             env.barrier();
             candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
             candidates_ = bloomFilter_.filter_simple(local_string_ptr, i, candidates_, results_);
+            Tracker<StringSet> tracker(i, 1000000);
+            tracker.start(local_string_ptr, candidates_tracker, results_tracker);
+            results_tracker = tracker.getResultsOf(env.rank());
+            candidates_tracker = tracker.getDuplicatesOf(env.rank());
+            std::sort(candidates_tracker.begin(), candidates_tracker.end());
             std::sort(candidates.begin(), candidates.end());
             std::sort(candidates_.begin(), candidates_.end());
 
@@ -430,21 +439,21 @@ namespace dss_schimek {
             std::cout << "#candidates: " << candidates.size() << " #candidates_: " << candidates_.size() << std::endl; 
             dss_schimek::mpi::execute_in_order( [&]() {
                 std::cout << "compare candidates: rank: " << env.rank() << std::endl;
-                for (size_t i = 0; i < candidates.size(); ++i) {
-                std::cout << i << " " << candidates[i] << " " << candidates_[i] << std::endl;
+                for (size_t i = 0; i < std::min(std::min(candidates.size(), candidates_.size()), candidates_tracker.size()); ++i) {
+                std::cout << i << " " << candidates[i] << " " << candidates_[i]  << " " << candidates_tracker[i] << std::endl;
                 }});
-            if (candidates != candidates_) {
+            if (candidates != candidates_ || candidates != candidates_tracker) {
               std::cout<< " different candidate sets" << std::endl;
               std::abort();
             }
             dss_schimek::mpi::execute_in_order( [&]() {
                 std::cout << "compare results: rank: " << env.rank() << std::endl;
                 for (size_t i = 0; i < ss.size(); ++i) {
-                std::cout << i << " " << results[i] << " " << results_[i] << std::endl;
-                if (results[i] != results_[i])
+                std::cout << i << " " << results[i] << " " << results_[i] << " " << results_tracker[i] << std::endl;
+                if (results[i] != results_[i] || results[i] != results_tracker[i])
                 std::abort();
                 }});
-            if (results != results_) {
+            if (results != results_ || results != results_tracker) {
               std::cout << "see above " << std::endl;
               std::abort();
             }   
@@ -453,16 +462,16 @@ namespace dss_schimek {
           std::vector<size_t> results_exact(ss.size(), 0);
           std::vector<size_t> candidates_exact(ss.size());
           std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         
-          bloomFilter.filter_exact(local_string_ptr, 10,candidates_exact, results_exact);
+          bloomFilter.filter_exact(local_string_ptr, 9 ,candidates_exact, results_exact);
+
 
           dss_schimek::mpi::execute_in_order( [&]() {
                 std::cout << "compare results: rank: " << env.rank() << std::endl;
                 for (size_t i = 0; i < ss.size(); ++i) {
-                std::cout << i << " " << results[i] << " " << results_[i] << " " << results_exact[i] << std::endl;
+                std::cout << i << " " << results[i] << " " << results_[i] << " " << results_tracker[i] << " " << results_exact[i] << std::endl;
                 if (results[i] != results_[i] || results[i] != results_exact[i])
                 std::abort();
                 }});
-
 
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
