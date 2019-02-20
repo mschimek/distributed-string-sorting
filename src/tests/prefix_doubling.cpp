@@ -68,7 +68,7 @@ template <typename StringSet, typename StringGenerator,
              const size_t numGeneratedStrings = generatedContainer.size();
 
              timer.start("sorting_overall");
-             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder, Timer>;
+             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringSet, MPIAllToAllRoutine, Timer>;
              DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
              StringLcpContainer<StringSet> sorted_string_cont = 
                sorter.sort(rand_string_ptr, std::move(generatedContainer), timer);
@@ -83,20 +83,20 @@ template <typename StringSet, typename StringGenerator,
              //    });
 
              timer.start("prefix_decompression");
-             if (AllToAllPolicy::PrefixCompression)
-                 sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
+             //if (AllToAllPolicy::PrefixCompression)
+             //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
              timer.end("prefix_decompression");
-             const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-             const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-                 numGeneratedChars,
-                 sorted_string_cont.char_size(),
-                 numGeneratedStrings,
-                 sorted_string_cont.size()); 
-             
-             if (!is_complete_and_sorted) {
-               std::cout << "not sorted" << std::endl;
-               std::abort(); 
-             }
+             //const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
+             //const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
+             //    numGeneratedChars,
+             //    sorted_string_cont.char_size(),
+             //    numGeneratedStrings,
+             //    sorted_string_cont.size()); 
+             //
+             //if (!is_complete_and_sorted) {
+             //  std::cout << "not sorted" << std::endl;
+             //  std::abort(); 
+             //}
              std::stringstream buffer;
              //timer.writeToStream(buffer);
              //if (env.rank() == 0) {

@@ -767,6 +767,80 @@ namespace dsss::mpi {
       }
     };
 
+  template <typename StringSet>
+  struct RecvDataAllToAll{
+    dss_schimek::StringLcpContainer<StringSet> container;
+    std::vector<size_t> recvStringSizes;
+    RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>&& container, std::vector<size_t>&& recvStringSizes) 
+      : container(std::move(container)), recvStringSizes(std::move(recvStringSizes)) {}
+  };
+  
+  template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+    struct AllToAllStringImplPrefixDoubling {
+      static constexpr bool PrefixCompression = true;
+      RecvDataAllToAll<StringSet> alltoallv(
+          dss_schimek::StringLcpContainer<StringSet>& send_data,
+          const std::vector<size_t>& sendCountsString,
+          const std::vector<size_t>& distinguishingPrefixValues,
+          Timer& timer,
+          environment env = environment()){
+
+        using namespace dss_schimek;
+        using String = typename StringSet::String;
+        using CharIt = typename StringSet::CharIterator;
+        timer.start("all_to_all_strings_intern_copy", env);
+        const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
+        const StringSet ss = send_data.make_string_set();
+
+        if (send_data.size() == 0)
+          return RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>(), std::vector<size_t>());
+
+        std::vector<unsigned char> receive_buffer_char;
+        std::vector<size_t> receive_buffer_lcp;
+        std::vector<size_t> send_counts_lcp(sendCountsString);
+        std::vector<size_t> send_counts_char(sendCountsString.size());
+
+        std::vector<size_t>& lcps = send_data.lcps();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(lcps.data() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
+        const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
+        const size_t D = std::accumulate(distinguishingPrefixValues.begin(), distinguishingPrefixValues.end(), send_data.size());
+
+        const size_t numCharsToSend = D - L;
+        std::vector<unsigned char> buffer(numCharsToSend);
+        unsigned char* curPos = buffer.data();
+          size_t totalNumWrittenChars = 0;
+        std::cout << " begin write : lcps.size() " << lcps.size() << " distinguishingPrefixValues.size() " << distinguishingPrefixValues.size()  << " numCharsToSend: " << numCharsToSend << std::endl;
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          auto begin = ss.begin() + stringsWritten;
+          StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
+          size_t numWrittenChars = 0;
+          std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
+              subSet, lcps.data() + stringsWritten, distinguishingPrefixValues.data() + stringsWritten);
+
+          totalNumWrittenChars += numWrittenChars;
+          send_counts_char[interval] = numWrittenChars;
+          stringsWritten += sendCountsString[interval];
+        }
+
+        timer.end("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_mpi", env);
+        receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
+        std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+        timer.end("all_to_all_strings_mpi", env);
+        timer.add("bytes_sent", numCharsToSend + send_data.lcps().size());
+
+        //// no bytes are read in this version only for evaluation layout
+        timer.start("all_to_all_strings_read", env);
+        timer.end("all_to_all_strings_read", env);
+        return RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>(
+            std::move(receive_buffer_char), std::move(receive_buffer_lcp)), std::move(recvNumberStrings));
+      }
+    };
+
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImpl<StringSet,
       AllToAllPolicy,

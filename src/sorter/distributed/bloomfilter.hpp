@@ -557,7 +557,6 @@ namespace dss_schimek {
         for (const size_t curCandidate : candidates)
             results[curCandidate] = depth;
 
-        std::cout << "eosCandiates " << eosCandidates.size() << std::endl;
         for (const size_t curEOSCandidate : eosCandidates) {
           String str = ss[ss.begin() + curEOSCandidate];
           size_t length = ss.get_length(str);
@@ -593,7 +592,7 @@ namespace dss_schimek {
         GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = generateHashStringIndices(strptr.active(), candidates, depth);
 
         std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
-        const std::vector<size_t> eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
+        const std::vector<size_t>& eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
 
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
 

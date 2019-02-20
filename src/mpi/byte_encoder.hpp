@@ -72,6 +72,42 @@ class EmptyLcpByteEncoderMemCpy{
         }
 
   };
+
+class EmptyPrefixDoublingLcpByteEncoderMemCpy{
+    /*
+     * No endcoding 
+     */
+    public:
+      static std::string getName() {
+        return "EmptyPrefixDoublingLcpByteEncoderMemCpy";
+      }
+
+      template<typename StringSet>
+        std::pair<unsigned char*, size_t> write(unsigned char* buffer,
+            const StringSet ss, const size_t* lcps, const size_t* distinguishingPrefixes) const {
+
+          using String = typename StringSet::String;
+          using CharIt = typename StringSet::CharIterator;
+
+          const size_t size = ss.size();
+          size_t numCharsWritten = 0;
+
+          auto beginOfSet = ss.begin();
+          for (size_t i = 0; i < size; ++i) {
+            String str = ss[beginOfSet + i];
+            size_t stringLength = distinguishingPrefixes[i]; 
+            size_t stringLcp = lcps[i];
+            size_t actuallyWrittenChars = stringLength - stringLcp;
+            memcpy(buffer, ss.get_chars(str, stringLcp), actuallyWrittenChars);
+            buffer += actuallyWrittenChars;
+            *buffer = 0;
+            ++buffer;
+            numCharsWritten += actuallyWrittenChars + 1;
+          }
+          return std::make_pair(buffer, numCharsWritten);
+        }
+
+  };
   class EmptyByteEncoderCopy{
     /*
      * No endcoding 
