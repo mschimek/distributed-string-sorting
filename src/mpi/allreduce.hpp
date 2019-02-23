@@ -22,10 +22,10 @@ namespace dsss::mpi {
 
 static inline bool allreduce_and(bool& send_data,
   environment env = environment()) {
-
-  bool receive_data;
+  int send_data_ = send_data;
+  int receive_data;
   MPI_Allreduce(
-    &send_data,
+    &send_data_,
     &receive_data,
     1, 
     MPI_INT,

@@ -30,24 +30,7 @@
 
 namespace dss_schimek {
 
-  template<typename DataType>
-    inline std::vector<DataType> flatten(const std::vector<std::vector<DataType>>& dataToFlatten) {
-      size_t totalSumElements = 0;
-      for (const auto& curVec : dataToFlatten)
-        totalSumElements += curVec.size();
-
-      return flatten(dataToFlatten, totalSumElements);
-    }
-
-  template<typename DataType>
-    inline std::vector<DataType> flatten(const std::vector<std::vector<DataType>>& dataToFlatten, const size_t totalSumElements) {
-      std::vector<DataType> flattenedData;
-      flattenedData.reserve(totalSumElements);
-      for (const auto& curVec : dataToFlatten) {
-        std::copy(curVec.begin(), curVec.end(), std::back_inserter(flattenedData));
-      }
-      return flattenedData;
-    }
+  
 
   struct Duplicate {
     size_t index;

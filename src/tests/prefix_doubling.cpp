@@ -68,10 +68,29 @@ template <typename StringSet, typename StringGenerator,
              const size_t numGeneratedStrings = generatedContainer.size();
 
              timer.start("sorting_overall");
-             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringSet, MPIAllToAllRoutine, Timer>;
+             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine, Timer>;
+
              DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
-             StringLcpContainer<StringSet> sorted_string_cont = 
-               sorter.sort(rand_string_ptr, std::move(generatedContainer), timer);
+             std::vector<StringIndexPEIndex> permutation = 
+               sorter.sort(rand_string_ptr, timer);
+
+             dss_schimek::mpi::execute_in_order([&](){
+                 std::cout << "rank: " << env.rank() << std::endl;
+                 for (auto elem : permutation) {
+                 std::cout << elem << std::endl;
+                 }
+                 });
+
+             auto CompleteStringsCont = dsss::mpi::getStrings(permutation.begin(), permutation.end(), generatedContainer.make_string_set());
+             auto completeStringSet = CompleteStringsCont.make_string_set();
+             reorder(completeStringSet, permutation.begin(), permutation.end());
+
+             dss_schimek::mpi::execute_in_order([&](){
+                 std::cout << "rank: " << env.rank() << std::endl;
+                 std::cout << "print complete sorted set " << std::endl;
+                 //completeStringSet.print();
+                 });
+
 
              timer.end("sorting_overall");
 
@@ -82,21 +101,23 @@ template <typename StringSet, typename StringGenerator,
              //    sorted_string_cont.make_string_set().print();
              //    });
 
+             env.barrier();
+             std::cout << "exchange complete " << std::endl;
              timer.start("prefix_decompression");
              //if (AllToAllPolicy::PrefixCompression)
              //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
              timer.end("prefix_decompression");
-             //const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-             //const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-             //    numGeneratedChars,
-             //    sorted_string_cont.char_size(),
-             //    numGeneratedStrings,
-             //    sorted_string_cont.size()); 
+             const StringLcpPtr sorted_strptr = CompleteStringsCont.make_string_lcp_ptr();
+             const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
+                 numGeneratedChars,
+                 CompleteStringsCont.char_size(),
+                 numGeneratedStrings,
+                 CompleteStringsCont.size()); 
              //
-             //if (!is_complete_and_sorted) {
-             //  std::cout << "not sorted" << std::endl;
-             //  std::abort(); 
-             //}
+             if (!is_complete_and_sorted) {
+               std::cout << "not sorted" << std::endl;
+               std::abort(); 
+             }
              std::stringstream buffer;
              //timer.writeToStream(buffer);
              //if (env.rank() == 0) {

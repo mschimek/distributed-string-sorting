@@ -27,6 +27,7 @@
 #include "util/indexed_string_set.hpp"
 #include "util/string.hpp"
 #include "util/string_set.hpp"
+#include "util/structs.hpp"
 
 #include "strings/stringptr.hpp"
 #include "strings/stringcontainer.hpp"
@@ -775,50 +776,51 @@ namespace dsss::mpi {
       : container(std::move(container)), recvStringSizes(std::move(recvStringSizes)) {}
   };
   
-  template<typename StringSet, typename AllToAllPolicy, typename Timer> 
+  template<typename StringLcpPtr, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImplPrefixDoubling {
       static constexpr bool PrefixCompression = true;
-      RecvDataAllToAll<StringSet> alltoallv(
-          dss_schimek::StringLcpContainer<StringSet>& send_data,
+      dss_schimek::StringLcpContainer<dss_schimek::UCharIndexPEIndexStringSet> alltoallv(
+          StringLcpPtr stringLcpPtr,
           const std::vector<size_t>& sendCountsString,
           const std::vector<size_t>& distinguishingPrefixValues,
           Timer& timer,
           environment env = environment()){
 
         using namespace dss_schimek;
+        using StringSet = typename StringLcpPtr::StringSet;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
+        using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
+
         timer.start("all_to_all_strings_intern_copy", env);
         const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
-        const StringSet ss = send_data.make_string_set();
+        const StringSet ss = stringLcpPtr.active();
 
-        if (send_data.size() == 0)
-          return RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>(), std::vector<size_t>());
+        if (ss.size() == 0)
+          return dss_schimek::StringLcpContainer<ReturnStringSet>();
 
         std::vector<unsigned char> receive_buffer_char;
         std::vector<size_t> receive_buffer_lcp;
         std::vector<size_t> send_counts_lcp(sendCountsString);
         std::vector<size_t> send_counts_char(sendCountsString.size());
 
-        std::vector<size_t>& lcps = send_data.lcps();
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
-          *(lcps.data() + stringsWritten) = 0;
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
           stringsWritten += sendCountsString[interval];
         }
-        const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
-        const size_t D = std::accumulate(distinguishingPrefixValues.begin(), distinguishingPrefixValues.end(), send_data.size());
+        const size_t L = std::accumulate(stringLcpPtr.get_lcp(), stringLcpPtr.get_lcp() + stringLcpPtr.size(), 0);
+        const size_t D = std::accumulate(distinguishingPrefixValues.begin(), distinguishingPrefixValues.end(), stringLcpPtr.size());
 
         const size_t numCharsToSend = D - L;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
           size_t totalNumWrittenChars = 0;
-        std::cout << " begin write : lcps.size() " << lcps.size() << " distinguishingPrefixValues.size() " << distinguishingPrefixValues.size()  << " numCharsToSend: " << numCharsToSend << std::endl;
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
           auto begin = ss.begin() + stringsWritten;
           StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
           size_t numWrittenChars = 0;
           std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
-              subSet, lcps.data() + stringsWritten, distinguishingPrefixValues.data() + stringsWritten);
+              subSet, stringLcpPtr.get_lcp() + stringsWritten, distinguishingPrefixValues.data() + stringsWritten);
 
           totalNumWrittenChars += numWrittenChars;
           send_counts_char[interval] = numWrittenChars;
@@ -828,16 +830,32 @@ namespace dsss::mpi {
         timer.end("all_to_all_strings_intern_copy", env);
         timer.start("all_to_all_strings_mpi", env);
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(stringLcpPtr.get_lcp(), sendCountsString, env);
         std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+        std::vector<size_t> offsets;
+        offsets.reserve(env.size());
+        offsets.push_back(0);
+        std::partial_sum(sendCountsString.begin(), sendCountsString.end() - 1, std::back_inserter(offsets));
+        std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
         timer.end("all_to_all_strings_mpi", env);
-        timer.add("bytes_sent", numCharsToSend + send_data.lcps().size());
+        timer.add("bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
 
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
         timer.end("all_to_all_strings_read", env);
-        return RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp)), std::move(recvNumberStrings));
+        dss_schimek::mpi::execute_in_order([&]() {
+            std::cout << "rank: " << env.rank() << std::endl;
+            for (const auto& elem : recvNumberStrings)
+              std::cout << elem << std::endl;
+
+            std::cout << "offsets: " << std::endl;
+
+            for (const auto& elem : recvOffsets)
+              std::cout << elem << std::endl;
+
+            });
+        return dss_schimek::StringLcpContainer<ReturnStringSet>(
+            std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
       }
     };
 
@@ -909,5 +927,108 @@ namespace dsss::mpi {
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }  
     };
+
+    template <typename StringSet, typename Iterator>
+    dss_schimek::StringLcpContainer<StringSet> getStrings(
+        Iterator requestBegin, 
+        Iterator requestEnd, 
+        StringSet localSS, 
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      using String = typename StringSet::String;
+      using CharIt = typename StringSet::CharIterator;
+      using MPIRoutine = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+
+
+      std::vector<size_t> requests(requestEnd - requestBegin);
+      std::vector<size_t> requestSizes(env.size(), 0);
+      
+      // get size of each interval
+      for(Iterator curIt = requestBegin; curIt != requestEnd; ++curIt) {
+        const StringIndexPEIndex indices = *curIt;
+        ++requestSizes[indices.PEIndex];
+      }
+
+
+      std::vector<size_t> offsets;
+      offsets.reserve(env.size());
+      offsets.push_back(0);
+      std::partial_sum(requestSizes.begin(), requestSizes.end() - 1, std::back_inserter(offsets));
+
+      for(Iterator curIt = requestBegin; curIt != requestEnd; ++curIt) {
+        const StringIndexPEIndex indices = *curIt;
+        requests[offsets[indices.PEIndex]++] = indices.stringIndex;
+      };
+ 
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          std::cout << "print requests" << std::endl;
+          for (const auto& elem : requests)
+            std::cout << elem << std::endl;
+          });
+      
+      // exchange request
+      std::vector<size_t> recvRequestSizes = dsss::mpi::alltoall(requestSizes);
+      std::vector<size_t> recvRequests = MPIRoutine::alltoallv(requests.data(), requestSizes); 
+
+dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          std::cout << "print RecvRequests" << std::endl;
+          for (const auto& elem : recvRequests)
+            std::cout << elem << std::endl;
+          });
+      
+
+      // collect strings to send back
+      std::vector<std::vector<unsigned char>> rawStrings(env.size());
+      std::vector<size_t> rawStringSizes(env.size());
+      size_t offset = 0;
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+          for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
+          const size_t requestedIndex = recvRequests[offset + i];
+          std::cout << i << " requestedIndex: " << requestedIndex << std::endl;
+          String str = localSS[localSS.begin() + requestedIndex];
+          size_t length = localSS.get_length(str) + 1;
+          CharIt charsStr = localSS.get_chars(str, 0);
+          std::cout << charsStr << std::endl;
+          std::copy_n(charsStr, length, std::back_inserter(rawStrings[curRank])); 
+          std::cout << "copy_n" << std::endl;
+          rawStringSizes[curRank] += length;
+          std::cout << " rawStringSizes " << std::endl;
+          }
+          offset += recvRequestSizes[curRank];
+          }
+          });
+
+
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          std::cout << "print strings" << std::endl;
+          for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+          for (const auto& elem : rawStrings[curRank]) {
+          if(elem == 0)
+          std::cout << " " << std::endl;
+          else
+          std::cout << elem;
+          }
+          }
+          });
+
+
+      std::vector<unsigned char> rawStringsFlattened = flatten(rawStrings);
+
+      std::vector<unsigned char> recvRequestedStrings = MPIRoutine::alltoallv(rawStringsFlattened.data(), rawStringSizes);
+      
+      dss_schimek::StringLcpContainer<StringSet> container(std::move(recvRequestedStrings));
+      dss_schimek::mpi::execute_in_order([&]() {
+          std::cout << "rank: " << env.rank() << std::endl;
+          container.make_string_set().print();
+          });
+
+
+      return container;
+    }
 } // namespace dsss::mpi
 /******************************************************************************/

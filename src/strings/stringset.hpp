@@ -703,6 +703,194 @@ typedef GenericCharLengthStringSet<char> CharLengthStringSet;
 typedef GenericCharLengthStringSet<unsigned char> UCharLengthStringSet;
 
 
+/******************************************************************************/
+
+template <typename String>
+struct StringStringIndexPEIndex {
+  StringStringIndexPEIndex() : string(nullptr), stringIndex(0), PEIndex(0) {}
+  StringStringIndexPEIndex(const String string, const size_t stringIndex, const size_t PEIndex) 
+    : string(string), stringIndex(stringIndex), PEIndex(PEIndex) {}
+  String string;
+  size_t stringIndex;
+  size_t PEIndex;
+};
+
+template <typename String>
+std::ostream& operator<<(std::ostream& out, const StringStringIndexPEIndex<String>& str) {
+  return out << "[" << str.string << "," << str.stringIndex << ", " << str.PEIndex << "]";
+}
+/*!
+ * Traits class implementing StringSet concept for char* and unsigned char*
+ * strings with additional length attribute.
+ */
+template <typename CharType>
+class GenericCharIndexPEIndexStringSetTraits
+{
+public:
+    //! exported alias for character type
+    using Char = CharType;
+
+    //! String reference: pointer to first character
+    using String = StringStringIndexPEIndex<Char*>;
+
+    //! Iterator over string references: pointer over pointers
+    typedef String* Iterator;
+
+    //! iterator of characters in a string
+    typedef const Char* CharIterator;
+
+    //! exported alias for assumed string container
+    typedef std::pair<Iterator, size_t> Container;
+};
+
+/*!
+ * Class implementing StringSet concept for char* and unsigned char* strings with additional length attribute.
+ */
+template <typename CharType>
+class GenericCharIndexPEIndexStringSet
+    : public GenericCharIndexPEIndexStringSetTraits<CharType>,
+      public StringSetBase<GenericCharIndexPEIndexStringSet<CharType>,
+                           GenericCharIndexPEIndexStringSetTraits<CharType> >
+{
+public:
+    typedef GenericCharIndexPEIndexStringSetTraits<CharType> Traits;
+
+    typedef typename Traits::Char Char;
+    typedef typename Traits::String String;
+    typedef typename Traits::Iterator Iterator;
+    typedef typename Traits::CharIterator CharIterator;
+    typedef typename Traits::Container Container;
+
+    //! Construct from begin and end string pointers
+    GenericCharIndexPEIndexStringSet(Iterator begin, Iterator end)
+        : begin_(begin), end_(end)
+    { }
+
+    //! Construct from a string container
+    explicit GenericCharIndexPEIndexStringSet(const Container& c)
+        : begin_(c.first), end_(c.first + c.second)
+    { }
+
+    //! Return size of string array
+    size_t size() const { return end_ - begin_; }
+    //! Iterator representing first String position
+    Iterator begin() const { return begin_; }
+    //! Iterator representing beyond last String position
+    Iterator end() const { return end_; }
+
+    //! Iterator-based array access (readable and writable) to String objects.
+    String& operator [] (Iterator i) const
+    { return *i; }
+
+    //! Return CharIterator for referenced string, which belong to this set.
+    CharIterator get_chars(const String& s, size_t depth) const
+    { return s.string + depth; }
+
+    //! Returns true if CharIterator is at end of the given String
+    bool is_end(const String&, const CharIterator& i) const
+    { return (*i == 0); }
+
+    //! Return complete string (for debugging purposes)
+    std::string get_string(const String& s, size_t depth = 0) const
+    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
+
+    //! Subset this string set using iterator range.
+    GenericCharIndexPEIndexStringSet sub(Iterator begin, Iterator end) const
+    { return GenericCharIndexPEIndexStringSet(begin, end); }
+
+    //! Allocate a new temporary string container with n empty Strings
+    static Container allocate(size_t n)
+    { return std::make_pair(new String[n], n); }
+
+    //! Deallocate a temporary string container
+    static void deallocate(Container& c)
+    { delete[] c.first; c.first = NULL; }
+
+    //! \name CharIterator Comparisons
+    //! \{
+
+    //! check equality of two strings a and b at char iterators ai and bi.
+    bool is_equal(const String&, const CharIterator& ai,
+                  const String&, const CharIterator& bi) const
+    {
+        return (*ai == *bi) && (*ai != 0);
+    }
+
+    //! check if string a is less or equal to string b at iterators ai and bi.
+    bool is_less(const String&, const CharIterator& ai,
+                 const String&, const CharIterator& bi) const
+    {
+        return (*ai < *bi);
+    }
+
+    //! check if string a is less or equal to string b at iterators ai and bi.
+    bool is_leq(const String&, const CharIterator& ai,
+                const String&, const CharIterator& bi) const
+    {
+        return (*ai <= *bi);
+    }
+
+    //! \}
+
+    //! \name Character Extractors
+    //! \{
+
+    //! Return up to 1 characters of string s at iterator i packed into a uint8
+    //! (only works correctly for 8-bit characters)
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
+    {
+        return uint8_t(*i);
+    }
+
+    //! \}
+
+    void print() const
+    {
+        size_t i = 0;
+        for (Iterator pi = begin(); pi != end(); ++pi)
+        {
+            LOG1 << "[" << i++ << "] = " << (*pi)
+                 << " = " << get_string(*pi, 0);
+        }
+    }
+
+    static String empty_string()
+    {
+      static String zero(0, 0, 0); 
+      return zero;
+    }
+
+    size_t get_length(const String& str) const {
+      size_t length = 0;
+      CharIterator it = get_chars(str, 0);
+      while(*it != 0) {
+        ++length;
+        ++it;
+      }
+      return length;
+    }
+
+    size_t getIndex(const String& str) const {
+      return str.stringIndex;  
+    }
+    
+    size_t getPEIndex(const String& str) const {
+      return str.PEIndex;  
+    }
+
+    static std::string getName() {
+      return "GenericCharIndexPEIndexStringSet"; 
+    }
+
+protected:
+    //! array of string pointers
+    Iterator begin_, end_;
+};
+
+typedef GenericCharIndexPEIndexStringSet<char> CharIndexPEIndexStringSet;
+typedef GenericCharIndexPEIndexStringSet<unsigned char> UCharIndexPEIndexStringSet;
+
+
 /*!
  * Class implementing StringSet concept for a std::vector containing std::string
  * objects.

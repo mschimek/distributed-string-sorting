@@ -59,6 +59,33 @@ namespace dss_schimek {
         return strings;
       }
     };
+  
+  template <typename CharType>
+    class InitPolicy<GenericCharIndexPEIndexStringSet<CharType>> 
+    {
+      using StringSet = GenericCharIndexPEIndexStringSet<CharType>;
+      using Char = typename StringSet::Char;
+      using String = typename StringSet::String;
+
+      static constexpr size_t approx_string_length = 10;
+      public: 
+      
+      std::vector<String> init_strings(std::vector<Char>& raw_strings, const std::vector<size_t>& intervalSizes, const std::vector<size_t>& offsets) {
+        std::vector<String> strings;
+        size_t numStrings = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
+        strings.reserve(numStrings);
+        size_t curOffset = 0;
+        
+        for (size_t curPEIndex = 0; curPEIndex < intervalSizes.size(); ++curPEIndex) {
+          for (size_t stringIndex = 0; stringIndex < intervalSizes[curPEIndex]; ++stringIndex) {
+            strings.emplace_back(raw_strings.data() + curOffset, offsets[curPEIndex] + stringIndex, curPEIndex);
+            while(raw_strings[curOffset] != 0) ++curOffset;
+            ++curOffset;
+          }
+        }
+        return strings;
+      }
+    };
 
   template <typename StringSet_>
     class StringLcpContainer : private InitPolicy<StringSet_>
@@ -83,6 +110,14 @@ namespace dss_schimek {
     raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))), savedLcps_() {
 
           update_strings();
+          lcps_ = std::move(lcp);
+        }
+      
+      // To be used with GenericCharIndexPEIndexStringSet
+      explicit StringLcpContainer(std::vector<Char>&& raw_strings, std::vector<size_t>&& lcp, const std::vector<size_t>& intervalSizes, const std::vector<size_t>& offsets) : 
+    raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))), savedLcps_() {
+
+          update_strings(intervalSizes, offsets);
           lcps_ = std::move(lcp);
         } 
 
@@ -174,8 +209,6 @@ namespace dss_schimek {
         return (raw_strings() == other.raw_strings()) && (lcps() == other.lcps());
       }
 
-      
-
       void update(std::vector<Char>&& raw_strings)
       {
         set(std::move(raw_strings));
@@ -211,6 +244,11 @@ namespace dss_schimek {
       void update_strings()
       {
         strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
+      }
+      
+      void update_strings(const std::vector<size_t>& intervalSizes, const std::vector<size_t>& offsets)
+      {
+        strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_, intervalSizes, offsets);
       }
   };
 
