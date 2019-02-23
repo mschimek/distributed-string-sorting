@@ -22,7 +22,7 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
   if constexpr(std::is_same_v<StringGenerator, dss_schimek::DNRatioGenerator<StringSet>>) {
     return StringGenerator(args.numOfStrings, args.stringLength, args.dToNRatio); 
   }
-  return StringGenerator(args.numOfStrings);
+  return StringGenerator(args.numOfStrings, args.minStringLength, args.maxStringLength);
 }
 
 
@@ -389,6 +389,8 @@ int main(std::int32_t argc, char const *argv[]) {
   GeneratedStringsArgs generatorArgs;
   generatorArgs.numOfStrings = numberOfStrings;
   generatorArgs.stringLength = stringLength;
+  generatorArgs.minStringLength = stringLength;
+  generatorArgs.maxStringLength = stringLength + 10;
   generatorArgs.dToNRatio = dToNRatio; 
   for (size_t i = 0; i < numberOfIterations; ++i) {
     SorterArgs args =  {numberOfStrings, check, i, strongScaling, generatorArgs};
