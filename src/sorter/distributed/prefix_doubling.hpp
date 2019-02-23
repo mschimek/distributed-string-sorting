@@ -85,13 +85,17 @@ namespace dss_schimek {
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
 
+
+	
         size_t string_index = 0;
         for (size_t i = 1; i <= nr_splitters; ++i) {
           size_t num_chars_seen = 0;
-          while (num_chars_seen < splitter_dist) {
+          while (num_chars_seen < splitter_dist && string_index < ss.size()) {
             num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
             ++string_index;
           }
+          if (string_index >= ss.size())
+		break;
 
           const String splitter = ss[ss.begin() + string_index - 1];
           std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
@@ -492,7 +496,7 @@ namespace dss_schimek {
           //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
-          //dss_schimek::mpi::execute_in_order([&]() {
+	  //dss_schimek::mpi::execute_in_order([&]() {
           //    std::cout << "rank: " << env.rank()  << std::endl;
           //    ss.print();
           //    });
@@ -549,6 +553,8 @@ namespace dss_schimek {
           std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           timer.end("compute_interval_sizes");
+
+
           //print_interval_sizes(interval_sizes, receiving_interval_sizes);
 
           //if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
@@ -585,6 +591,9 @@ namespace dss_schimek {
           timer.start("merge_ranges");
           auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont_tmp), ranges, num_recv_elems);
           timer.end("merge_ranges");
+
+ 
+		
           //dss_schimek::mpi::execute_in_order([&]() {
           //    std::cout << "rank: " << env.rank() << std::endl;
           //    sorted_container.make_string_set().print();

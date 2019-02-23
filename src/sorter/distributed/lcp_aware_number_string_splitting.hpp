@@ -79,15 +79,19 @@ namespace dss_schimek {
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
 
+	//std::cout << " rank: " << env.rank() << std::endl;
         size_t string_index = 0;
         for (size_t i = 1; i <= nr_splitters; ++i) {
           size_t num_chars_seen = 0;
-          while (num_chars_seen < splitter_dist) {
+          while (num_chars_seen < splitter_dist && string_index < ss.size()) {
             num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
             ++string_index;
           }
+          if (string_index >= ss.size())
+		break;
 
           const String splitter = ss[ss.begin() + string_index - 1];
+	  //std::cout << i << " num_chars_seen: " << num_chars_seen << " string_index: " << string_index << " size: " << ss.size() << std::endl;
           std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
               std::back_inserter(raw_splitters));
         }
@@ -409,7 +413,6 @@ namespace dss_schimek {
           timer.start("sample_splitters");
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample_splitters");
-
 
           // spend time here
           env.barrier();
