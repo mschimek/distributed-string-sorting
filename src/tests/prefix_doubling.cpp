@@ -74,22 +74,22 @@ template <typename StringSet, typename StringGenerator,
              std::vector<StringIndexPEIndex> permutation = 
                sorter.sort(rand_string_ptr, timer);
 
-             dss_schimek::mpi::execute_in_order([&](){
-                 std::cout << "rank: " << env.rank() << std::endl;
-                 for (auto elem : permutation) {
-                 std::cout << elem << std::endl;
-                 }
-                 });
+             //dss_schimek::mpi::execute_in_order([&](){
+             //    std::cout << "rank: " << env.rank() << std::endl;
+             //    for (auto elem : permutation) {
+             //    std::cout << elem << std::endl;
+             //    }
+             //    });
 
              auto CompleteStringsCont = dsss::mpi::getStrings(permutation.begin(), permutation.end(), generatedContainer.make_string_set());
              auto completeStringSet = CompleteStringsCont.make_string_set();
              reorder(completeStringSet, permutation.begin(), permutation.end());
 
-             dss_schimek::mpi::execute_in_order([&](){
-                 std::cout << "rank: " << env.rank() << std::endl;
-                 std::cout << "print complete sorted set " << std::endl;
-                 //completeStringSet.print();
-                 });
+             //dss_schimek::mpi::execute_in_order([&](){
+             //    std::cout << "rank: " << env.rank() << std::endl;
+             //    std::cout << "print complete sorted set " << std::endl;
+             //    //completeStringSet.print();
+             //    });
 
 
              timer.end("sorting_overall");
@@ -102,7 +102,7 @@ template <typename StringSet, typename StringGenerator,
              //    });
 
              env.barrier();
-             std::cout << "exchange complete " << std::endl;
+             //std::cout << "exchange complete " << std::endl;
              timer.start("prefix_decompression");
              //if (AllToAllPolicy::PrefixCompression)
              //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
@@ -119,10 +119,10 @@ template <typename StringSet, typename StringGenerator,
                std::abort(); 
              }
              std::stringstream buffer;
-             //timer.writeToStream(buffer);
-             //if (env.rank() == 0) {
-             //  std::cout << buffer.str() << std::endl;
-             //}
+             timer.writeToStream(buffer);
+             if (env.rank() == 0) {
+               std::cout << buffer.str() << std::endl;
+             }
            }
 
 namespace PolicyEnums {

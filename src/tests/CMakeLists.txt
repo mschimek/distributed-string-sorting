@@ -35,3 +35,9 @@ target_link_libraries(prefix_doubling ${MPI_LIBRARIES} tlx)
 
 add_executable(mpitest mpi.cpp ../mpi/environment.cpp)
 target_link_libraries(mpitest ${MPI_LIBRARIES} tlx)
+
+add_executable(golomb golomb_encoding.cpp ../mpi/environment.cpp)
+target_link_libraries(golomb ${MPI_LIBRARIES} tlx)
+
+add_executable(bloomfilter bloomfilter.cpp ../mpi/environment.cpp)
+target_link_libraries(bloomfilter ${MPI_LIBRARIES} tlx)

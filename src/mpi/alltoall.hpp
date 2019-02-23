@@ -843,17 +843,17 @@ namespace dsss::mpi {
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
         timer.end("all_to_all_strings_read", env);
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "rank: " << env.rank() << std::endl;
-            for (const auto& elem : recvNumberStrings)
-              std::cout << elem << std::endl;
+        //dss_schimek::mpi::execute_in_order([&]() {
+        //    std::cout << "rank: " << env.rank() << std::endl;
+        //    for (const auto& elem : recvNumberStrings)
+        //      std::cout << elem << std::endl;
 
-            std::cout << "offsets: " << std::endl;
+        //    std::cout << "offsets: " << std::endl;
 
-            for (const auto& elem : recvOffsets)
-              std::cout << elem << std::endl;
+        //    for (const auto& elem : recvOffsets)
+        //      std::cout << elem << std::endl;
 
-            });
+        //    });
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
       }
@@ -960,61 +960,71 @@ namespace dsss::mpi {
         requests[offsets[indices.PEIndex]++] = indices.stringIndex;
       };
  
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "rank: " << env.rank() << std::endl;
-          std::cout << "print requests" << std::endl;
-          for (const auto& elem : requests)
-            std::cout << elem << std::endl;
-          });
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    std::cout << "print requests" << std::endl;
+      //    for (const auto& elem : requests)
+      //      std::cout << elem << std::endl;
+      //    });
       
       // exchange request
       std::vector<size_t> recvRequestSizes = dsss::mpi::alltoall(requestSizes);
       std::vector<size_t> recvRequests = MPIRoutine::alltoallv(requests.data(), requestSizes); 
 
-dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "rank: " << env.rank() << std::endl;
-          std::cout << "print RecvRequests" << std::endl;
-          for (const auto& elem : recvRequests)
-            std::cout << elem << std::endl;
-          });
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    std::cout << "print RecvRequests" << std::endl;
+      //    for (const auto& elem : recvRequests)
+      //    std::cout << elem << std::endl;
+      //    });
       
 
       // collect strings to send back
       std::vector<std::vector<unsigned char>> rawStrings(env.size());
       std::vector<size_t> rawStringSizes(env.size());
       size_t offset = 0;
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "rank: " << env.rank() << std::endl;
-          for (size_t curRank = 0; curRank < env.size(); ++curRank) {
-          for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+      //    for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
+      //    const size_t requestedIndex = recvRequests[offset + i];
+      //    std::cout << i << " requestedIndex: " << requestedIndex << std::endl;
+      //    String str = localSS[localSS.begin() + requestedIndex];
+      //    size_t length = localSS.get_length(str) + 1;
+      //    CharIt charsStr = localSS.get_chars(str, 0);
+      //    std::cout << charsStr << std::endl;
+      //    std::copy_n(charsStr, length, std::back_inserter(rawStrings[curRank])); 
+      //    std::cout << "copy_n" << std::endl;
+      //    rawStringSizes[curRank] += length;
+      //    std::cout << " rawStringSizes " << std::endl;
+      //    }
+      //    offset += recvRequestSizes[curRank];
+      //    }
+      //    });
+      for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+        for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
           const size_t requestedIndex = recvRequests[offset + i];
-          std::cout << i << " requestedIndex: " << requestedIndex << std::endl;
           String str = localSS[localSS.begin() + requestedIndex];
           size_t length = localSS.get_length(str) + 1;
           CharIt charsStr = localSS.get_chars(str, 0);
-          std::cout << charsStr << std::endl;
           std::copy_n(charsStr, length, std::back_inserter(rawStrings[curRank])); 
-          std::cout << "copy_n" << std::endl;
           rawStringSizes[curRank] += length;
-          std::cout << " rawStringSizes " << std::endl;
-          }
-          offset += recvRequestSizes[curRank];
-          }
-          });
+        }
+        offset += recvRequestSizes[curRank];
+      }
 
-
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "rank: " << env.rank() << std::endl;
-          std::cout << "print strings" << std::endl;
-          for (size_t curRank = 0; curRank < env.size(); ++curRank) {
-          for (const auto& elem : rawStrings[curRank]) {
-          if(elem == 0)
-          std::cout << " " << std::endl;
-          else
-          std::cout << elem;
-          }
-          }
-          });
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    std::cout << "print strings" << std::endl;
+      //    for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+      //    for (const auto& elem : rawStrings[curRank]) {
+      //    if(elem == 0)
+      //    std::cout << " " << std::endl;
+      //    else
+      //    std::cout << elem;
+      //    }
+      //    }
+      //    });
 
 
       std::vector<unsigned char> rawStringsFlattened = flatten(rawStrings);
@@ -1022,10 +1032,10 @@ dss_schimek::mpi::execute_in_order([&]() {
       std::vector<unsigned char> recvRequestedStrings = MPIRoutine::alltoallv(rawStringsFlattened.data(), rawStringSizes);
       
       dss_schimek::StringLcpContainer<StringSet> container(std::move(recvRequestedStrings));
-      dss_schimek::mpi::execute_in_order([&]() {
-          std::cout << "rank: " << env.rank() << std::endl;
-          container.make_string_set().print();
-          });
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    container.make_string_set().print();
+      //    });
 
 
       return container;
