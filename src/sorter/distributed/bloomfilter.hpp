@@ -203,13 +203,14 @@ namespace dss_schimek {
   struct FindDuplicates {
     using DataType = HashPEIndex;
 
-    static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, const RecvData& recvData) {
+    static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, const RecvData& recvData, Timer& timer, size_t curIteration) {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
       dsss::mpi::environment env;
       std::vector<IteratorPair> iteratorPairs;
 
+      timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
       auto outputIt = std::back_inserter(mergedElements);
@@ -220,9 +221,13 @@ namespace dss_schimek {
        iteratorPairs.emplace_back(it, it + recvData.intervalSizes[i]);
        it += recvData.intervalSizes[i];
       }
+      timer.end(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
 
+      timer.start(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
       tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(), mergedElements.begin(), elementsToMerge);
+      timer.end(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
 
+      timer.start(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
 
@@ -257,9 +262,15 @@ namespace dss_schimek {
             sendBuffer.push_back(result_sets[i][j] + recvData.globalOffsets[i] );
           }
         }
+      timer.end(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       
-      return dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
+      timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
+      auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
+      timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
+
+      return duplicates; 
     }
+   
     
     void setUniqueElements(std::vector<bool>& duplicates, std::vector<size_t>& depth, const size_t curDepth, const std::vector<HashStringIndex>& originalMapping) {
       for (size_t i = 0; i < duplicates.size(); ++i)
@@ -587,11 +598,14 @@ namespace dss_schimek {
         RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
         timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
-        timer.start(std::string("bloomfilter_findDuplicates"), curIteration);
+        timer.start(std::string("bloomfilter_addPEIndex"), curIteration);
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
-        std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
+        timer.end(std::string("bloomfilter_addPEIndex"), curIteration);
+        std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData, timer, curIteration);
+
+        timer.start(std::string("bloomfilter_getIndices"), curIteration);
         FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfDuplicates, hashStringIndices);
-        timer.end(std::string("bloomfilter_findDuplicates"), curIteration);
+        timer.end(std::string("bloomfilter_getIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_setDepth"), curIteration);
         setDepth(strptr, depth, candidates, eosCandidates, results);
