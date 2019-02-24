@@ -569,23 +569,35 @@ namespace dss_schimek {
         return ownDuplicateIndices;
       } 
 
-      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
+      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results, Timer& timer) {
         dsss::mpi::environment env;
+        static size_t curIteration = 0;
 
+        timer.start(std::string("bloomfilter_generateHashStringIndices"), curIteration);
         GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = generateHashStringIndices(strptr.active(), candidates, depth);
+        timer.end(std::string("bloomfilter_generateHashStringIndices"), curIteration);
 
         std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
         const std::vector<size_t>& eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
 
+        timer.start(std::string("bloomfilter_sortHashStringIndices"), curIteration);
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
+        timer.end(std::string("bloomfilter_sortHashStringIndices"), curIteration);
 
+        timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
         RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
+        timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
+        timer.start(std::string("bloomfilter_findDuplicates"), curIteration);
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
         std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
         FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfDuplicates, hashStringIndices);
+        timer.end(std::string("bloomfilter_findDuplicates"), curIteration);
 
+        timer.start(std::string("bloomfilter_setDepth"), curIteration);
         setDepth(strptr, depth, candidates, eosCandidates, results);
+        timer.end(std::string("bloomfilter_setDepth"), curIteration);
+        ++curIteration;
 
         return indicesOfDuplicates;
       }

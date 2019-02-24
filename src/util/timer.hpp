@@ -33,107 +33,186 @@ namespace dss_schimek {
     using TimeUnit = std::chrono::nanoseconds;
     using TimeIntervalDataType = size_t;
 
+    private: 
+
+    // make methods more generic to work with iteration and without iterations
+    
+    template <typename KeyToValue, typename Key>
+      void add(KeyToValue& keyToValue,const Key& key, size_t value) {
+        if (keyToValue.find(key) != keyToValue.end())
+          std::abort();
+        keyToValue.emplace(key, value);
+      }
+
+    template <typename Container, typename Key>
+      void start(Container& keyToStartingPoint, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment())
+      {
+        if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
+          std::abort();
+        env.barrier();
+        const PointInTime start = Clock::now();
+        keyToStartingPoint.emplace(key, start);
+      }
+
+    template<typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
+      void end(KeyStartingPointMap& keyToStartingPoint, KeyDurationMap& keyToActiveTime,
+          KeyDurationMap& keyToTotalTime, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment()) {
+        auto itToPairInMap = keyToStartingPoint.find(key);
+        if (itToPairInMap == keyToStartingPoint.end())
+          std::abort();
+
+        PointInTime startPoint;
+        std::tie(std::ignore, startPoint) = *itToPairInMap;
+
+        const PointInTime endPoint = Clock::now();
+        size_t elapsedActiveTime =
+          std::chrono::duration_cast<std::chrono::nanoseconds>(endPoint - startPoint).count();
+        keyToActiveTime.emplace(key, elapsedActiveTime);
+
+        env.barrier();
+
+        const PointInTime endPointAfterBarrier = Clock::now();
+        TimeIntervalDataType elapsedTotalTime =
+          std::chrono::duration_cast<TimeUnit>(endPointAfterBarrier - startPoint).count();
+        keyToTotalTime.emplace(key, elapsedTotalTime);
+      }
+
+    template <typename KeyToDurationMap, typename Key>
+      TimeIntervalDataType getLoss(const KeyToDurationMap& keyToActiveTime, 
+          const KeyToDurationMap& keyToTotalTime, 
+          const Key& key) {
+
+        auto itKeyActiveTime = keyToActiveTime.find(key);
+        auto itKeyTotalTime = keyToTotalTime.find(key);
+        if (itKeyActiveTime == keyToActiveTime.end() || 
+            itKeyTotalTime == keyToTotalTime.end())
+          std::abort();
+        return  (*itKeyTotalTime).second - (*itKeyActiveTime).second;
+      }
+
+    template <typename KeyToDurationTime, typename Key>
+      TimeIntervalDataType avgTime(const KeyToDurationTime& keyToActiveTime, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment()) {
+        auto itKeyTime = keyToActiveTime.find(key);
+        if (itKeyTime == keyToActiveTime.end())
+          std::abort();
+        TimeIntervalDataType sum = dsss::mpi::allreduce_sum((*itKeyTime).second);
+        return sum / env.size();
+      }
+
+    template <typename KeyToDurationTime, typename Key>
+      TimeIntervalDataType maxTime(KeyToDurationTime& keyToActiveTime, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment()) {
+        auto itKeyTime = keyToActiveTime.find(key);
+        if (itKeyTime == keyToActiveTime.end())
+          std::abort();
+        return dsss::mpi::allreduce_max((*itKeyTime).second);
+      }
+
+    template <typename KeyToDurationTime, typename Key>
+      TimeIntervalDataType minTime(KeyToDurationTime& keyToActiveTime, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment()) { auto itKeyTime = keyToActiveTime.find(key);
+        if (itKeyTime == keyToActiveTime.end())
+          std::abort();
+        return dsss::mpi::allreduce_min((*itKeyTime).second);
+      }
+
     public:
     static std::string getName() {
       return "Timer";
     }
     Timer(const std::string& prefix) : prefix(prefix) {};
-    
+
     void add(const std::string& description, size_t value) {
-      if (descriptionToValue.find(description) != descriptionToValue.end())
-      {
-        std::cout << description << " has already been added to timer" << std::endl;
-        std::abort();
-      }
-      descriptionToValue.emplace(description, value);
+      add(descriptionToValue, description, value);
     }
 
-    void start(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-      if (descriptionToStart.find(description) != descriptionToStart.end())
-        std::abort();
-      env.barrier();
-      const PointInTime start = Clock::now();
-      descriptionToStart.emplace(description, start);
+    void add(const std::string& description, size_t iteration, size_t value) {
+      add(descriptionIterationToValue, make_pair(description, iteration), value);
     }
 
-    void end(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-      auto itToPairInMap = descriptionToStart.find(description);
-      if (itToPairInMap == descriptionToStart.end())
-        std::abort();
+    void start(const std::string& description, size_t iteration) {
+      start(descriptionIterationToStart, make_pair(description, iteration)); 
+    }
 
-      PointInTime startPoint;
-      std::tie(std::ignore, startPoint) = *itToPairInMap;
+    void start(const std::string& description) {
+      start(descriptionToStart, description); 
+    }
 
-      const PointInTime endPoint = Clock::now();
-      size_t elapsedActiveTime =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(endPoint - startPoint).count();
-      descriptionToActiveTime.emplace(description, elapsedActiveTime);
+    void end(const std::string& description) {
+      end(descriptionToStart, descriptionToActiveTime, descriptionToTotalTime, description);
+    }
 
-      env.barrier();
-
-      const PointInTime endPointAfterBarrier = Clock::now();
-      TimeIntervalDataType elapsedTotalTime =
-        std::chrono::duration_cast<TimeUnit>(endPointAfterBarrier - startPoint).count();
-      descriptionToTotalTime.emplace(description, elapsedTotalTime);
+    void end(const std::string& description, size_t iteration) {
+      end(descriptionIterationToStart, descriptionIterationToActiveTime, descriptionIterationToTotalTime, make_pair(description, iteration));
     }
 
     TimeIntervalDataType getLoss(const std::string& description) {
-      auto itDescriptionActiveTime = descriptionToActiveTime.find(description);
-      auto itDescriptionTotalTime = descriptionToTotalTime.find(description);
-      if (itDescriptionActiveTime == descriptionToActiveTime.end() || 
-          itDescriptionTotalTime == descriptionToTotalTime.end())
-        std::abort();
-
-      return  (*itDescriptionTotalTime).second - (*itDescriptionActiveTime).second;
+      return getLoss(descriptionToActiveTime, descriptionToTotalTime, description);
+    }
+    
+    TimeIntervalDataType getLoss(const std::string& description, size_t iteration) {
+      return getLoss(descriptionIterationToActiveTime, descriptionIterationToTotalTime, make_pair(description, iteration));
     }
 
     TimeIntervalDataType avgLoss(const std::string& description,
         dsss::mpi::environment env = dsss::mpi::environment()) {
-
       TimeIntervalDataType localLoss = getLoss(description);
       TimeIntervalDataType sum = dsss::mpi::allreduce_sum(localLoss);
       return sum / env.size();
     }
-
-    TimeIntervalDataType maxLoss(const std::string& description,
+    
+    TimeIntervalDataType avgLoss(const std::string& description, size_t iteration, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
-
-      TimeIntervalDataType localLoss = getLoss(description);
-      return dsss::mpi::allreduce_max(localLoss);
-    }
-
-    TimeIntervalDataType minLoss(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-
-      TimeIntervalDataType localLoss = getLoss(description);
-      return dsss::mpi::allreduce_min(localLoss);
-    }
-
-    TimeIntervalDataType avgTime(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-      auto itDescriptionTime = descriptionToActiveTime.find(description);
-      if (itDescriptionTime == descriptionToActiveTime.end())
-        std::abort();
-      TimeIntervalDataType sum = dsss::mpi::allreduce_sum((*itDescriptionTime).second);
+      TimeIntervalDataType localLoss = getLoss(description, iteration);
+      TimeIntervalDataType sum = dsss::mpi::allreduce_sum(localLoss);
       return sum / env.size();
     }
 
-    TimeIntervalDataType maxTime(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-      auto itDescriptionTime = descriptionToActiveTime.find(description);
-      if (itDescriptionTime == descriptionToActiveTime.end())
-        std::abort();
-      return dsss::mpi::allreduce_max((*itDescriptionTime).second);
+    TimeIntervalDataType maxLoss(const std::string& description) {
+      TimeIntervalDataType localLoss = getLoss(description);
+      return dsss::mpi::allreduce_max(localLoss);
+    }
+    
+    TimeIntervalDataType maxLoss(const std::string& description, size_t iteration) {
+      TimeIntervalDataType localLoss = getLoss(description, iteration);
+      return dsss::mpi::allreduce_max(localLoss);
     }
 
-    TimeIntervalDataType minTime(const std::string& description,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
-      auto itDescriptionTime = descriptionToActiveTime.find(description);
-      if (itDescriptionTime == descriptionToActiveTime.end())
-        std::abort();
-      return dsss::mpi::allreduce_min((*itDescriptionTime).second);
+    TimeIntervalDataType minLoss(const std::string& description) {
+      TimeIntervalDataType localLoss = getLoss(description);
+      return dsss::mpi::allreduce_min(localLoss);
+    }
+    
+    TimeIntervalDataType minLoss(const std::string& description, size_t iteration) {
+      TimeIntervalDataType localLoss = getLoss(description, iteration);
+      return dsss::mpi::allreduce_min(localLoss);
+    }
+
+    TimeIntervalDataType avgTime(const std::string& description) {
+      return avgTime(descriptionToActiveTime, description);
+    }
+    
+    TimeIntervalDataType avgTime(const std::string& description, size_t iteration) {
+      return avgTime(descriptionIterationToActiveTime, make_pair(description, iteration));
+    }
+
+    TimeIntervalDataType maxTime(const std::string& description) {
+      return maxTime(descriptionToActiveTime, description);   
+    }
+    
+    TimeIntervalDataType maxTime(const std::string& description, size_t iteration) {
+      return maxTime(descriptionIterationToActiveTime, make_pair(description, iteration));   
+    }
+
+    TimeIntervalDataType minTime(const std::string& description) {
+      return minTime(descriptionToActiveTime, description);
+    }
+    
+    TimeIntervalDataType minTime(const std::string& description, size_t iteration) {
+      return minTime(descriptionIterationToActiveTime, make_pair(description, iteration));
     }
 
     void writeToStream(std::stringstream& buffer, 
@@ -143,11 +222,25 @@ namespace dss_schimek {
 
       buffer <<  prefix
         << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
+        << " "                             << ("internIteration=0")
         << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
         << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(time))
         << std::endl;
     }
     
+    void writeToStream(std::stringstream& buffer, 
+        const std::pair<std::string, size_t>& descriptionIteration,
+        const std::string& type, 
+        const TimeIntervalDataType time) {
+
+      buffer <<  prefix
+        << " "/*std::setw(alignmentLong) */<< ("operation=" + descriptionIteration.first)
+        << " "                             << ("interIteration=" + std::to_string(descriptionIteration.second))
+        << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
+        << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(time))
+        << std::endl;
+    }
+
     void collectAndWriteToStream(std::stringstream& buffer, 
         const std::string& description,
         dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -161,17 +254,28 @@ namespace dss_schimek {
           << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(value))
           << std::endl;
       }
-   }
+    }
 
-    void writeToStream(std::stringstream& buffer, const std::string& description, 
+    void writeToStream(std::stringstream& buffer, const std::string& key, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
-      writeToStream(buffer, description, "avgTime", avgTime(description));
-      writeToStream(buffer, description, "maxTime", maxTime(description));
-      writeToStream(buffer, description, "minTime", minTime(description));
-      writeToStream(buffer, description, "avgLoss", avgLoss(description));
-      writeToStream(buffer, description, "maxLoss", maxLoss(description));
-      writeToStream(buffer, description, "minLoss", minLoss(description));
+      writeToStream(buffer, key, "avgTime", avgTime(key));
+      writeToStream(buffer, key, "maxTime", maxTime(key));
+      writeToStream(buffer, key, "minTime", minTime(key));
+      writeToStream(buffer, key, "avgLoss", avgLoss(key));
+      writeToStream(buffer, key, "maxLoss", maxLoss(key));
+      writeToStream(buffer, key, "minLoss", minLoss(key));
+    }
+    
+    void writeToStream(std::stringstream& buffer, const std::pair<std::string, size_t>& key, 
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      writeToStream(buffer, key, "avgTime", avgTime(key.first, key.second));
+      writeToStream(buffer, key, "maxTime", maxTime(key.first, key.second));
+      writeToStream(buffer, key, "minTime", minTime(key.first, key.second));
+      writeToStream(buffer, key, "avgLoss", avgLoss(key.first, key.second));
+      writeToStream(buffer, key, "maxLoss", maxLoss(key.first, key.second));
+      writeToStream(buffer, key, "minLoss", minLoss(key.first, key.second));
     }
 
     void writeToStream(std::stringstream& buffer,
@@ -179,24 +283,42 @@ namespace dss_schimek {
 
       // time related values
       std::vector<std::string> descriptions;
+      std::vector<DescriptionIteration> descriptionIterations;
       for (auto [description, not_used] : descriptionToStart)
         descriptions.push_back(description);
+      for (auto [descriptionIteration, not_used] : descriptionIterationToStart)
+        descriptionIterations.push_back(descriptionIteration);
       for (const std::string& description : descriptions)
         writeToStream(buffer, description);
-     
+      for (const auto& descriptionIteration : descriptionIterations)
+        writeToStream(buffer, descriptionIteration);
+
       // write remaining values 
       for (auto [description, value] : descriptionToValue)
         collectAndWriteToStream(buffer, description);
     }
 
     private:
+    using DescriptionIteration = std::pair<std::string, size_t>;
+
     std::string prefix;
     std::map<std::string, size_t> descriptionToValue;
+    std::map<DescriptionIteration, size_t> descriptionIterationToValue;
+
     std::map<std::string, PointInTime> descriptionToStart;
+    std::map<DescriptionIteration, PointInTime> descriptionIterationToStart;
+
     std::map<std::string, TimeIntervalDataType> descriptionToTime;
+    std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToTime;
+
     std::map<std::string, TimeIntervalDataType> descriptionToActiveTime;
+    std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToActiveTime;
+
     std::map<std::string, TimeIntervalDataType> descriptionToTotalTime;
+    std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToTotalTime;
+
     std::map<std::string, TimeIntervalDataType> descriptionToSynchronizedTime;
+    std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToSynchronizedTime;
 
     size_t get_max_string_length(const std::vector<std::string>& strings) const {
       size_t maxStringLength = 0;
