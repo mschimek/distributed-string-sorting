@@ -569,9 +569,8 @@ namespace dss_schimek {
         return ownDuplicateIndices;
       } 
 
-      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results, Timer& timer) {
+      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results, Timer& timer, size_t curIteration) {
         dsss::mpi::environment env;
-        static size_t curIteration = 0;
 
         timer.start(std::string("bloomfilter_generateHashStringIndices"), curIteration);
         GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = generateHashStringIndices(strptr.active(), candidates, depth);
@@ -597,7 +596,6 @@ namespace dss_schimek {
         timer.start(std::string("bloomfilter_setDepth"), curIteration);
         setDepth(strptr, depth, candidates, eosCandidates, results);
         timer.end(std::string("bloomfilter_setDepth"), curIteration);
-        ++curIteration;
 
         return indicesOfDuplicates;
       }

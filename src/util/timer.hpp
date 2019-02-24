@@ -257,6 +257,22 @@ namespace dss_schimek {
       }
     }
 
+    void collectAndWriteToStream(std::stringstream& buffer, 
+        const std::pair<std::string, size_t>& descriptionIteration,
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      size_t localValue = (*descriptionIterationToValue.find(descriptionIteration)).second;
+      std::vector<size_t> values = dsss::mpi::allgather(localValue, env);
+      for (const size_t value : values) {
+        buffer << prefix
+          << " "/*std::setw(alignmentLong) */<< ("operation=" + descriptionIteration.first)
+          << " "                             << ("internIteration=" + std::to_string(descriptionIteration.second))
+          << " "/*std::setw(alignmentSmall)*/<< ("type=number")
+          << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(value))
+          << std::endl;
+      }
+    }
+
     void writeToStream(std::stringstream& buffer, const std::string& key, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
@@ -297,6 +313,9 @@ namespace dss_schimek {
       // write remaining values 
       for (auto [description, value] : descriptionToValue)
         collectAndWriteToStream(buffer, description);
+      for (auto [descriptionIteration, value] : descriptionIterationToValue)
+        collectAndWriteToStream(buffer, descriptionIteration);
+
     }
 
     private:

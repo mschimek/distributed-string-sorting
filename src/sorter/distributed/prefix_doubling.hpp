@@ -459,13 +459,16 @@ namespace dss_schimek {
                 BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
 
 
+        size_t curIteration = 0;
         for (size_t i = 1; i < std::numeric_limits<size_t>::max(); i *= 2) {
-          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer);
+          timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
 
           bool noMoreCandidates = candidates.empty();
           bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
           if (allEmpty)
             break;
+          ++curIteration;
         }
         return results; 
       }
