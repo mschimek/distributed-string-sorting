@@ -235,7 +235,7 @@ namespace dss_schimek {
 
       buffer <<  prefix
         << " "/*std::setw(alignmentLong) */<< ("operation=" + descriptionIteration.first)
-        << " "                             << ("interIteration=" + std::to_string(descriptionIteration.second))
+        << " "                             << ("internIteration=" + std::to_string(descriptionIteration.second))
         << " "/*std::setw(alignmentSmall)*/<< ("type=" + type)
         << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(time))
         << std::endl;
@@ -250,6 +250,7 @@ namespace dss_schimek {
       for (const size_t value : values) {
         buffer << prefix
           << " "/*std::setw(alignmentLong) */<< ("operation=" + description)
+          << " "                             << ("internIteration=0")
           << " "/*std::setw(alignmentSmall)*/<< ("type=number")
           << " "/*std::setw(alignmentLong) */<< ("value=" + std::to_string(value))
           << std::endl;
