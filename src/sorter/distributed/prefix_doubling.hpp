@@ -460,12 +460,10 @@ namespace dss_schimek {
 
 
         for (size_t i = 1; i < std::numeric_limits<size_t>::max(); i *= 2) {
-          timer.start(std::string("bloom_filter"), i);
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer);
 
           bool noMoreCandidates = candidates.empty();
           bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
-          timer.end(std::string("bloom_filter"), i);
           if (allEmpty)
             break;
         }
