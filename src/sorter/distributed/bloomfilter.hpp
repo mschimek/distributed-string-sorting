@@ -209,6 +209,7 @@ namespace dss_schimek {
       using IteratorPair = std::pair<Iterator, Iterator>;
 
       timer.start(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
+      timer.disableMeasurement();
       timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
       dsss::mpi::environment env;
       std::vector<IteratorPair> iteratorPairs;
@@ -277,8 +278,9 @@ namespace dss_schimek {
       auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
-      timer.end(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
+      timer.enableMeasurement();
+      timer.end(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
 
       return duplicates; 
     }
