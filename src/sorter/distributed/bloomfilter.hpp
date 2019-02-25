@@ -211,7 +211,6 @@ namespace dss_schimek {
 
       env.barrier();
       timer.start(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
-      timer.disableMeasurement();
       timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
       std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
@@ -280,7 +279,6 @@ namespace dss_schimek {
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
-      timer.enableMeasurement();
       timer.end(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
 
       return duplicates; 
