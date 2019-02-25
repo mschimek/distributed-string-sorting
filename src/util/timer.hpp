@@ -52,7 +52,7 @@ namespace dss_schimek {
           return;
         if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
           std::abort();
-        env.barrier();
+        //env.barrier();
         const PointInTime start = Clock::now();
         keyToStartingPoint.emplace(key, start);
       }
@@ -75,7 +75,7 @@ namespace dss_schimek {
           std::chrono::duration_cast<std::chrono::nanoseconds>(endPoint - startPoint).count();
         keyToActiveTime.emplace(key, elapsedActiveTime);
 
-        env.barrier();
+        //env.barrier();
 
         const PointInTime endPointAfterBarrier = Clock::now();
         TimeIntervalDataType elapsedTotalTime =

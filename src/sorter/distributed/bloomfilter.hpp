@@ -207,11 +207,12 @@ namespace dss_schimek {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
+      dsss::mpi::environment env;
 
+      env.barrier();
       timer.start(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
       timer.disableMeasurement();
       timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
-      dsss::mpi::environment env;
       std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
