@@ -207,26 +207,29 @@ namespace dss_schimek {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
-      dsss::mpi::environment env;
-      std::vector<IteratorPair> iteratorPairs;
 
       timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
+      dsss::mpi::environment env;
+      std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
       auto outputIt = std::back_inserter(mergedElements);
       Iterator it = hashPEIndices.begin(); 
-      
 
       for (size_t i = 0; i < recvData.intervalSizes.size(); ++i) {
        iteratorPairs.emplace_back(it, it + recvData.intervalSizes[i]);
        it += recvData.intervalSizes[i];
       }
       timer.end(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
-
+      //
+      //++++++++++++++++++++++++++++++++++++++
+      //
       timer.start(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
       tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(), mergedElements.begin(), elementsToMerge);
       timer.end(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
-
+      //
+      //++++++++++++++++++++++++++++++++++++++
+      //
       timer.start(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
@@ -263,7 +266,9 @@ namespace dss_schimek {
           }
         }
       timer.end(std::string("bloomfilter_findDuplicatesFind"), curIteration);
-      
+      //
+      //++++++++++++++++++++++++++++
+      //
       timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
