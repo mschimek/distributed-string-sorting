@@ -74,6 +74,7 @@ template <typename StringSet, typename StringGenerator,
              std::vector<StringIndexPEIndex> permutation = 
                sorter.sort(rand_string_ptr, timer);
 
+             timer.end("sorting_overall");
              //dss_schimek::mpi::execute_in_order([&](){
              //    std::cout << "rank: " << env.rank() << std::endl;
              //    for (auto elem : permutation) {
@@ -92,7 +93,6 @@ template <typename StringSet, typename StringGenerator,
              //    });
 
 
-             timer.end("sorting_overall");
 
              //dss_schimek::mpi::execute_in_order([&]() {
              //    env.barrier();
