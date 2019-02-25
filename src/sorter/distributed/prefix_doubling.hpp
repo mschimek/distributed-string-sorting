@@ -54,8 +54,11 @@ namespace dss_schimek {
 
           for (size_t i = 1; i <= nr_splitters; ++i) {
             const String splitter = ss[ss.begin() + i * splitter_dist];
-            std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
+            const size_t splitterLength = ss.get_length(splitter);
+            const size_t usedSplitterLength = splitterLength > 100 ? 100 : splitterLength;
+            std::copy_n(ss.get_chars(splitter, 0), usedSplitterLength,
                 std::back_inserter(raw_splitters));
+            raw_splitters.push_back(0);
           }
           return raw_splitters; 
         }
