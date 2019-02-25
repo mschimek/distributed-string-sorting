@@ -506,7 +506,9 @@ namespace dss_schimek {
 
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
           timer.start("bloomfilter_overall");
+          timer.disableMeasurement();
           std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
           // There is only one PE, hence there is no need for distributed sorting 

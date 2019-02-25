@@ -48,6 +48,8 @@ namespace dss_schimek {
       void start(Container& keyToStartingPoint, const Key& key,
           dsss::mpi::environment env = dsss::mpi::environment())
       {
+        if (!measurementEnabled)
+          return;
         if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
           std::abort();
         env.barrier();
@@ -59,6 +61,8 @@ namespace dss_schimek {
       void end(KeyStartingPointMap& keyToStartingPoint, KeyDurationMap& keyToActiveTime,
           KeyDurationMap& keyToTotalTime, const Key& key,
           dsss::mpi::environment env = dsss::mpi::environment()) {
+        if (!measurementEnabled)
+          return;
         auto itToPairInMap = keyToStartingPoint.find(key);
         if (itToPairInMap == keyToStartingPoint.end())
           std::abort();
@@ -124,6 +128,13 @@ namespace dss_schimek {
       return "Timer";
     }
     Timer(const std::string& prefix) : prefix(prefix) {};
+    void enableMeasurement() {
+      measurementEnabled = true;
+    }
+    
+    void disableMeasurement() {
+      measurementEnabled = false;
+    }
 
     void add(const std::string& description, size_t value) {
       add(descriptionToValue, description, value);
@@ -320,6 +331,7 @@ namespace dss_schimek {
 
     private:
     using DescriptionIteration = std::pair<std::string, size_t>;
+    bool measurementEnabled = true;
 
     std::string prefix;
     std::map<std::string, size_t> descriptionToValue;
