@@ -613,9 +613,9 @@ namespace dss_schimek {
         timer.start(std::string("bloomfilter_addPEIndex"), curIteration);
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
         timer.end(std::string("bloomfilter_addPEIndex"), curIteration);
-        timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
         std::vector<size_t> indicesOfDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData, timer, curIteration);
-        timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
 
         timer.start(std::string("bloomfilter_getIndices"), curIteration);
         FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfDuplicates, hashStringIndices);
