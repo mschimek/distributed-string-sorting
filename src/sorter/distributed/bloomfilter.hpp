@@ -231,6 +231,8 @@ namespace dss_schimek {
       //
       //++++++++++++++++++++++++++++++++++++++
       //
+
+      timer.start(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
       timer.start(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
@@ -270,10 +272,13 @@ namespace dss_schimek {
       //
       //++++++++++++++++++++++++++++
       //
+      timer.start(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
       timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
+      timer.end(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
+      timer.end(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
 
       return duplicates; 
     }
