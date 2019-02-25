@@ -454,21 +454,27 @@ namespace dss_schimek {
         using StringSet = typename StringPtr::StringSet;
         dsss::mpi::environment env;
 
+        timer.start(std::string("bloomfilter_init"));
         StringSet ss = local_string_ptr.active();
+
 
         std::vector<size_t> results(ss.size(), 0);
         std::vector<size_t> candidates(ss.size());
         std::iota(candidates.begin(), candidates.end(), 0);
                 BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
 
+        timer.end(std::string("bloomfilter_init"));
 
         size_t curIteration = 0;
         for (size_t i = 1; i < std::numeric_limits<size_t>::max(); i *= 2) {
           timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
 
+
+          timer.start(std::string("bloomfilter_allreduce"), curIteration);
           bool noMoreCandidates = candidates.empty();
           bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+          timer.end(std::string("bloomfilter_allreduce"), curIteration);
           if (allEmpty)
             break;
           ++curIteration;
@@ -506,9 +512,9 @@ namespace dss_schimek {
 
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
           timer.start("bloomfilter_overall");
-          timer.disableMeasurement();
+          //timer.disableMeasurement();
           std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
-          timer.enableMeasurement();
+          //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
           // There is only one PE, hence there is no need for distributed sorting 
