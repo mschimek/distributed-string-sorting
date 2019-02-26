@@ -30,7 +30,6 @@
 
 namespace dss_schimek {
 
-  
 
   struct Duplicate {
     size_t index;
@@ -209,6 +208,7 @@ namespace dss_schimek {
       using IteratorPair = std::pair<Iterator, Iterator>;
       dsss::mpi::environment env;
 
+      timer.add(std::string("bloomfilter_recvHashValues"), curIteration, hashPEIndices.size());
       env.barrier();
       timer.start(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
       timer.localStart(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
