@@ -356,16 +356,16 @@ template <typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
       writeToStream(buffer, key, "avgTime", avgTime(key));
-      //writeToStream(buffer, key, "maxTime", maxTime(key));
-      //writeToStream(buffer, key, "minTime", minTime(key));
+      writeToStream(buffer, key, "maxTime", maxTime(key));
+      writeToStream(buffer, key, "minTime", minTime(key));
     }
     
     void writeToStreamNoLoss(std::stringstream& buffer, const std::pair<std::string, size_t>& key, 
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
       writeToStream(buffer, key, "avgTime", avgTime(key.first, key.second));
-      //writeToStream(buffer, key, "maxTime", maxTime(key.first, key.second));
-      //writeToStream(buffer, key, "minTime", minTime(key.first, key.second));
+      writeToStream(buffer, key, "maxTime", maxTime(key.first, key.second));
+      writeToStream(buffer, key, "minTime", minTime(key.first, key.second));
     }
 
     void writeToStream(std::stringstream& buffer,
