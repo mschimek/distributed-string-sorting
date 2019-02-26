@@ -384,12 +384,26 @@ namespace dss_schimek {
 
 
     template <typename StringPtr>
-      std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
+      std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr, Timer& timer) {
         using StringSet = typename StringPtr::StringSet;
         dsss::mpi::environment env;
 
-        StringSet ss = local_string_ptr.active();
 
+        StringSet ss = local_string_ptr.active();
+        //dss_schimek::mpi::execute_in_order([&]() {
+        //    std::cout << "rank: " << env.rank() << std::endl;
+        //    ss.print();
+        //    });
+        size_t sum = 0;
+        for (const auto& str : ss) {
+          const auto length = ss.get_length(str) + 1;
+          const auto chars = ss.get_chars(str, 0);
+          for (size_t i = 0; i < length; ++i)
+            sum += *chars;
+        }
+
+        std::vector<size_t> total_sum = dsss::mpi::allgather(sum);
+        std::cout << "TotalSum: " << std::accumulate(total_sum.begin(), total_sum.end(), 0) << std::endl;
         std::vector<size_t> results(ss.size(), 0);
         std::vector<size_t> candidates(ss.size());
         std::iota(candidates.begin(), candidates.end(), 0);
@@ -401,15 +415,26 @@ namespace dss_schimek {
         std::vector<size_t> candidates_tracker;
 
         BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
-        Tracker<StringSet> tracker(std::numeric_limits<size_t>::max());
+        Tracker<StringSet> tracker(std::numeric_limits<uint32_t>::max());
         tracker.init(local_string_ptr);
         std::cout << "tracker init rank: " << env.rank() << std::endl;
-        bloomFilter.filter_exact(local_string_ptr, 9 ,candidates_exact, results_exact);
+        //bloomFilter.filter_exact(local_string_ptr, 9 ,candidates_exact, results_exact);
         std::cout << "filter_exact rank: " << env.rank() << std::endl;
+        size_t curIteration = 0;
 
-        for (size_t i = 1; i < std::numeric_limits<size_t>::max(); i *= 2) {
+        for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
           env.barrier();
-          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
+          timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+          dss_schimek::mpi::execute_in_order([&]() {
+              if (curIteration == 3 && candidates.size() != 0) {
+              std::cout << "PrintCandidates in Iteration 3: rank: " << env.rank() << std::endl;
+              for (const auto& candidate : candidates) {
+              tracker.printDuplicateWitness(candidate, env.rank());
+              }
+              }
+              });
+
+          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
           tracker.startIteration(i);
           results_tracker = tracker.getResultsOf(env.rank());
           candidates_tracker = tracker.getCandidatesOf(env.rank());
@@ -417,35 +442,37 @@ namespace dss_schimek {
             std::cout << "candidates sets differ!" << std::endl;
             std::abort();
           }
+          
           bool noMoreCandidates = candidates.empty();
           std::cout << i << " rank: " << env.rank() << " candiates " << candidates.size() << " noMoreCandiates: " << noMoreCandidates << std::endl;
           bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
           std::cout << "allEmpty?: " << allEmpty << std::endl;
           if (allEmpty)
             break;
+          ++curIteration;
         }
 
-        size_t diffcount = 0;
-        size_t diffsum = 0;
-        std::vector<size_t> histogram(100, 0);
-        //std::cout << "compare results: rank: " << env.rank() << std::endl;
-        dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "rank: " << env.rank() << std::endl;
-            for (size_t i = 0; i < ss.size(); ++i) {
-            std::cout << i << " " << results[i] << " " << results_tracker[i] << " " << results_exact[i] << std::endl;
-            if ( results[i] != results_tracker[i] || results[i] < results_exact[i]) {
-            tracker.printDuplicateWitness(i, env.rank());
-            std::abort();
-            }
-            else if(results[i] > results_exact[i]) {
-            size_t diff = results[i] - results_exact[i];
-            if (diff < histogram.size()) 
-            histogram[diff]++;
-            diffsum += diff;
-            ++diffcount;
-            }
-            }});
-        std::cout << "diffsum: " << diffsum << " diffcount: " << diffcount << " avg diff: " << static_cast<double>(diffsum) / diffcount << std::endl;
+        //size_t diffcount = 0;
+        //size_t diffsum = 0;
+        //std::vector<size_t> histogram(100, 0);
+        ////std::cout << "compare results: rank: " << env.rank() << std::endl;
+        //dss_schimek::mpi::execute_in_order([&]() {
+        //    std::cout << "rank: " << env.rank() << std::endl;
+        //    for (size_t i = 0; i < ss.size(); ++i) {
+        //    std::cout << i << " " << results[i] << " " << results_tracker[i] << " " << results_exact[i] << std::endl;
+        //    if ( results[i] != results_tracker[i] || results[i] < results_exact[i]) {
+        //    tracker.printDuplicateWitness(i, env.rank());
+        //    std::abort();
+        //    }
+        //    else if(results[i] > results_exact[i]) {
+        //    size_t diff = results[i] - results_exact[i];
+        //    if (diff < histogram.size()) 
+        //    histogram[diff]++;
+        //    diffsum += diff;
+        //    ++diffcount;
+        //    }
+        //    }});
+        //std::cout << "diffsum: " << diffsum << " diffcount: " << diffcount << " avg diff: " << static_cast<double>(diffsum) / diffcount << std::endl;
         return results; 
       }
     
@@ -469,9 +496,19 @@ namespace dss_schimek {
         size_t curIteration = 0;
         for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
           timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+          if (curIteration == 3) {
+            std::cout << "rank: " << env.rank() << std::endl;
+            for (const auto& elem : candidates) {
+              auto ss = local_string_ptr.active();
+              auto begin = ss.begin();
+              auto str = ss[begin + elem];
+              std::cout << ss.get_chars(str, 0) << std::endl;
+            }
+          }
           //timer.start(std::string("bloomfilter_filterTotal"), curIteration);
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
           //timer.end(std::string("bloomfilter_filterTotal"), curIteration);
+
 
 
           timer.start(std::string("bloomfilter_allreduce"), curIteration);
@@ -514,9 +551,10 @@ namespace dss_schimek {
           //    ss.print();
           //    });
 
-          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
+          std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
+          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
           std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");

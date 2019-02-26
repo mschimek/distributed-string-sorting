@@ -44,7 +44,7 @@ namespace dss_schimek {
       {}
 
     friend std::ostream& operator<< (std::ostream& stream, const DuplicateWitness& duplicateWitness) {
-      return stream << duplicateWitness.stringIndex 
+      return stream << "[" << duplicateWitness.stringIndex 
                     << ", " << duplicateWitness.PEIndex 
                     << ", " << duplicateWitness.depth
                     << ", " << duplicateWitness.witnessStringIndex 
