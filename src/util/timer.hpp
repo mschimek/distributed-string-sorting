@@ -32,6 +32,7 @@ namespace dss_schimek {
     using PointInTime = std::chrono::time_point<Clock>;
     using TimeUnit = std::chrono::nanoseconds;
     using TimeIntervalDataType = size_t;
+    using DescriptionIteration = std::pair<std::string, size_t>;
 
     private: 
 
@@ -44,16 +45,33 @@ namespace dss_schimek {
         keyToValue.emplace(key, value);
       }
 
-    template <typename Container, typename Key>
-      void start(Container& keyToStartingPoint, const Key& key,
+    DescriptionIteration addString(DescriptionIteration descriptionIteration, const std::string& str) {
+      descriptionIteration.first += str;
+      return descriptionIteration;
+    }
+    
+    std::string addString(std::string description, const std::string& str) {
+      description += str;
+      return description;
+    }
+
+    template <typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
+      void start(KeyStartingPointMap& keyToStartingPoint, KeyStartingPointMap& barrierKeyToStartingPoint, KeyDurationMap& keyToActiveTime, const Key& key,
           dsss::mpi::environment env = dsss::mpi::environment())
       {
         if (!measurementEnabled)
           return;
         if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
           std::abort();
+        const PointInTime startBarrier = Clock::now();
         env.barrier();
         const PointInTime start = Clock::now();
+        Key barrierKey = addString(key, "_Barrier");
+        barrierKeyToStartingPoint.emplace(barrierKey, start);
+        size_t elapsedActiveTimeInBarrier = 
+          std::chrono::duration_cast<std::chrono::nanoseconds>(start - startBarrier).count();
+        keyToActiveTime.emplace(barrierKey, elapsedActiveTimeInBarrier);
+
         keyToStartingPoint.emplace(key, start);
       }
 
@@ -145,11 +163,11 @@ namespace dss_schimek {
     }
 
     void start(const std::string& description, size_t iteration) {
-      start(descriptionIterationToStart, make_pair(description, iteration)); 
+      start(descriptionIterationToStart, barrierDescriptionIterationToStart, descriptionIterationToActiveTime, make_pair(description, iteration)); 
     }
 
     void start(const std::string& description) {
-      start(descriptionToStart, description); 
+      start(descriptionToStart, barrierDescriptionToStart, descriptionToActiveTime, description); 
     }
 
     void end(const std::string& description) {
@@ -305,6 +323,22 @@ namespace dss_schimek {
       writeToStream(buffer, key, "maxLoss", maxLoss(key.first, key.second));
       writeToStream(buffer, key, "minLoss", minLoss(key.first, key.second));
     }
+    
+    void writeToStreamNoLoss(std::stringstream& buffer, const std::string& key, 
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      writeToStream(buffer, key, "avgTime", avgTime(key));
+      //writeToStream(buffer, key, "maxTime", maxTime(key));
+      //writeToStream(buffer, key, "minTime", minTime(key));
+    }
+    
+    void writeToStreamNoLoss(std::stringstream& buffer, const std::pair<std::string, size_t>& key, 
+        dsss::mpi::environment env = dsss::mpi::environment()) {
+
+      writeToStream(buffer, key, "avgTime", avgTime(key.first, key.second));
+      //writeToStream(buffer, key, "maxTime", maxTime(key.first, key.second));
+      //writeToStream(buffer, key, "minTime", minTime(key.first, key.second));
+    }
 
     void writeToStream(std::stringstream& buffer,
         dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -313,13 +347,19 @@ namespace dss_schimek {
       std::vector<std::string> descriptions;
       std::vector<DescriptionIteration> descriptionIterations;
       for (auto [description, not_used] : descriptionToStart)
-        descriptions.push_back(description);
+        writeToStream(buffer, description); 
       for (auto [descriptionIteration, not_used] : descriptionIterationToStart)
-        descriptionIterations.push_back(descriptionIteration);
-      for (const std::string& description : descriptions)
-        writeToStream(buffer, description);
-      for (const auto& descriptionIteration : descriptionIterations)
         writeToStream(buffer, descriptionIteration);
+      for (auto [description, not_used] : barrierDescriptionToStart)
+        writeToStreamNoLoss(buffer, description); 
+      for (auto [descriptionIteration, not_used] : barrierDescriptionIterationToStart)
+        writeToStreamNoLoss(buffer, descriptionIteration);
+
+      //for (const std::string& description : descriptions)
+      //  writeToStream(buffer, description);
+      //for (const auto& descriptionIteration : descriptionIterations)
+
+
 
       // write remaining values 
       for (auto [description, value] : descriptionToValue)
@@ -330,7 +370,6 @@ namespace dss_schimek {
     }
 
     private:
-    using DescriptionIteration = std::pair<std::string, size_t>;
     bool measurementEnabled = true;
 
     std::string prefix;
@@ -340,8 +379,14 @@ namespace dss_schimek {
     std::map<std::string, PointInTime> descriptionToStart;
     std::map<DescriptionIteration, PointInTime> descriptionIterationToStart;
 
+    std::map<std::string, PointInTime> barrierDescriptionToStart;
+    std::map<DescriptionIteration, PointInTime> barrierDescriptionIterationToStart;
+
     std::map<std::string, TimeIntervalDataType> descriptionToTime;
     std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToTime;
+
+    std::map<std::string, TimeIntervalDataType> descriptionToBarrierTime;
+    std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToBarrierTime;
 
     std::map<std::string, TimeIntervalDataType> descriptionToActiveTime;
     std::map<DescriptionIteration, TimeIntervalDataType> descriptionIterationToActiveTime;
