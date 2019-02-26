@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <limits>
-#include <random>
+#include <random> 
 #include <cmath>
 #include <algorithm>
 
@@ -226,6 +226,15 @@ namespace dss_schimek {
   {
     using Char = typename StringSet::Char;
     public:
+    
+    size_t getSameSeedGlobally(dsss::mpi::environment env = dsss::mpi::environment()) {
+      size_t seed = 0;
+      if (env.rank() == 0) {
+        std::random_device rand_seed;
+        seed = rand_seed();
+      }
+      return dsss::mpi::broadcast(seed);
+    }
     SkewedRandomStringLcpContainer(const size_t size,
           const size_t min_length = 100,
           const size_t max_length = 200)
@@ -233,28 +242,42 @@ namespace dss_schimek {
       std::vector<Char> random_raw_string_data;
       std::random_device rand_seed;
       dsss::mpi::environment env;
-      std::mt19937 rand_gen(0);//rand_seed());
+      const size_t globalSeed = getSameSeedGlobally();
+      std::mt19937 rand_gen(globalSeed);//rand_seed());
       std::uniform_int_distribution<Char> small_char_dis(65, 70);
       std::uniform_int_distribution<Char> char_dis(65, 90);
       
+      std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
       std::uniform_int_distribution<size_t> normal_length_dis(min_length, max_length);
       std::uniform_int_distribution<size_t> large_length_dis(min_length + 100, max_length + 100);
 
-      std::size_t sizePerPE = size / env.size();
+      const size_t numLongStrings = size / 4;
+      const size_t numSmallStrings = size - numLongStrings;
+      std::size_t curChars = 0;
 
       random_raw_string_data.reserve(size + 1);
-      for (size_t i = 0; i < sizePerPE / 4; ++i) {
-        size_t length = large_length_dis(rand_gen);
-        for (size_t j = 0; j < length; ++j)
-          random_raw_string_data.emplace_back(small_char_dis(rand_gen));
-        random_raw_string_data.emplace_back(Char(0));
+      for (size_t i = 0; i < numLongStrings; ++i) {
+        const size_t PEIndex = dist(rand_gen);
+        if (PEIndex == env.rank()) {
+          size_t length = large_length_dis(rand_gen);
+          for (size_t j = 0; j < length; ++j)
+            random_raw_string_data.emplace_back(small_char_dis(rand_gen));
+          random_raw_string_data.emplace_back(Char(0));
+          curChars += length + 1;
+        }
+
       }
-      for (size_t i = sizePerPE / 4; i < sizePerPE; ++i) {
-        size_t length = normal_length_dis(rand_gen);
-        for (size_t j = 0; j < length; ++j)
-          random_raw_string_data.emplace_back(char_dis(rand_gen));
-        random_raw_string_data.emplace_back(Char(0));
+      for (size_t i = 0; i < numSmallStrings; ++i) {
+        const size_t PEIndex = dist(rand_gen);
+        if (PEIndex == env.rank()) {
+          size_t length = normal_length_dis(rand_gen);
+          for (size_t j = 0; j < length; ++j)
+            random_raw_string_data.emplace_back(char_dis(rand_gen));
+          random_raw_string_data.emplace_back(Char(0));
+          curChars += length + 1;
+        }
       }
+      random_raw_string_data.resize(curChars);
       this->update(std::move(random_raw_string_data));
     }
 
