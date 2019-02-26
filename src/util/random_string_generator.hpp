@@ -253,7 +253,6 @@ namespace dss_schimek {
 
       const size_t numLongStrings = size / 4;
       const size_t numSmallStrings = size - numLongStrings;
-      std::cout << "numLongStrings: " << numLongStrings << " numSmallStrings: " << numSmallStrings << " size: " << size << std::endl;
       std::size_t curChars = 0;
 
 
