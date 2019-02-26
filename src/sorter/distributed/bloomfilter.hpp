@@ -273,12 +273,9 @@ namespace dss_schimek {
       //
       //++++++++++++++++++++++++++++
       //
-      timer.start(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
       timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
-      timer.end(std::string("bloomfilter_findDuplicatesSendDupsOut"), curIteration);
-      timer.end(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
       timer.end(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
 
       return duplicates; 

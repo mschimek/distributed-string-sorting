@@ -52,7 +52,7 @@ namespace dss_schimek {
           return;
         if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
           std::abort();
-        //env.barrier();
+        env.barrier();
         const PointInTime start = Clock::now();
         keyToStartingPoint.emplace(key, start);
       }
