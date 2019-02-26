@@ -211,7 +211,7 @@ namespace dss_schimek {
 
       env.barrier();
       timer.start(std::string("bloomfilter_findDuplicatesOverallIntern"), curIteration);
-      timer.start(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
+      timer.localStart(std::string("bloomfilter_findDuplicatesSetup"), curIteration);
       std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
@@ -226,14 +226,14 @@ namespace dss_schimek {
       //
       //++++++++++++++++++++++++++++++++++++++
       //
-      timer.start(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
+      timer.localStart(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
       tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(), mergedElements.begin(), elementsToMerge);
       timer.end(std::string("bloomfilter_findDuplicatesMerge"), curIteration);
       //
       //++++++++++++++++++++++++++++++++++++++
       //
 
-      timer.start(std::string("bloomfilter_findDuplicatesFind"), curIteration);
+      timer.localStart(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
 

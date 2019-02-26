@@ -75,6 +75,26 @@ namespace dss_schimek {
         keyToStartingPoint.emplace(key, start);
       }
 
+template <typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
+      void localStart(KeyStartingPointMap& keyToStartingPoint, KeyStartingPointMap& barrierKeyToStartingPoint, KeyDurationMap& keyToActiveTime, const Key& key,
+          dsss::mpi::environment env = dsss::mpi::environment())
+      {
+        if (!measurementEnabled)
+          return;
+        if (keyToStartingPoint.find(key) != keyToStartingPoint.end())
+          std::abort();
+        const PointInTime startBarrier = Clock::now();
+        //env.barrier();
+        const PointInTime start = Clock::now();
+        Key barrierKey = addString(key, "_Barrier");
+        barrierKeyToStartingPoint.emplace(barrierKey, start);
+        size_t elapsedActiveTimeInBarrier = 
+          std::chrono::duration_cast<std::chrono::nanoseconds>(start - startBarrier).count();
+        keyToActiveTime.emplace(barrierKey, elapsedActiveTimeInBarrier);
+
+        keyToStartingPoint.emplace(key, start);
+      }
+
     template<typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
       void end(KeyStartingPointMap& keyToStartingPoint, KeyDurationMap& keyToActiveTime,
           KeyDurationMap& keyToTotalTime, const Key& key,
@@ -168,6 +188,14 @@ namespace dss_schimek {
 
     void start(const std::string& description) {
       start(descriptionToStart, barrierDescriptionToStart, descriptionToActiveTime, description); 
+    }
+
+    void localStart(const std::string& description, size_t iteration) {
+      localStart(descriptionIterationToStart, barrierDescriptionIterationToStart, descriptionIterationToActiveTime, make_pair(description, iteration)); 
+    }
+
+    void localStart(const std::string& description) {
+      localStart(descriptionToStart, barrierDescriptionToStart, descriptionToActiveTime, description); 
     }
 
     void end(const std::string& description) {
