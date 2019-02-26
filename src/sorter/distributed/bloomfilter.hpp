@@ -233,7 +233,6 @@ namespace dss_schimek {
       //++++++++++++++++++++++++++++++++++++++
       //
 
-      timer.start(std::string("bloomfilter_findDuplicatesAfterMerge"), curIteration);
       timer.start(std::string("bloomfilter_findDuplicatesFind"), curIteration);
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
