@@ -350,7 +350,7 @@ namespace dss_schimek {
       dsss::mpi::environment env;
       public:
 
-      const size_t bloomFilterSize = std::numeric_limits<size_t>::max();
+      const size_t bloomFilterSize = std::numeric_limits<uint32_t>::max();
 
       std::vector<size_t> computeIntervals(std::vector<HashTriple>& hashes) {
         std::vector<size_t> indices;

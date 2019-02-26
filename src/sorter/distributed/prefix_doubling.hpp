@@ -467,7 +467,7 @@ namespace dss_schimek {
 
         //timer.start(std::string("bloomfilter_totalLoop"));
         size_t curIteration = 0;
-        for (size_t i = 1; i < std::numeric_limits<size_t>::max(); i *= 2) {
+        for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
           timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
           //timer.start(std::string("bloomfilter_filterTotal"), curIteration);
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
