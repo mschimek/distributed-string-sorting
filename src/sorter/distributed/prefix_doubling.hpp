@@ -537,10 +537,9 @@ namespace dss_schimek {
           //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
-          //dss_schimek::mpi::execute_in_order([&]() {
-          //    std::cout << "rank: " << env.rank()  << std::endl;
-          //    ss.print();
-          //    });
+          // There is only one PE, hence there is no need for distributed sorting 
+          if (env.size() == 1)
+            return std::vector<StringIndexPEIndex>();
 
           std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
@@ -550,9 +549,6 @@ namespace dss_schimek {
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
-          // There is only one PE, hence there is no need for distributed sorting 
-          if (env.size() == 1)
-            return std::vector<StringIndexPEIndex>();
 
           timer.start("sample_splitters");
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
