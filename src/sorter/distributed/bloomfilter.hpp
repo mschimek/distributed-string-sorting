@@ -272,6 +272,8 @@ namespace dss_schimek {
       //
       //++++++++++++++++++++++++++++
       //
+      size_t totalNumSendDuplicates = std::accumulate(sendCounts_.begin(), sendCounts_.end(), 0);
+      timer.add(std::string("bloomfilter_findDuplicatesNumberSendDups"), curIteration, totalNumSendDuplicates);
       timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       auto duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
       timer.end(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
