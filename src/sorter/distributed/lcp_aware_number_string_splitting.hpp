@@ -414,63 +414,20 @@ namespace dss_schimek {
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           timer.end("sample_splitters");
 
-          // spend time here
-          env.barrier();
-          volatile size_t tmpSum = 0;
-          for (volatile size_t i = 0; i < 50000000; ++i) {
-	    for (volatile size_t j = 0; j < 10; ++j)
-            tmpSum += j;
-          }
-          std::cout << tmpSum << std::endl;
-          env.barrier();
-          env.barrier();
-
-          /***
-           * TEST
-           */
-          std::mt19937 gen;
-          std::random_device rand;
-          gen.seed(rand());
-          std::vector<unsigned char> vec;
-          std::uniform_int_distribution<> dis(65, 80);
-          for (size_t i = 0; i < raw_splitters.size(); ++i) {
-            vec.push_back(dis(gen)); 
-          }
-          timer.start("allgatherv_test_before");
-          std::vector<unsigned char> test =
-            dss_schimek::mpi::allgatherv(vec, env);
-          timer.end("allgatherv_test_before");
-          volatile int i = std::accumulate(test.begin(), test.end(), 0);
-
+          
           //jtimer.start("allgather_test_before");
           //jtest = dss_schimek::mpi::allgather(vec[0], env);
           //jtimer.end("allgather_test_before");
           //ji += std::accumulate(test.begin(), test.end(), 0);
 
 
-          asm volatile("" ::: "memory");
           timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
           timer.start("allgather_splitters");
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
           timer.end("allgather_splitters");
-          asm volatile("" ::: "memory");
 
 
-          //i += splitters.size();
-          env.barrier();
-
-	  tmpSum = 0;
-          for (volatile size_t i = 0; i < 50000000; ++i) {
-	    for (volatile size_t j = 0; j < 10; ++j)
-            tmpSum += j;
-          }
-          std::cout << tmpSum << std::endl;
-          env.barrier();
-          env.barrier();
-
-		
-          //return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
           //vec.clear();
           //for (size_t i = 0; i < raw_splitters.size(); ++i) {
           //  vec.push_back(dis(gen)); 
