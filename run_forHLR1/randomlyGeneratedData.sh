@@ -2,14 +2,14 @@
 module load mpi/openmpi/3.1
 
 executable="../build/src/tests/distributed_sorter"
-numOfStrings=10000000
+numOfStrings=1000000
 numOfIterations=10
 byteEncoder=5
 generator=0
 stringLength=5000
 MPIRoutineAllToAll=2
 
-for sampleStringsPolicy in 0 1 
+for sampleStringsPolicy in 0 
 do
 	for byteEncoder in 5
 	do
