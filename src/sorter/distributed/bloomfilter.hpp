@@ -87,8 +87,8 @@ namespace dss_schimek {
   struct HashStringIndex {
     size_t hashValue;
     size_t stringIndex;
-    bool isLocalDuplicate;
-    bool isLocalDuplicateButSendAnyway;
+    bool isLocalDuplicate = false;
+    bool isLocalDuplicateButSendAnyway = false;
     HashStringIndex(const size_t hashValue, const size_t stringIndex, bool isLocalDuplicate, bool isLocalDuplicateButSendAnyway)
       : hashValue(hashValue), stringIndex(stringIndex), isLocalDuplicate(isLocalDuplicate), isLocalDuplicateButSendAnyway(isLocalDuplicateButSendAnyway) {}
     HashStringIndex(const size_t hashValue, const size_t stringIndex) : hashValue(hashValue), stringIndex(stringIndex), isLocalDuplicate(false) {}
@@ -98,7 +98,8 @@ namespace dss_schimek {
     } 
 
     friend std::ostream& operator<< (std::ostream& stream, const HashStringIndex& hashStringIndex) {
-      return stream << "[" << hashStringIndex.hashValue << ", " << hashStringIndex.stringIndex << ", localDup: " << hashStringIndex.isLocalDuplicate << "]";
+      return stream << "[" << hashStringIndex.hashValue << ", " << hashStringIndex.stringIndex << ", localDup: " << hashStringIndex.isLocalDuplicate << 
+                              ", sendAnyway: " << hashStringIndex.isLocalDuplicateButSendAnyway << "]";
     } 
   };
 
@@ -153,12 +154,19 @@ namespace dss_schimek {
     using SendType = size_t;
 
     static inline std::vector<SendType> extractSendValues(const std::vector<HashStringIndex>& hashStringIndices) {
+    dsss::mpi::environment env;
       std::vector<size_t> hashValues;
       hashValues.reserve(hashStringIndices.size());
       for (const auto& hashStringIndex : hashStringIndices) {
-        if(!hashStringIndex.isLocalDuplicate || hashStringIndex.isLocalDuplicateButSendAnyway)
          hashValues.push_back(hashStringIndex.hashValue);
       }
+
+      //dss_schimek::mpi::execute_in_order([&](){
+      //    std::cout << "extract send values rank: " << env.rank() << std::endl;
+      //  for (const auto& elem: hashValues) {
+      //    std::cout << elem << std::endl;
+      //  }
+      //    });
       return hashValues;
     }
 
@@ -305,15 +313,21 @@ namespace dss_schimek {
 //TODO add && reference for localDuplicates
     std::vector<size_t> getIndicesOfDuplicates(std::vector<size_t>& localDuplicates, std::vector<size_t>& remoteDuplicates, const std::vector<HashStringIndex>& originalMapping) {
       std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
-      indicesOfAllDuplicates.reserve(localDuplicates.size() + remoteDuplicates.size());
-      for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
-        const size_t curIndex = remoteDuplicates[i];
-        bool isAlsoLocalDuplicate = originalMapping[curIndex].isLocalDuplicateButSendAnyway;
-        if (!isAlsoLocalDuplicate) {
+      dsss::mpi::environment env;
+      //indicesOfAllDuplicates.reserve(localDuplicates.size() + remoteDuplicates.size());
+      dss_schimek::mpi::execute_in_order([&](){
+          std::cout << "rank: " << env.rank() << std::endl;
+          for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
+          const size_t curIndex = remoteDuplicates[i];
+          bool isAlsoLocalDuplicate = originalMapping[curIndex].isLocalDuplicateButSendAnyway;
+          std::cout << i << " curIndex " << curIndex << " isLocalDuplicateButSendAnyway " << isAlsoLocalDuplicate << std::endl;
+          if (!isAlsoLocalDuplicate) {
           const size_t stringIndex = originalMapping[curIndex].stringIndex;
           indicesOfAllDuplicates.push_back(stringIndex);
-        }
-      }
+          }
+          }  
+          });
+
       return indicesOfAllDuplicates;
     }
   };
@@ -651,12 +665,30 @@ namespace dss_schimek {
         timer.start(std::string("bloomfilter_sortHashStringIndices"), curIteration);
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
         timer.end(std::string("bloomfilter_sortHashStringIndices"), curIteration);
-
+        
 
         std::vector<size_t> indicesOfLocalDuplicates = getIndicesOfLocalDuplicates(hashStringIndices);
+        std::vector<HashStringIndex> reducedHashStringIndices;
+        reducedHashStringIndices.reserve(hashStringIndices.size());
+        std::copy_if(hashStringIndices.begin(), hashStringIndices.end(), std::back_inserter(reducedHashStringIndices), [&](const HashStringIndex& v) {
+            return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
+            }); dss_schimek::mpi::execute_in_order([&]() { std::cout << "local dups: rank: " << env.rank() << std::endl;
+            for (const auto& elem : indicesOfLocalDuplicates)
+              std::cout << elem << std::endl;
+            });
+dss_schimek::mpi::execute_in_order([&]() {
+            std::cout << "hashStringIndices dups: rank: " << env.rank() << std::endl;
+            for (size_t i = 0; i < hashStringIndices.size() && i << reducedHashStringIndices.size(); ++i)
+              std::cout << hashStringIndices[i] << " " << reducedHashStringIndices[i] << std::endl;
+            for (volatile size_t i = 0; i < 1000000; ++i) {
+
+            }
+            });
+
+
 
         timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
-        RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(hashStringIndices, bloomFilterSize);
+        RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(reducedHashStringIndices, bloomFilterSize);
         timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_addPEIndex"), curIteration);
@@ -666,9 +698,22 @@ namespace dss_schimek {
         //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
         std::vector<size_t> indicesOfRemoteDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData, timer, curIteration);
         //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+          dss_schimek::mpi::execute_in_order([&]() {
+            std::cout << "remote dups: rank: " << env.rank() << std::endl;
+            for (const auto& elem : indicesOfRemoteDuplicates)
+              std::cout << elem << std::endl;
+            });
+
 
         timer.start(std::string("bloomfilter_getIndices"), curIteration);
-        std::vector<size_t> indicesOfAllDuplicates = FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, hashStringIndices);
+        std::vector<size_t> indicesOfAllDuplicates = FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
+      dss_schimek::mpi::execute_in_order([&]() {
+            std::cout << "all dups: rank: " << env.rank() << std::endl;
+            for (const auto& elem : indicesOfAllDuplicates)
+              std::cout << elem << std::endl;
+            });
+
+
         std::cout << "hallo " << std::endl;
         timer.end(std::string("bloomfilter_getIndices"), curIteration);
 

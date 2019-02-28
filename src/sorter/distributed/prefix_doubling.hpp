@@ -424,25 +424,40 @@ namespace dss_schimek {
 
         for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
           env.barrier();
+          if (env.rank() == 0)
+            std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
           timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
-          dss_schimek::mpi::execute_in_order([&]() {
-              if (curIteration == 3 && candidates.size() != 0) {
-              std::cout << "PrintCandidates in Iteration 3: rank: " << env.rank() << std::endl;
-              for (const auto& candidate : candidates) {
-              tracker.printDuplicateWitness(candidate, env.rank());
-              }
-              }
-              });
-
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
           tracker.startIteration(i);
           results_tracker = tracker.getResultsOf(env.rank());
           candidates_tracker = tracker.getCandidatesOf(env.rank());
-          if (candidates.size() != candidates_tracker.size()) {
-            std::cout << "candidates sets differ!" << std::endl;
-            std::abort();
-          }
-          
+          dss_schimek::mpi::execute_in_order([&](){
+              sort(candidates.begin(), candidates.end());
+              sort(candidates_tracker.begin(), candidates_tracker.end());
+              if (candidates != candidates_tracker) {
+              size_t smallerSize = std::min(candidates.size(), candidates_tracker.size());
+              std::cout << "rank: " << env.rank() << std::endl;
+              for (size_t i = 0; i < smallerSize; ++i) {
+              std::cout << i << " candidate: " << candidates[i] << " candidates_tracker: " << candidates_tracker[i] << std::endl;
+              if (candidates[i] != candidates_tracker[i]) {
+                tracker.printDuplicateWitness(candidates_tracker[i], env.rank());
+              std::abort();
+              }
+              }
+              std::cout << "candidates sets differ!" << std::endl;
+              std::abort();
+              }
+              if (results != results_tracker) {
+              std::cout << "rank: " << env.rank() << std::endl;
+              for (size_t i = 0; i < results.size(); ++i) {
+                std::cout << i << " results " << results[i] << " results_tracker " << results_tracker[i] << std::endl;
+                if (results[i] != results_tracker[i])
+                  std::abort();
+              }
+              }
+              });
+
+
           bool noMoreCandidates = candidates.empty();
           std::cout << i << " rank: " << env.rank() << " candiates " << candidates.size() << " noMoreCandiates: " << noMoreCandidates << std::endl;
           bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
@@ -544,8 +559,8 @@ namespace dss_schimek {
           std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
-          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
-          std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
+          //std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
