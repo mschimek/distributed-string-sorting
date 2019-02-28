@@ -4,6 +4,7 @@
 #include <numeric>
 #include <type_traits>
 #include <random>
+#include <bitset>
 
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
@@ -120,8 +121,71 @@ namespace dss_schimek {
 
   struct AllToAllHashesNaive {
     template <typename DataType>
+      
       static inline std::vector<DataType> allToAllv(const std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
-        return dsss::mpi::AllToAllvSmall::alltoallv(sendData.data, intervalSizes);
+              }
+  };
+  
+  struct AllToAllHashesGolomb {
+    template <typename DataType>
+      static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
+        using AllToAllv = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+        dsss::mpi::environment env;
+        std::vector<size_t> encodedValuesSizes;
+        std::vector<size_t> encodedValues;
+        //std::iota(sendData.begin(), sendData.end(), 5);
+        encodedValues.reserve(sendData.size());
+
+        dss_schimek::mpi::execute_in_order([&]() {
+        auto begin = sendData.begin();
+        
+        std::cout << "delta encoding rank: " << env.rank()  << "sendDAta.size() " << sendData.size() << std::endl;
+        for (size_t j = 0; j < intervalSizes.size(); ++j) {
+        const auto intervalSize = intervalSizes[j];
+        const auto end = begin + intervalSize;
+        const auto encodedValuesSize = encodedValues.size(); 
+
+          std::cout << j  << " intervalSize: " << intervalSize << " encodedValuesSize: " << encodedValues.size() << std::endl; 
+          getDeltaEncoding(begin, end, std::back_inserter(encodedValues), 1048576);
+          const size_t sizeEncodedValues = encodedValues.size() - encodedValuesSize;
+          std::cout << j  << " intervalSize: " << intervalSize << " sizeEncodedValues: " << sizeEncodedValues << std::endl;
+          encodedValuesSizes.push_back(sizeEncodedValues);
+          begin = end;
+        }
+            for (size_t i = 0; i < encodedValues.size() && i < 100; ++i)
+              std::cout << std::bitset<64>(encodedValues[i]) << std::endl;
+for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
+        std::cout << " encodedValuesSizes: " << encodedValuesSizes[i] << std::endl;
+
+            });
+        std::cout << "exchange data" << std::endl;
+
+        std::vector<size_t> recvEncodedValues = AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
+        std::vector<size_t> recvEncodedValuesSizes = dsss::mpi::alltoall(encodedValuesSizes);
+        std::vector<size_t> decodedValues;
+        std::cout << "recvEncodedValues.size() " << recvEncodedValues.size() << " rank: " << env.rank() << std::endl;
+        decodedValues.reserve(recvEncodedValues.size());
+        auto curDecodeIt = recvEncodedValues.begin();
+         //dss_schimek::mpi::execute_in_order([&]() {
+         /*    std::cout << "rank: " << env.rank() << std::endl;
+             for (auto elem: recvEncodedValues)
+              std::cout << std::bitset<64>(elem) << std::endl;
+              std::cout << "sizes " << std::endl;
+             for (auto elem : recvEncodedValuesSizes ) {
+              std::cout << elem << std::endl;
+             }*/
+          size_t j = 0;
+          for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
+            const auto end = curDecodeIt + encodedIntervalSizes; 
+            getDeltaDecoding(curDecodeIt, end, std::back_inserter(decodedValues), 1048576); 
+            curDecodeIt = end;
+          }
+          
+          //  std::cout << "delta decoding rank: " << env.rank() << std::endl;
+          //  for (const auto& elem : decodedValues)
+          //    std::cout << elem << std::endl;
+          //  });
+        return decodedValues;
       }
   };
 
@@ -181,7 +245,7 @@ namespace dss_schimek {
       offsets = dsss::mpi::alltoall(offsets);
 
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
-      std::vector<size_t> result = SendPolicy::alltoallv(sendValues.data(), intervalSizes);
+      std::vector<size_t> result = SendPolicy::alltoallv(sendValues, intervalSizes);
       return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
     }
 
@@ -419,7 +483,7 @@ namespace dss_schimek {
         HashTriple prevHashTriple = hashTriples[0];
         bool duplicate = false;
 
-        for(size_t i = 1; i < hashTriples.size(); ++i) {
+        for (size_t i = 1; i < hashTriples.size(); ++i) {
           const HashTriple curHashTriple = hashTriples[i];
           if (prevHashTriple.hashValue == curHashTriple.hashValue) {
             if (prevHashTriple.PEIndex == env.rank())
@@ -675,7 +739,7 @@ namespace dss_schimek {
         timer.end(std::string("bloomfilter_ReducedHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
-        RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(reducedHashStringIndices, bloomFilterSize);
+        RecvData recvData = SendPolicy<AllToAllHashesGolomb>::sendToFilter(reducedHashStringIndices, bloomFilterSize);
         timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_addPEIndex"), curIteration);

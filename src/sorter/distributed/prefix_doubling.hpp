@@ -503,7 +503,7 @@ namespace dss_schimek {
         std::vector<size_t> results(ss.size(), 0);
         std::vector<size_t> candidates(ss.size());
         std::iota(candidates.begin(), candidates.end(), 0);
-                BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
+                BloomFilter<StringSet, AllToAllHashesGolomb, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
 
         timer.end(std::string("bloomfilter_init"));
 
@@ -559,8 +559,8 @@ namespace dss_schimek {
           std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
-          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
-          std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
+          //std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 

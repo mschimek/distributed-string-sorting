@@ -1,4 +1,4 @@
-#pragma once
+#pragma once 
 #include <vector>
 #include <iostream>
 #include <bitset>
@@ -48,27 +48,26 @@ void printBits(const T& value) {
 }
 
 template <typename InputIterator, typename OutputIterator>
-inline void getDeltaEncoding(InputIterator begin, InputIterator end, BlockWriterIt<OutputIterator>& blockWriter) {
+inline void getDeltaEncoding(InputIterator begin, InputIterator end, BlockWriterIt<OutputIterator>& blockWriter, size_t b) {
   using BlockWriter = BlockWriterIt<OutputIterator>;
   using GolombWriter = thrill::core::GolombBitStreamWriter<BlockWriter>;
   using DeltaStreamWriter = thrill::core::DeltaStreamWriter<GolombWriter, size_t>;
 
-  GolombWriter golombWriter(blockWriter, 8);
+  GolombWriter golombWriter(blockWriter, b);
   DeltaStreamWriter deltaStreamWriter(golombWriter);
   InputIterator it = begin;
   while (it != end) {
     deltaStreamWriter.Put(*it);
-    std::cout << *it << std::endl;
     ++it;
   }
 }
 
 
 template <typename InputIterator, typename OutputIterator>
-inline void getDeltaEncoding(InputIterator begin, InputIterator end, OutputIterator out) {
+inline void getDeltaEncoding(InputIterator begin, InputIterator end, OutputIterator out, size_t b) {
   using StreamWriter = thrill::core::GolombBitStreamWriter<BlockWriter>;
   BlockWriterIt<OutputIterator> blockWriter(out);
-  getDeltaEncoding(begin, end, blockWriter);
+  getDeltaEncoding(begin, end, blockWriter, b);
 }
 
 std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
@@ -84,19 +83,18 @@ std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
 
   return decodedValues;
 }
-std::vector<size_t> getDeltaDecoding(const std::vector<size_t>& values) {
+
+template <typename InputIterator, typename OutputIterator>
+void getDeltaDecoding(const InputIterator begin, const InputIterator end, OutputIterator out, size_t b) {
   using GolombReader = thrill::core::GolombBitStreamReader<BlockReader>;
   using DeltaReader = thrill::core::DeltaStreamReader<GolombReader, size_t>;
 
-  BlockReader reader(values.begin(), values.end());
-  std::vector<size_t> decodedValues;
-  const size_t b = 8;
-  GolombReader golombReader(reader, 8);
+  BlockReader reader(begin, end);
+  GolombReader golombReader(reader, b);
   DeltaReader deltaReader(golombReader);
 
 
-  while(deltaReader.HasNext())
-    decodedValues.push_back(deltaReader.Next<size_t>());
-
-  return decodedValues;
+  while(golombReader.HasNext()) {
+    out = deltaReader.Next<size_t>();
+  }
 }
