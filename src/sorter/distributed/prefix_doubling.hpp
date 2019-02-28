@@ -509,7 +509,7 @@ namespace dss_schimek {
 
         //timer.start(std::string("bloomfilter_totalLoop"));
         size_t curIteration = 0;
-        for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
+        for (size_t i = 8; i < std::numeric_limits<size_t>::max(); i *= 2) {
           timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
           //timer.start(std::string("bloomfilter_filterTotal"), curIteration);
           candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
@@ -559,8 +559,8 @@ namespace dss_schimek {
           std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
-          std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
-          //std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
+          std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
