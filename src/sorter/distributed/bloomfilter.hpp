@@ -315,18 +315,14 @@ namespace dss_schimek {
       std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
       dsss::mpi::environment env;
       //indicesOfAllDuplicates.reserve(localDuplicates.size() + remoteDuplicates.size());
-      dss_schimek::mpi::execute_in_order([&](){
-          std::cout << "rank: " << env.rank() << std::endl;
           for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
           const size_t curIndex = remoteDuplicates[i];
           bool isAlsoLocalDuplicate = originalMapping[curIndex].isLocalDuplicateButSendAnyway;
-          std::cout << i << " curIndex " << curIndex << " isLocalDuplicateButSendAnyway " << isAlsoLocalDuplicate << std::endl;
           if (!isAlsoLocalDuplicate) {
           const size_t stringIndex = originalMapping[curIndex].stringIndex;
           indicesOfAllDuplicates.push_back(stringIndex);
           }
           }  
-          });
 
       return indicesOfAllDuplicates;
     }
@@ -666,26 +662,17 @@ namespace dss_schimek {
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
         timer.end(std::string("bloomfilter_sortHashStringIndices"), curIteration);
         
-
+        timer.start(std::string("bloomfilter_indicesOfLocalDuplicates"), curIteration);
         std::vector<size_t> indicesOfLocalDuplicates = getIndicesOfLocalDuplicates(hashStringIndices);
+        timer.end(std::string("bloomfilter_indicesOfLocalDuplicates"), curIteration);
+
+        timer.start(std::string("bloomfilter_ReducedHashStringIndices"), curIteration);
         std::vector<HashStringIndex> reducedHashStringIndices;
         reducedHashStringIndices.reserve(hashStringIndices.size());
         std::copy_if(hashStringIndices.begin(), hashStringIndices.end(), std::back_inserter(reducedHashStringIndices), [&](const HashStringIndex& v) {
             return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
-            }); dss_schimek::mpi::execute_in_order([&]() { std::cout << "local dups: rank: " << env.rank() << std::endl;
-            for (const auto& elem : indicesOfLocalDuplicates)
-              std::cout << elem << std::endl;
             });
-dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "hashStringIndices dups: rank: " << env.rank() << std::endl;
-            for (size_t i = 0; i < hashStringIndices.size() && i << reducedHashStringIndices.size(); ++i)
-              std::cout << hashStringIndices[i] << " " << reducedHashStringIndices[i] << std::endl;
-            for (volatile size_t i = 0; i < 1000000; ++i) {
-
-            }
-            });
-
-
+        timer.end(std::string("bloomfilter_ReducedHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
         RecvData recvData = SendPolicy<dsss::mpi::AllToAllvSmall>::sendToFilter(reducedHashStringIndices, bloomFilterSize);
@@ -698,23 +685,9 @@ dss_schimek::mpi::execute_in_order([&]() {
         //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
         std::vector<size_t> indicesOfRemoteDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData, timer, curIteration);
         //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
-          dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "remote dups: rank: " << env.rank() << std::endl;
-            for (const auto& elem : indicesOfRemoteDuplicates)
-              std::cout << elem << std::endl;
-            });
-
-
+         
         timer.start(std::string("bloomfilter_getIndices"), curIteration);
         std::vector<size_t> indicesOfAllDuplicates = FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
-      dss_schimek::mpi::execute_in_order([&]() {
-            std::cout << "all dups: rank: " << env.rank() << std::endl;
-            for (const auto& elem : indicesOfAllDuplicates)
-              std::cout << elem << std::endl;
-            });
-
-
-        std::cout << "hallo " << std::endl;
         timer.end(std::string("bloomfilter_getIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_setDepth"), curIteration);

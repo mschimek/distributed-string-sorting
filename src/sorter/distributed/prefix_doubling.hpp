@@ -559,8 +559,8 @@ namespace dss_schimek {
           std::cout << "distinguishing prefix" << std::endl;
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
-          std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
-          //std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
+          std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 
