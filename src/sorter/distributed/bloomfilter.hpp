@@ -123,68 +123,50 @@ namespace dss_schimek {
     template <typename DataType>
       
       static inline std::vector<DataType> allToAllv(const std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
-              }
+      }
   };
-  
+
   struct AllToAllHashesGolomb {
     template <typename DataType>
-      static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
+      static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes, Timer& timer, size_t curIteration) {
         using AllToAllv = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
         dsss::mpi::environment env;
+        timer.start(std::string("bloomfilter_golombEncoding"), curIteration);
         std::vector<size_t> encodedValuesSizes;
         std::vector<size_t> encodedValues;
-        //std::iota(sendData.begin(), sendData.end(), 5);
         encodedValues.reserve(sendData.size());
 
-        dss_schimek::mpi::execute_in_order([&]() {
         auto begin = sendData.begin();
-        
-        std::cout << "delta encoding rank: " << env.rank()  << "sendDAta.size() " << sendData.size() << std::endl;
-        for (size_t j = 0; j < intervalSizes.size(); ++j) {
-        const auto intervalSize = intervalSizes[j];
-        const auto end = begin + intervalSize;
-        const auto encodedValuesSize = encodedValues.size(); 
 
-          std::cout << j  << " intervalSize: " << intervalSize << " encodedValuesSize: " << encodedValues.size() << std::endl; 
+        for (size_t j = 0; j < intervalSizes.size(); ++j) {
+          const auto intervalSize = intervalSizes[j];
+          const auto end = begin + intervalSize;
+          const auto encodedValuesSize = encodedValues.size(); 
+
           getDeltaEncoding(begin, end, std::back_inserter(encodedValues), 1048576);
           const size_t sizeEncodedValues = encodedValues.size() - encodedValuesSize;
-          std::cout << j  << " intervalSize: " << intervalSize << " sizeEncodedValues: " << sizeEncodedValues << std::endl;
           encodedValuesSizes.push_back(sizeEncodedValues);
           begin = end;
         }
-            for (size_t i = 0; i < encodedValues.size() && i < 100; ++i)
-              std::cout << std::bitset<64>(encodedValues[i]) << std::endl;
-for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
-        std::cout << " encodedValuesSizes: " << encodedValuesSizes[i] << std::endl;
-
-            });
-        std::cout << "exchange data" << std::endl;
+        timer.end(std::string("bloomfilter_golombEncoding"), curIteration);
+        timer.start(std::string("bloomfilter_sendEncodedValues"), curIteration);
 
         std::vector<size_t> recvEncodedValues = AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
         std::vector<size_t> recvEncodedValuesSizes = dsss::mpi::alltoall(encodedValuesSizes);
+        timer.end(std::string("bloomfilter_sendEncodedValues"), curIteration);
+        timer.start(std::string("bloomfilter_golombDecoding"), curIteration);
         std::vector<size_t> decodedValues;
-        std::cout << "recvEncodedValues.size() " << recvEncodedValues.size() << " rank: " << env.rank() << std::endl;
+
         decodedValues.reserve(recvEncodedValues.size());
         auto curDecodeIt = recvEncodedValues.begin();
-         //dss_schimek::mpi::execute_in_order([&]() {
-         /*    std::cout << "rank: " << env.rank() << std::endl;
-             for (auto elem: recvEncodedValues)
-              std::cout << std::bitset<64>(elem) << std::endl;
-              std::cout << "sizes " << std::endl;
-             for (auto elem : recvEncodedValuesSizes ) {
-              std::cout << elem << std::endl;
-             }*/
-          size_t j = 0;
-          for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
-            const auto end = curDecodeIt + encodedIntervalSizes; 
-            getDeltaDecoding(curDecodeIt, end, std::back_inserter(decodedValues), 1048576); 
-            curDecodeIt = end;
-          }
-          
-          //  std::cout << "delta decoding rank: " << env.rank() << std::endl;
-          //  for (const auto& elem : decodedValues)
-          //    std::cout << elem << std::endl;
-          //  });
+
+        size_t j = 0;
+        for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
+          const auto end = curDecodeIt + encodedIntervalSizes; 
+          getDeltaDecoding(curDecodeIt, end, std::back_inserter(decodedValues), 1048576); 
+          curDecodeIt = end;
+        }
+        timer.end(std::string("bloomfilter_golombDecoding"), curIteration);
         return decodedValues;
       }
   };
@@ -234,7 +216,8 @@ for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
       return hashValues;
     }
 
-    static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
+    static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize, Timer& timer, size_t curIteration) {
+      timer.start(std::string("bloomfilter_sendToFilterSetup"), curIteration);
       std::vector<size_t> sendValues = extractSendValues(hashes);
       std::vector<size_t> intervalSizes = computeIntervalSizes(sendValues, bloomfilterSize);
       std::vector<size_t> offsets;
@@ -245,7 +228,8 @@ for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
       offsets = dsss::mpi::alltoall(offsets);
 
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
-      std::vector<size_t> result = SendPolicy::alltoallv(sendValues, intervalSizes);
+      timer.end(std::string("bloomfilter_sendToFilterSetup"), curIteration);
+      std::vector<size_t> result = SendPolicy::alltoallv(sendValues, intervalSizes, timer, curIteration);
       return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
     }
 
@@ -264,18 +248,6 @@ for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
     }
   };
 
-  std::vector<size_t> getEncoding(const std::vector<size_t>& values, const std::vector<size_t>& intervalSizes) {
-      std::vector<size_t> encodedValues; 
-      encodedValues.reserve(values.size()); // should i do this? 
-      auto outIt = std::back_inserter(encodedValues);
-      size_t offset = 0;
-      auto inputIterator = values.begin();
-      for (const size_t curIntervalSize : intervalSizes) {
-        getDeltaEncoding(inputIterator, inputIterator + curIntervalSize, outIt);
-        inputIterator += curIntervalSize;
-      }
-      return encodedValues;
-    }
 
   struct FindDuplicates {
     using DataType = HashPEIndex;
@@ -739,7 +711,7 @@ for (size_t i = 0; i < encodedValuesSizes.size() && i < 100; ++i)
         timer.end(std::string("bloomfilter_ReducedHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
-        RecvData recvData = SendPolicy<AllToAllHashesGolomb>::sendToFilter(reducedHashStringIndices, bloomFilterSize);
+        RecvData recvData = SendPolicy<AllToAllHashesGolomb>::sendToFilter(reducedHashStringIndices, bloomFilterSize, timer, curIteration);
         timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_addPEIndex"), curIteration);
