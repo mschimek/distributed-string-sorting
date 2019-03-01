@@ -1,5 +1,4 @@
 #include "sorter/distributed/prefix_doubling.hpp"
-
 #include "util/random_string_generator.hpp"
 #include "util/timer.hpp"
 #include "mpi/synchron.hpp"
@@ -52,7 +51,8 @@ template <typename StringSet, typename StringGenerator,
                " size=" + std::to_string(numOfStrings) +
                " strongScaling=" + std::to_string(strongScaling);
 
-             dss_schimek::Timer timer(prefix);
+             dss_schimek::Timer& timer = Timer::timer();
+             timer.setPrefix(prefix);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
@@ -72,14 +72,18 @@ template <typename StringSet, typename StringGenerator,
              timer.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine, Timer>;
 
-             DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, GolombEncoding, Timer> sorter;
+             DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, GolombEncoding> prefixDoublingSorter;
              std::vector<StringIndexPEIndex> permutation = 
-               sorter.sort(rand_string_ptr, timer);
+               prefixDoublingSorter.sort(rand_string_ptr);
 
              timer.end("sorting_overall");
 
              if (env.size() > 1) {
-               auto CompleteStringsCont = dsss::mpi::getStrings(permutation.begin(), permutation.end(), generatedContainer.make_string_set());
+               auto CompleteStringsCont = dsss::mpi::getStrings(
+                   permutation.begin(), 
+                   permutation.end(), 
+                   generatedContainer.make_string_set());
+
                auto completeStringSet = CompleteStringsCont.make_string_set();
                reorder(completeStringSet, permutation.begin(), permutation.end());
                const StringLcpPtr sorted_strptr = CompleteStringsCont.make_string_lcp_ptr();
@@ -102,6 +106,7 @@ template <typename StringSet, typename StringGenerator,
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
+             timer.reset();
            }
 
 namespace PolicyEnums {
@@ -222,7 +227,7 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
                   GolombEncoding,
-                  EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
+                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    }
 template<typename StringSet, typename StringGenerator, typename SampleString,
   typename MPIRoutineAllToAll, typename ByteEncoder>

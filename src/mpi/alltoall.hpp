@@ -680,15 +680,15 @@ namespace dsss::mpi {
           StringLcpPtr stringLcpPtr,
           const std::vector<size_t>& sendCountsString,
           const std::vector<size_t>& distinguishingPrefixValues,
-          Timer& timer,
           environment env = environment()){
 
         using namespace dss_schimek;
         using StringSet = typename StringLcpPtr::StringSet;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
+        Timer& timer = Timer::timer();
 
-        timer.start("all_to_all_strings_intern_copy", env);
+        timer.start("all_to_all_strings_intern_copy");
         const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
         const StringSet ss = stringLcpPtr.active();
 
@@ -723,8 +723,8 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy", env);
-        timer.start("all_to_all_strings_mpi", env);
+        timer.end("all_to_all_strings_intern_copy");
+        timer.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(stringLcpPtr.get_lcp(), sendCountsString, env);
         std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
@@ -733,12 +733,12 @@ namespace dsss::mpi {
         offsets.push_back(0);
         std::partial_sum(sendCountsString.begin(), sendCountsString.end() - 1, std::back_inserter(offsets));
         std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
-        timer.end("all_to_all_strings_mpi", env);
+        timer.end("all_to_all_strings_mpi");
         timer.add("string_exchange_bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
 
         //// no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read", env);
-        timer.end("all_to_all_strings_read", env);
+        timer.start("all_to_all_strings_read");
+        timer.end("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
       }
