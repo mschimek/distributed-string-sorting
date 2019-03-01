@@ -406,14 +406,7 @@ namespace dss_schimek {
         std::cout << "TotalSum: " << std::accumulate(total_sum.begin(), total_sum.end(), 0) << std::endl;
         std::vector<size_t> results(ss.size(), 0);
         std::vector<size_t> candidates(ss.size());
-        std::iota(candidates.begin(), candidates.end(), 0);
-        std::vector<size_t> results_exact(ss.size(), 0);
-        std::vector<size_t> candidates_exact(ss.size());
-        std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         
-
-        std::vector<size_t> results_tracker;
-        std::vector<size_t> candidates_tracker;
-
+        std::iota(candidates.begin(), candidates.end(), 0); std::vector<size_t> results_exact(ss.size(), 0); std::vector<size_t> candidates_exact(ss.size()); std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         std::vector<size_t> results_tracker; std::vector<size_t> candidates_tracker; 
         BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<AllToAllHashesNaive>> bloomFilter;
         Tracker<StringSet> tracker(std::numeric_limits<uint32_t>::max());
         tracker.init(local_string_ptr);

@@ -838,7 +838,7 @@ namespace dsss::mpi {
         std::partial_sum(sendCountsString.begin(), sendCountsString.end() - 1, std::back_inserter(offsets));
         std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
         timer.end("all_to_all_strings_mpi", env);
-        timer.add("bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
+        timer.add("string_exchange_bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
 
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
