@@ -8,9 +8,6 @@
 #include "strings/stringset.hpp"
 #include "strings/stringtools.hpp"
 
-//#include "sorter/local/strings/insertion_sort_unified.hpp"
-//#include "sorter/local/strings/multikey_quicksort_unified.hpp"
-//#include "sorter/local/strings/radix_sort_unified.hpp"
 #include "sorter/distributed/bloomfilter.hpp"
 #include "sorter/distributed/tracker.hpp"
 
@@ -207,18 +204,6 @@ namespace dss_schimek {
       size_t element_pos = 0;
 
       for (std::size_t i = 0; i < splitters.size(); ++i) {
-        //element_pos = (i + 1) * splitter_dist;
-
-        //while(element_pos > 0 && !dss_schimek::leq(
-        //      ss.get_chars(ss[ss.begin() + element_pos], 0), 
-        //      splitters.get_chars(splitters[splitters.begin() + i], 0))) 
-        //{ --element_pos; }
-
-        //while (element_pos < ss.size() && dss_schimek::leq(
-        //      ss.get_chars(ss[ss.begin() + element_pos], 0),
-        //      splitters.get_chars(splitters[splitters.begin() + i], 0))) 
-        //{ ++element_pos; }
-
         CharIt splitter = splitters.get_chars(splitters[splitters.begin() + i], 0);
         size_t pos = binarySearch(ss, splitter);
         interval_sizes.emplace_back(pos);
@@ -302,25 +287,12 @@ namespace dss_schimek {
         std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
         std::vector<size_t> sorted_lcp(recv_string_cont.size());
         StringSet ss = recv_string_cont.make_string_set();
-        //dss_schimek::mpi::execute_in_order([&] () {
-        //    dsss::mpi::environment env;
-        //    env.barrier();
-        //    std::cout << "before merge: \n rank: " << env.rank() << std::endl;
-        //    ss.print();
-        //    for (size_t i = 0; i < ss.size(); ++i)
-        //    std::cout << i << " " << recv_string_cont.lcps()[i] << std::endl;
-        //    });
+        
         dss_schimek::StringLcpPtrMergeAdapter<StringSet> mergeAdapter(ss, recv_string_cont.lcp_array());
         dss_schimek::LcpStringLoserTree_<K, StringSet> loser_tree(mergeAdapter, ranges.data());
         StringSet sortedSet(sorted_string.data(), sorted_string.data() + sorted_string.size());
         dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
-        //dss_schimek::mpi::execute_in_order([&] () {
-        //    dsss::mpi::environment env;
-        //    env.barrier();
-
-        //    std::cout << "merge  rank: " << env.rank() << std::endl;
-        //loser_tree.writeElementsToStream(out_, num_recv_elems);
-        //    });
+        
         std::vector<size_t> oldLcps;
         if (AllToAllStringPolicy::PrefixCompression) {
           loser_tree.writeElementsToStream(out_, num_recv_elems, oldLcps);

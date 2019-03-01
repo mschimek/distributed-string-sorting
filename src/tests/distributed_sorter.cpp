@@ -25,8 +25,6 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
   return StringGenerator(args.numOfStrings, args.minStringLength, args.maxStringLength);
 }
 
-
-
 template <typename StringSet, typename StringGenerator, 
          typename SampleSplittersPolicy, 
          typename MPIAllToAllRoutine, 

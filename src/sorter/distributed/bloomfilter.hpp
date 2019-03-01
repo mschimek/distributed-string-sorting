@@ -183,6 +183,63 @@ namespace dss_schimek {
         return "sequentialGolombEncoding";
       }
   };
+  
+  struct AllToAllHashValuesPipeline {
+    static inline auto getEnd(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
+      if (partnerId + 1 == startIndices.size())
+        return data.end();
+      return data.begin() + startIndices[partnerId + 1];
+    }
+    
+    static inline auto getStart(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
+      return data.begin() + startIndices[partnerId];
+    }
+    public:
+      static inline std::vector<size_t> alltoallv(std::vector<size_t>& sendData, std::vector<size_t> intervalSizes) {
+        dsss::mpi::environment env;
+
+        std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
+        std::vector<size_t> recvStartIndices;
+        recvStartIndices.reserve(env.size());
+        recvStartIndices.push_back(0);
+        std::partial_sum(recvIntervalSizes.begin(), recvIntervalSizes.end(), std::back_inserter(recvStartIndices));
+
+        std::vector<size_t> startIndices;
+        startIndices.reserve(env.size());
+        startIndices.push_back(0);
+        std::partial_sum(intervalSizes.begin(), intervalSizes.end(), std::back_inserter(startIndices));
+
+        const size_t numRecvElements = std::accumulate(recvIntervalSizes.begin(), recvIntervalSizes.end(), 0);
+        std::vector<size_t> recvData(numRecvElements);
+
+
+        const bool PESizeIsEven = env.size() % 2 == 0;
+        const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
+        const auto begin = sendData.begin();
+        for (size_t j = 0; j < env.size(); ++j) {
+          size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
+          if (PESizeIsEven && env.rank() == env.size() - 1) {
+            const size_t partnerId = idlePE;
+            const auto curEnd = getEnd(partnerId, startIndices, sendData);
+            const auto curIt = getStart(partnerId, startIndices, sendData);
+            
+            //exchange with PE idle
+          } else {
+            if (PESizeIsEven && env.rank() == idlePE) {
+              //exchange with PE env.size() - 1
+            } else {
+              if (PESizeIsEven) {
+                // exchange with PE   ((j - i) % env.size() - 1
+              } else {
+                // exchange with PE (( j - i) % env.size() 
+              }
+            }
+          }
+
+        }
+        return std::vector<HashTriple>();
+      }
+  };
 
   std::vector<size_t> computeIntervalSizes(const std::vector<size_t>& hashes, const size_t bloomFilterSize,
       dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -382,32 +439,7 @@ namespace dss_schimek {
   };
 
 
-  class AllToAllHashValuesPipeline {
-    public:
-      static inline std::vector<HashTriple> allToAllHashTriples(std::vector<HashTriple> hashTriples, std::vector<size_t> intervalSizes) {
-        dsss::mpi::environment env;
-        const bool PESizeIsEven = env.size() % 2 == 0;
-        const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
-        for (size_t j = 0; j < env.size(); ++j) {
-          size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
-          if (PESizeIsEven && env.rank() == env.size() - 1) {
-            //exchange with PE idle
-          } else {
-            if (PESizeIsEven && env.rank() == idlePE) {
-              //exchange with PE env.size() - 1
-            } else {
-              if (PESizeIsEven) {
-                // exchange with PE   ((j - i) % env.size() - 1
-              } else {
-                // exchange with PE (( j - i) % env.size() 
-              }
-            }
-          }
-
-        }
-        return std::vector<HashTriple>();
-      }
-  };
+  
 
 
   template <typename StringSet, typename FindDuplicatesPolicy, typename SendPolicy>

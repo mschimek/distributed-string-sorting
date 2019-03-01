@@ -51,6 +51,7 @@ namespace dsss::mpi {
           env.communicator());
       return receive_data;
     }
+
   template <typename DataType>
     inline std::vector<DataType> alltoallv_small(
         const std::vector<DataType>& send_data, const std::vector<size_t>& send_counts,
@@ -279,57 +280,7 @@ namespace dsss::mpi {
             }
           }
     };
-  //template <typename DataType>
-  //    inline std::vector<DataType> alltoallv_small(
-  //        DataType* send_data, std::vector<size_t>& send_counts,
-  //        environment env = environment()) {
-  //
-  //      static size_t counter = 0;
-  //      std::cout << "my small send rank: " << env.rank() << " counter = " << counter++ << std::endl;
-  //      std::vector<int32_t> real_send_counts(send_counts.size());
-  //      for (size_t i = 0; i < send_counts.size(); ++i) {
-  //        real_send_counts[i] = static_cast<int32_t>(send_counts[i]);
-  //      }
-  //      std::vector<int32_t> receive_counts = alltoall(real_send_counts, env);
-  //
-  //      std::vector<int32_t> send_displacements(real_send_counts.size(), 0);
-  //      std::vector<int32_t> receive_displacements(real_send_counts.size(), 0);
-  //      for (size_t i = 1; i < real_send_counts.size(); ++i) {
-  //        send_displacements[i] = send_displacements[i - 1] + real_send_counts[i - 1];
-  //        receive_displacements[i] = receive_displacements[i - 1] +
-  //          receive_counts[i - 1];
-  //      }
-  //      std::vector<DataType> receive_data(
-  //          receive_counts.back() + receive_displacements.back());
-  //
-  //      if constexpr (debug_alltoall) {
-  //        for (int32_t i = 0; i < env.size(); ++i) {
-  //          if (i == env.rank()) {
-  //            std::cout << i << ": send_counts.size() " << send_counts.size()
-  //              << std::endl;
-  //            std::cout << i << ": send counts: ";
-  //            for (const auto sc : real_send_counts) { std::cout << sc << ", "; }
-  //            std::cout << std::endl << "receive counts: ";
-  //
-  //            for (const auto rc : receive_counts) { std::cout << rc << ", "; }
-  //            std::cout << std::endl;
-  //          }
-  //          env.barrier();
-  //        }
-  //      }
-  //
-  //      data_type_mapper<DataType> dtm;
-  //      MPI_Alltoallv(send_data,
-  //          real_send_counts.data(),
-  //          send_displacements.data(),
-  //          dtm.get_mpi_type(),
-  //          receive_data.data(),
-  //          receive_counts.data(),
-  //          receive_displacements.data(),
-  //          dtm.get_mpi_type(),
-  //          env.communicator());
-  //      return receive_data;
-  //    }
+
   template <typename DataType>
     inline std::vector<DataType> alltoallv(std::vector<DataType>& send_data,
         const std::vector<size_t>& send_counts, environment env = environment()) {
@@ -389,64 +340,6 @@ namespace dsss::mpi {
       }
     }
 
-  //template <typename DataType>
-  //  inline std::vector<DataType> alltoallv(DataType* send_data,
-  //      std::vector<size_t>& send_counts, environment env = environment()) {
-
-  //    size_t local_send_count = std::accumulate(
-  //        send_counts.begin(), send_counts.end(), 0);
-
-  //    std::vector<size_t> receive_counts = alltoall(send_counts, env);
-  //    size_t local_receive_count = std::accumulate(
-  //        receive_counts.begin(), receive_counts.end(), 0);
-
-  //    size_t local_max = std::max(local_send_count, local_receive_count);
-  //    size_t global_max = allreduce_max(local_max, env);
-
-  //    if (global_max < env.mpi_max_int() && false) {
-  //      return alltoallv_small(send_data, send_counts, env);
-  //    } else {
-  //      std::vector<size_t> send_displacements(env.size(), 0);
-  //      for (size_t i = 1; i < send_counts.size(); ++i) {
-  //        send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
-  //      }
-  //      std::vector<size_t> receive_displacements(env.size(), 0);
-  //      for (size_t i = 1; i < send_counts.size(); ++i) {
-  //        receive_displacements[i] =
-  //          receive_displacements[i - 1] + receive_counts[i - 1];
-  //      }
-
-  //      std::vector<MPI_Request> mpi_request(2 * env.size());
-  //      std::vector<DataType> receive_data(receive_displacements.back() +
-  //          receive_counts.back());
-  //      for (int32_t i = 0; i < env.size(); ++i) {
-  //        // start with self send/recv
-  //        auto source = (env.rank() + (env.size() - i)) % env.size();
-  //        auto receive_type = get_big_type<DataType>(receive_counts[source]);
-  //        MPI_Irecv(receive_data.data() + receive_displacements[source],
-  //            1,
-  //            receive_type,
-  //            source,
-  //            44227,
-  //            env.communicator(),
-  //            &mpi_request[source]);
-  //      }
-  //      // dispatch sends
-  //      for (int32_t i = 0; i < env.size(); ++i) {
-  //        auto target = (env.rank() + i) % env.size();
-  //        auto send_type = get_big_type<DataType>(send_counts[target]);
-  //        MPI_Isend(send_data + send_displacements[target],
-  //            1,
-  //            send_type,
-  //            target,
-  //            44227,
-  //            env.communicator(),
-  //            &mpi_request[env.size() + target]);
-  //      }
-  //      MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
-  //      return receive_data;
-  //    }
-  //  }
 
   inline std::vector<dsss::char_type> alltoallv_strings(
       dsss::string_set& send_data, const std::vector<size_t>& send_counts,
@@ -709,6 +602,7 @@ namespace dsss::mpi {
   template<typename StringSet, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyLcpByteEncoderMemCpy, Timer> {
       static constexpr bool PrefixCompression = true;
+
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& sendCountsString,
@@ -778,8 +672,11 @@ namespace dsss::mpi {
   
   template<typename StringLcpPtr, typename AllToAllPolicy, typename Timer> 
     struct AllToAllStringImplPrefixDoubling {
+
+      using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
       static constexpr bool PrefixCompression = true;
-      dss_schimek::StringLcpContainer<dss_schimek::UCharIndexPEIndexStringSet> alltoallv(
+
+      dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(
           StringLcpPtr stringLcpPtr,
           const std::vector<size_t>& sendCountsString,
           const std::vector<size_t>& distinguishingPrefixValues,
@@ -790,7 +687,6 @@ namespace dsss::mpi {
         using StringSet = typename StringLcpPtr::StringSet;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
 
         timer.start("all_to_all_strings_intern_copy", env);
         const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
@@ -843,17 +739,6 @@ namespace dsss::mpi {
         //// no bytes are read in this version only for evaluation layout
         timer.start("all_to_all_strings_read", env);
         timer.end("all_to_all_strings_read", env);
-        //dss_schimek::mpi::execute_in_order([&]() {
-        //    std::cout << "rank: " << env.rank() << std::endl;
-        //    for (const auto& elem : recvNumberStrings)
-        //      std::cout << elem << std::endl;
-
-        //    std::cout << "offsets: " << std::endl;
-
-        //    for (const auto& elem : recvOffsets)
-        //      std::cout << elem << std::endl;
-
-        //    });
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
       }
@@ -928,6 +813,7 @@ namespace dsss::mpi {
       }  
     };
 
+    // Collect Strings specified by string index and PE index -> should be used for verification (probably not as efficient as it could be)
     template <typename StringSet, typename Iterator>
     dss_schimek::StringLcpContainer<StringSet> getStrings(
         Iterator requestBegin, 
@@ -959,48 +845,16 @@ namespace dsss::mpi {
         const StringIndexPEIndex indices = *curIt;
         requests[offsets[indices.PEIndex]++] = indices.stringIndex;
       };
- 
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "rank: " << env.rank() << std::endl;
-      //    std::cout << "print requests" << std::endl;
-      //    for (const auto& elem : requests)
-      //      std::cout << elem << std::endl;
-      //    });
-      
+
       // exchange request
       std::vector<size_t> recvRequestSizes = dsss::mpi::alltoall(requestSizes);
       std::vector<size_t> recvRequests = MPIRoutine::alltoallv(requests.data(), requestSizes); 
-
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "rank: " << env.rank() << std::endl;
-      //    std::cout << "print RecvRequests" << std::endl;
-      //    for (const auto& elem : recvRequests)
-      //    std::cout << elem << std::endl;
-      //    });
-      
 
       // collect strings to send back
       std::vector<std::vector<unsigned char>> rawStrings(env.size());
       std::vector<size_t> rawStringSizes(env.size());
       size_t offset = 0;
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "rank: " << env.rank() << std::endl;
-      //    for (size_t curRank = 0; curRank < env.size(); ++curRank) {
-      //    for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
-      //    const size_t requestedIndex = recvRequests[offset + i];
-      //    std::cout << i << " requestedIndex: " << requestedIndex << std::endl;
-      //    String str = localSS[localSS.begin() + requestedIndex];
-      //    size_t length = localSS.get_length(str) + 1;
-      //    CharIt charsStr = localSS.get_chars(str, 0);
-      //    std::cout << charsStr << std::endl;
-      //    std::copy_n(charsStr, length, std::back_inserter(rawStrings[curRank])); 
-      //    std::cout << "copy_n" << std::endl;
-      //    rawStringSizes[curRank] += length;
-      //    std::cout << " rawStringSizes " << std::endl;
-      //    }
-      //    offset += recvRequestSizes[curRank];
-      //    }
-      //    });
+      
       for (size_t curRank = 0; curRank < env.size(); ++curRank) {
         for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
           const size_t requestedIndex = recvRequests[offset + i];
@@ -1013,31 +867,12 @@ namespace dsss::mpi {
         offset += recvRequestSizes[curRank];
       }
 
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "rank: " << env.rank() << std::endl;
-      //    std::cout << "print strings" << std::endl;
-      //    for (size_t curRank = 0; curRank < env.size(); ++curRank) {
-      //    for (const auto& elem : rawStrings[curRank]) {
-      //    if(elem == 0)
-      //    std::cout << " " << std::endl;
-      //    else
-      //    std::cout << elem;
-      //    }
-      //    }
-      //    });
-
-
       std::vector<unsigned char> rawStringsFlattened = flatten(rawStrings);
 
       std::vector<unsigned char> recvRequestedStrings = MPIRoutine::alltoallv(rawStringsFlattened.data(), rawStringSizes);
       
       dss_schimek::StringLcpContainer<StringSet> container(std::move(recvRequestedStrings));
-      //dss_schimek::mpi::execute_in_order([&]() {
-      //    std::cout << "rank: " << env.rank() << std::endl;
-      //    container.make_string_set().print();
-      //    });
-
-
+      
       return container;
     }
 } // namespace dsss::mpi
