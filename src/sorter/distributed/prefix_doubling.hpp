@@ -62,45 +62,44 @@ namespace dss_schimek {
     };
 
   template <typename StringSet>
-  class  SampleSplittersNumCharsPolicy
-  {
-    public: 
-      static std::string getName() {
-        return "NumChars";
-      }
-    protected:
-      std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
-          dsss::mpi::environment env = dsss::mpi::environment()) {
-
-        using Char = typename StringSet::Char;
-        using String = typename StringSet::String;
-
-        const size_t num_chars = std::accumulate(ss.begin(), ss.end(), 0, 
-            [&ss](const size_t& sum, const String& str) {
-            return sum + ss.get_length(str);
-            });
-
-        const size_t local_num_strings = ss.size();
-        const size_t nr_splitters = std::min<size_t>(env.size() - 1, local_num_strings);
-        const size_t splitter_dist = num_chars / (nr_splitters + 1);
-        std::vector<Char> raw_splitters;
-
-        size_t string_index = 0;
-        for (size_t i = 1; i <= nr_splitters; ++i) {
-          size_t num_chars_seen = 0;
-          while (num_chars_seen < splitter_dist) {
-            num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
-            ++string_index;
-          }
-
-          const String splitter = ss[ss.begin() + string_index - 1];
-          std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
-              std::back_inserter(raw_splitters));
+    class  SampleSplittersNumCharsPolicy
+    {
+      public: 
+        static std::string getName() {
+          return "NumChars";
         }
-        return raw_splitters; 
-      }
-  };
+      protected:
+        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+            dsss::mpi::environment env = dsss::mpi::environment()) {
 
+          using Char = typename StringSet::Char;
+          using String = typename StringSet::String;
+
+          const size_t num_chars = std::accumulate(ss.begin(), ss.end(), 0, 
+              [&ss](const size_t& sum, const String& str) {
+              return sum + ss.get_length(str);
+              });
+
+          const size_t local_num_strings = ss.size();
+          const size_t nr_splitters = std::min<size_t>(env.size() - 1, local_num_strings);
+          const size_t splitter_dist = num_chars / (nr_splitters + 1);
+          std::vector<Char> raw_splitters;
+
+          size_t string_index = 0;
+          for (size_t i = 1; i <= nr_splitters; ++i) {
+            size_t num_chars_seen = 0;
+            while (num_chars_seen < splitter_dist) {
+              num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
+              ++string_index;
+            }
+
+            const String splitter = ss[ss.begin() + string_index - 1];
+            std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
+                std::back_inserter(raw_splitters));
+          }
+          return raw_splitters; 
+        }
+    };
 
   template <typename StringSet>
     StringLcpContainer<StringSet> choose_splitters(
@@ -163,8 +162,8 @@ namespace dss_schimek {
       }
       return interval_sizes;
     } 
-    
-    template <typename StringSet>
+
+  template <typename StringSet>
     inline static int binarySearch(const StringSet& ss, typename StringSet::CharIterator elem) {
       using String = typename StringSet::String;
       using CharIt = typename StringSet::CharIterator;
@@ -188,8 +187,8 @@ namespace dss_schimek {
       }
       return left -ss.begin();
     }
-  
-    template <typename StringSet>
+
+  template <typename StringSet>
     inline std::vector<size_t> compute_interval_binary(const StringSet& ss, 
         const StringSet& splitters,
         dsss::mpi::environment env = dsss::mpi::environment())
@@ -215,7 +214,7 @@ namespace dss_schimek {
       return interval_sizes;
     }
 
-    static inline void print_interval_sizes(const std::vector<size_t>& sent_interval_sizes,
+  static inline void print_interval_sizes(const std::vector<size_t>& sent_interval_sizes,
       const std::vector<size_t>& recv_interval_sizes,
       dsss::mpi::environment env = dsss::mpi::environment())
   {
@@ -249,69 +248,69 @@ namespace dss_schimek {
     }
   }
 
-    template <typename StringLcpContainer>
-      static inline std::vector<std::pair<size_t, size_t>> compute_ranges_and_set_lcp_at_start_of_range(
-          StringLcpContainer& recv_string_cont,
-          std::vector<size_t>& recv_interval_sizes,
-          dsss::mpi::environment env = dsss::mpi::environment())
+  template <typename StringLcpContainer>
+    static inline std::vector<std::pair<size_t, size_t>> compute_ranges_and_set_lcp_at_start_of_range(
+        StringLcpContainer& recv_string_cont,
+        std::vector<size_t>& recv_interval_sizes,
+        dsss::mpi::environment env = dsss::mpi::environment())
+    {
+      std::vector<std::pair<size_t, size_t>> ranges;
+      for(size_t i = 0, offset = 0; i < env.size(); ++i)
       {
-        std::vector<std::pair<size_t, size_t>> ranges;
-        for(size_t i = 0, offset = 0; i < env.size(); ++i)
+        if (recv_interval_sizes[i] == 0)
         {
-          if (recv_interval_sizes[i] == 0)
-          {
-            ranges.emplace_back(0, 0);
-            continue;
-          }
-          *(recv_string_cont.lcp_array() + offset) = 0;
-          ranges.emplace_back(offset, recv_interval_sizes[i]);
-          offset += recv_interval_sizes[i];
+          ranges.emplace_back(0, 0);
+          continue;
         }
-
-        if constexpr (debug)
-          dss_schimek::mpi::execute_in_order([&] () {
-              std::cout << "rank: " << env.rank() << " pairs:" << std::endl;
-              for(size_t i = 0; i < env.size(); ++i)
-              std::cout << i << " " << ranges[i].first << " " << ranges[i].second << std::endl;
-              });
-
-        return ranges;
+        *(recv_string_cont.lcp_array() + offset) = 0;
+        ranges.emplace_back(offset, recv_interval_sizes[i]);
+        offset += recv_interval_sizes[i];
       }
-    template<typename AllToAllStringPolicy, size_t K, typename StringSet>
-      static inline StringLcpContainer<StringSet> merge(
-          dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
-          const std::vector<std::pair<size_t, size_t>>& ranges,
-          const size_t num_recv_elems) {
+
+      if constexpr (debug)
+        dss_schimek::mpi::execute_in_order([&] () {
+            std::cout << "rank: " << env.rank() << " pairs:" << std::endl;
+            for(size_t i = 0; i < env.size(); ++i)
+            std::cout << i << " " << ranges[i].first << " " << ranges[i].second << std::endl;
+            });
+
+      return ranges;
+    }
+  template<typename AllToAllStringPolicy, size_t K, typename StringSet>
+    static inline StringLcpContainer<StringSet> merge(
+        dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
+        const std::vector<std::pair<size_t, size_t>>& ranges,
+        const size_t num_recv_elems) {
 
 
-        std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
-        std::vector<size_t> sorted_lcp(recv_string_cont.size());
-        StringSet ss = recv_string_cont.make_string_set();
-        
-        dss_schimek::StringLcpPtrMergeAdapter<StringSet> mergeAdapter(ss, recv_string_cont.lcp_array());
-        dss_schimek::LcpStringLoserTree_<K, StringSet> loser_tree(mergeAdapter, ranges.data());
-        StringSet sortedSet(sorted_string.data(), sorted_string.data() + sorted_string.size());
-        dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
-        
-        std::vector<size_t> oldLcps;
-        if (AllToAllStringPolicy::PrefixCompression) {
-          loser_tree.writeElementsToStream(out_, num_recv_elems, oldLcps);
-        }
-        else {
-          loser_tree.writeElementsToStream(out_, num_recv_elems);
-        }
-        StringLcpContainer<StringSet> sorted_string_cont;//(std::move(recv_string_cont));
-        
-        sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
-        sorted_string_cont.set(std::move(sorted_string));
-        sorted_string_cont.set(std::move(sorted_lcp));
-        sorted_string_cont.setSavedLcps(std::move(oldLcps));
+      std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
+      std::vector<size_t> sorted_lcp(recv_string_cont.size());
+      StringSet ss = recv_string_cont.make_string_set();
 
-        return sorted_string_cont;
+      dss_schimek::StringLcpPtrMergeAdapter<StringSet> mergeAdapter(ss, recv_string_cont.lcp_array());
+      dss_schimek::LcpStringLoserTree_<K, StringSet> loser_tree(mergeAdapter, ranges.data());
+      StringSet sortedSet(sorted_string.data(), sorted_string.data() + sorted_string.size());
+      dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
+
+      std::vector<size_t> oldLcps;
+      if (AllToAllStringPolicy::PrefixCompression) {
+        loser_tree.writeElementsToStream(out_, num_recv_elems, oldLcps);
       }
-    
+      else {
+        loser_tree.writeElementsToStream(out_, num_recv_elems);
+      }
+      StringLcpContainer<StringSet> sorted_string_cont;//(std::move(recv_string_cont));
 
-    template<typename AllToAllStringPolicy, typename StringLcpContainer>
+      sorted_string_cont.set(std::move(recv_string_cont.raw_strings()));
+      sorted_string_cont.set(std::move(sorted_string));
+      sorted_string_cont.set(std::move(sorted_lcp));
+      sorted_string_cont.setSavedLcps(std::move(oldLcps));
+
+      return sorted_string_cont;
+    }
+
+
+  template<typename AllToAllStringPolicy, typename StringLcpContainer>
     static inline StringLcpContainer choose_merge(StringLcpContainer&& recv_string_cont,
         std::vector<std::pair<size_t, size_t>> ranges,
         size_t num_recv_elems,
@@ -355,166 +354,166 @@ namespace dss_schimek {
     }
 
 
-    template <typename StringPtr>
-      std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr, Timer& timer) {
-        using StringSet = typename StringPtr::StringSet;
-        dsss::mpi::environment env;
+  // DEGUB FUNCTION
+  template <typename StringPtr>
+    std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr, Timer& timer) {
+      using StringSet = typename StringPtr::StringSet;
+      dsss::mpi::environment env;
 
 
-        StringSet ss = local_string_ptr.active();
-        //dss_schimek::mpi::execute_in_order([&]() {
-        //    std::cout << "rank: " << env.rank() << std::endl;
-        //    ss.print();
-        //    });
-        size_t sum = 0;
-        for (const auto& str : ss) {
-          const auto length = ss.get_length(str) + 1;
-          const auto chars = ss.get_chars(str, 0);
-          for (size_t i = 0; i < length; ++i)
-            sum += *chars;
-        }
-
-        std::vector<size_t> total_sum = dsss::mpi::allgather(sum);
-        std::cout << "TotalSum: " << std::accumulate(total_sum.begin(), total_sum.end(), 0) << std::endl;
-        std::vector<size_t> results(ss.size(), 0);
-        std::vector<size_t> candidates(ss.size());
-        std::iota(candidates.begin(), candidates.end(), 0); std::vector<size_t> results_exact(ss.size(), 0); std::vector<size_t> candidates_exact(ss.size()); std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         std::vector<size_t> results_tracker; std::vector<size_t> candidates_tracker; 
-        BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<AllToAllHashesNaive>> bloomFilter;
-        Tracker<StringSet> tracker(std::numeric_limits<uint32_t>::max());
-        tracker.init(local_string_ptr);
-        std::cout << "tracker init rank: " << env.rank() << std::endl;
-        //bloomFilter.filter_exact(local_string_ptr, 9 ,candidates_exact, results_exact);
-        std::cout << "filter_exact rank: " << env.rank() << std::endl;
-        size_t curIteration = 0;
-
-        for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
-          env.barrier();
-          if (env.rank() == 0)
-            std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
-          timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
-          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
-          tracker.startIteration(i);
-          results_tracker = tracker.getResultsOf(env.rank());
-          candidates_tracker = tracker.getCandidatesOf(env.rank());
-          dss_schimek::mpi::execute_in_order([&](){
-              sort(candidates.begin(), candidates.end());
-              sort(candidates_tracker.begin(), candidates_tracker.end());
-              if (candidates != candidates_tracker) {
-              size_t smallerSize = std::min(candidates.size(), candidates_tracker.size());
-              std::cout << "rank: " << env.rank() << std::endl;
-              for (size_t i = 0; i < smallerSize; ++i) {
-              std::cout << i << " candidate: " << candidates[i] << " candidates_tracker: " << candidates_tracker[i] << std::endl;
-              if (candidates[i] != candidates_tracker[i]) {
-                tracker.printDuplicateWitness(candidates_tracker[i], env.rank());
-              std::abort();
-              }
-              }
-              std::cout << "candidates sets differ!" << std::endl;
-              std::abort();
-              }
-              if (results != results_tracker) {
-              std::cout << "rank: " << env.rank() << std::endl;
-              for (size_t i = 0; i < results.size(); ++i) {
-                std::cout << i << " results " << results[i] << " results_tracker " << results_tracker[i] << std::endl;
-                if (results[i] != results_tracker[i])
-                  std::abort();
-              }
-              }
-              });
-
-
-          bool noMoreCandidates = candidates.empty();
-          std::cout << i << " rank: " << env.rank() << " candiates " << candidates.size() << " noMoreCandiates: " << noMoreCandidates << std::endl;
-          bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
-          std::cout << "allEmpty?: " << allEmpty << std::endl;
-          if (allEmpty)
-            break;
-          ++curIteration;
-        }
-
-        //size_t diffcount = 0;
-        //size_t diffsum = 0;
-        //std::vector<size_t> histogram(100, 0);
-        ////std::cout << "compare results: rank: " << env.rank() << std::endl;
-        //dss_schimek::mpi::execute_in_order([&]() {
-        //    std::cout << "rank: " << env.rank() << std::endl;
-        //    for (size_t i = 0; i < ss.size(); ++i) {
-        //    std::cout << i << " " << results[i] << " " << results_tracker[i] << " " << results_exact[i] << std::endl;
-        //    if ( results[i] != results_tracker[i] || results[i] < results_exact[i]) {
-        //    tracker.printDuplicateWitness(i, env.rank());
-        //    std::abort();
-        //    }
-        //    else if(results[i] > results_exact[i]) {
-        //    size_t diff = results[i] - results_exact[i];
-        //    if (diff < histogram.size()) 
-        //    histogram[diff]++;
-        //    diffsum += diff;
-        //    ++diffcount;
-        //    }
-        //    }});
-        //std::cout << "diffsum: " << diffsum << " diffcount: " << diffcount << " avg diff: " << static_cast<double>(diffsum) / diffcount << std::endl;
-        return results; 
-      }
-    
-    template <typename StringPtr, typename GolombPolicy>
-      std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, Timer& timer) {
-        using StringSet = typename StringPtr::StringSet;
-        dsss::mpi::environment env;
-
-        timer.start(std::string("bloomfilter_init"));
-        StringSet ss = local_string_ptr.active();
-
-
-        std::vector<size_t> results(ss.size(), 0);
-        std::vector<size_t> candidates(ss.size());
-        std::iota(candidates.begin(), candidates.end(), 0);
-                BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
-
-        timer.end(std::string("bloomfilter_init"));
-
-        //timer.start(std::string("bloomfilter_totalLoop"));
-        size_t curIteration = 0;
-        for (size_t i = 8; i < std::numeric_limits<size_t>::max(); i *= 2) {
-          timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
-          //timer.start(std::string("bloomfilter_filterTotal"), curIteration);
-          candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
-          //timer.end(std::string("bloomfilter_filterTotal"), curIteration);
-
-
-
-          timer.start(std::string("bloomfilter_allreduce"), curIteration);
-          bool noMoreCandidates = candidates.empty();
-          bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
-          timer.end(std::string("bloomfilter_allreduce"), curIteration);
-          if (allEmpty)
-            break;
-          ++curIteration;
-        }
-        //timer.end(std::string("bloomfilter_totalLoop"));
-        return results; 
+      StringSet ss = local_string_ptr.active();
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    ss.print();
+      //    });
+      size_t sum = 0;
+      for (const auto& str : ss) {
+        const auto length = ss.get_length(str) + 1;
+        const auto chars = ss.get_chars(str, 0);
+        for (size_t i = 0; i < length; ++i)
+          sum += *chars;
       }
 
-    template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename GolombEncoding, typename Timer>
-      class DistributedMergeSort : private SampleSplittersPolicy, private AllToAllStringPolicy
-    {
-      public:
-        std::vector<StringIndexPEIndex>  
-          sort(StringPtr& local_string_ptr,
-              dss_schimek::Timer& timer,
-              dsss::mpi::environment env = dsss::mpi::environment()) {
+      std::vector<size_t> total_sum = dsss::mpi::allgather(sum);
+      std::cout << "TotalSum: " << std::accumulate(total_sum.begin(), total_sum.end(), 0) << std::endl;
+      std::vector<size_t> results(ss.size(), 0);
+      std::vector<size_t> candidates(ss.size());
+      std::iota(candidates.begin(), candidates.end(), 0); 
+      std::vector<size_t> results_exact(ss.size(), 0); 
+      std::vector<size_t> candidates_exact(ss.size()); std::iota(candidates_exact.begin(), candidates_exact.end(), 0);         
+      std::vector<size_t> results_tracker; std::vector<size_t> candidates_tracker; 
 
-            constexpr bool debug = false;
+      BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<AllToAllHashesNaive>> bloomFilter;
+      ExcatDistinguishingPrefix<StringSet> exactDistinguishingPrefixAlgo;
+      exactDistinguishingPrefixAlgo.filter_exact(local_string_ptr, candidates_exact, results_exact);
 
-            using StringSet = typename StringPtr::StringSet;
-            using Char = typename StringSet::Char;
-            const StringSet& ss = local_string_ptr.active();
+      Tracker<StringSet> tracker(std::numeric_limits<uint32_t>::max());
+      tracker.init(local_string_ptr);
+
+      std::cout << "tracker init rank: " << env.rank() << std::endl;
+      std::cout << "filter_exact rank: " << env.rank() << std::endl;
+      size_t curIteration = 0;
+
+      for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
+        env.barrier();
+        if (env.rank() == 0)
+          std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
+        timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+        candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
+        tracker.startIteration(i);
+        results_tracker = tracker.getResultsOf(env.rank());
+        candidates_tracker = tracker.getCandidatesOf(env.rank());
+        dss_schimek::mpi::execute_in_order([&](){
+            sort(candidates.begin(), candidates.end());
+            sort(candidates_tracker.begin(), candidates_tracker.end());
+            if (candidates != candidates_tracker) {
+            size_t smallerSize = std::min(candidates.size(), candidates_tracker.size());
+            std::cout << "rank: " << env.rank() << std::endl;
+            for (size_t i = 0; i < smallerSize; ++i) {
+            std::cout << i << " candidate: " << candidates[i] << " candidates_tracker: " << candidates_tracker[i] << std::endl;
+            if (candidates[i] != candidates_tracker[i]) {
+            tracker.printDuplicateWitness(candidates_tracker[i], env.rank());
+            std::abort();
+            }
+            }
+            std::cout << "candidates sets differ!" << std::endl;
+            std::abort();
+            }
+            if (results != results_tracker) {
+            std::cout << "rank: " << env.rank() << std::endl;
+            for (size_t i = 0; i < results.size(); ++i) {
+            std::cout << i << " results " << results[i] << " results_tracker " << results_tracker[i] << std::endl;
+            if (results[i] != results_tracker[i])
+              std::abort();
+            }
+            }
+        });
+
+
+        bool noMoreCandidates = candidates.empty();
+        std::cout << i << " rank: " << env.rank() << " candiates " << candidates.size() << " noMoreCandiates: " << noMoreCandidates << std::endl;
+        bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+        std::cout << "allEmpty?: " << allEmpty << std::endl;
+        if (allEmpty)
+          break;
+        ++curIteration;
+      }
+
+      //size_t diffcount = 0;
+      //size_t diffsum = 0;
+      //std::vector<size_t> histogram(100, 0);
+      ////std::cout << "compare results: rank: " << env.rank() << std::endl;
+      //dss_schimek::mpi::execute_in_order([&]() {
+      //    std::cout << "rank: " << env.rank() << std::endl;
+      //    for (size_t i = 0; i < ss.size(); ++i) {
+      //    std::cout << i << " " << results[i] << " " << results_tracker[i] << " " << results_exact[i] << std::endl;
+      //    if ( results[i] != results_tracker[i] || results[i] < results_exact[i]) {
+      //    tracker.printDuplicateWitness(i, env.rank());
+      //    std::abort();
+      //    }
+      //    else if(results[i] > results_exact[i]) {
+      //    size_t diff = results[i] - results_exact[i];
+      //    if (diff < histogram.size()) 
+      //    histogram[diff]++;
+      //    diffsum += diff;
+      //    ++diffcount;
+      //    }
+      //    }});
+      //std::cout << "diffsum: " << diffsum << " diffcount: " << diffcount << " avg diff: " << static_cast<double>(diffsum) / diffcount << std::endl;
+      return results; 
+    }
+
+  template <typename StringPtr, typename GolombPolicy>
+    std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, Timer& timer) {
+      using StringSet = typename StringPtr::StringSet;
+      dsss::mpi::environment env;
+
+      timer.start(std::string("bloomfilter_init"));
+      StringSet ss = local_string_ptr.active();
+
+
+      std::vector<size_t> results(ss.size(), 0);
+      std::vector<size_t> candidates(ss.size());
+      std::iota(candidates.begin(), candidates.end(), 0);
+      BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
+
+      timer.end(std::string("bloomfilter_init"));
+
+      size_t curIteration = 0;
+      for (size_t i = 8; i < std::numeric_limits<size_t>::max(); i *= 2) {
+        timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+        candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
+
+        timer.start(std::string("bloomfilter_allreduce"), curIteration);
+        bool noMoreCandidates = candidates.empty();
+        bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+        timer.end(std::string("bloomfilter_allreduce"), curIteration);
+        if (allEmpty)
+          break;
+        ++curIteration;
+      }
+      return results; 
+    }
+
+  template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename GolombEncoding, typename Timer>
+    class DistributedMergeSort : private SampleSplittersPolicy, private AllToAllStringPolicy
+  {
+    public:
+      std::vector<StringIndexPEIndex>  
+        sort(StringPtr& local_string_ptr,
+            dss_schimek::Timer& timer,
+            dsss::mpi::environment env = dsss::mpi::environment()) {
+
+          constexpr bool debug = false;
+
+          using StringSet = typename StringPtr::StringSet;
+          using Char = typename StringSet::Char;
+          const StringSet& ss = local_string_ptr.active();
           std::size_t local_n = ss.size();
-          
+
           // sort locally
           timer.start("sort_locally");
           tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
-
-          //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
           timer.end("sort_locally");
 
           // There is only one PE, hence there is no need for distributed sorting 
@@ -535,32 +534,12 @@ namespace dss_schimek {
           timer.end("sample_splitters");
 
 
-          // spend time here
-          env.barrier();
-         
-          std::mt19937 gen;
-          std::random_device rand;
-          gen.seed(rand());
-          std::vector<unsigned char> vec;
-          std::uniform_int_distribution<> dis(65, 80);
-          for (size_t i = 0; i < raw_splitters.size(); ++i) {
-            vec.push_back(dis(gen)); 
-          }
-          timer.start("allgatherv_test_before");
-          std::vector<unsigned char> test =
-            dss_schimek::mpi::allgatherv(vec, env);
-          timer.end("allgatherv_test_before");
-          volatile int i = std::accumulate(test.begin(), test.end(), 0);
-
-          
           timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
           timer.start("allgather_splitters");
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
           timer.end("allgather_splitters");
 
-
-         		
           timer.start("choose_splitters");
           dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
           timer.end("choose_splitters");
@@ -573,33 +552,17 @@ namespace dss_schimek {
           std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           timer.end("compute_interval_sizes");
-          //print_interval_sizes(interval_sizes, receiving_interval_sizes);
 
-          //if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
-          //  timer.start("all_to_all_strings");
-          //  recv_string_cont = 
-          //    AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes, results, timer);
-          //  timer.end("all_to_all_strings");
-          //} else {
-            timer.start("all_to_all_strings");
-            EmptyTimer emptyTimer;
-            dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet> recv_string_cont_tmp =
-              AllToAllStringPolicy::alltoallv(local_string_ptr, interval_sizes, results, emptyTimer);
-            timer.end("all_to_all_strings");
-          //}
+          timer.start("all_to_all_strings");
+          EmptyTimer emptyTimer;
+          dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet> recv_string_cont_tmp =
+            AllToAllStringPolicy::alltoallv(local_string_ptr, interval_sizes, results, emptyTimer);
+          timer.end("all_to_all_strings");
 
           timer.add("num_received_chars", recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size());
-          //dss_schimek::mpi::execute_in_order([&]() {
-          //    std::cout << "rank: " << env.rank() << std::endl;
-          //    recv_string_cont_tmp.make_string_set().print();
-          //    });
-
-          //dss_schimek::StringLcpContainer<StringSet> recv_string_cont = dss_schimek::StringLcpContainer<StringSet>(std::move(recv_string_cont_tmp.raw_strings()), std::move(recv_string_cont_tmp.lcps()));
 
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
-
-          //assert(num_recv_elems == recv_string_cont.size());
 
           timer.start("compute_ranges");
           std::vector<std::pair<size_t, size_t>> ranges = 
@@ -609,26 +572,18 @@ namespace dss_schimek {
           timer.start("merge_ranges");
           auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont_tmp), ranges, num_recv_elems);
           timer.end("merge_ranges");
-          //dss_schimek::mpi::execute_in_order([&]() {
-          //    std::cout << "rank: " << env.rank() << std::endl;
-          //    sorted_container.make_string_set().print();
-          //    });
 
+          timer.start("writeback_permutation");
           auto sortedSet = sorted_container.make_string_set();
-          //dss_schimek::mpi::execute_in_order([&]() {
-          //    std::cout << "rank " << env.rank() << std::endl;
-          //    sortedSet.print();
-          //    });
-
           std::vector<StringIndexPEIndex> permutation;
           permutation.reserve(sortedSet.size());
 
           for (auto str : sortedSet)
             permutation.emplace_back(sortedSet.getIndex(str), sortedSet.getPEIndex(str));
+          timer.end("writeback_permutation");
 
           return permutation;
           //return sorted_container;
         }
   };
-
 }
