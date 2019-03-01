@@ -126,6 +126,7 @@ namespace dss_schimek {
         timer.start(std::string("bloomfilter_sendEncodedValues"), curIteration);
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
         timer.end(std::string("bloomfilter_sendEncodedValues"), curIteration);
+        timer.add(std::string("bloomfilter_sentEncodedValues"), curIteration, sendData.size() * sizeof(DataType));
         return result;
       }
     static std::string getName() {
@@ -159,6 +160,8 @@ namespace dss_schimek {
         timer.start(std::string("bloomfilter_sendEncodedValues"), curIteration);
 
         std::vector<size_t> recvEncodedValues = AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
+        size_t s = sizeof(size_t);
+        timer.add(std::string("bloomfilter_sentEncodedValues"), curIteration, encodedValues.size() * sizeof(size_t));
         std::vector<size_t> recvEncodedValuesSizes = dsss::mpi::alltoall(encodedValuesSizes);
         timer.end(std::string("bloomfilter_sendEncodedValues"), curIteration);
         timer.start(std::string("bloomfilter_golombDecoding"), curIteration);
@@ -333,7 +336,7 @@ namespace dss_schimek {
       //++++++++++++++++++++++++++++
       //
       size_t totalNumSendDuplicates = std::accumulate(sendCounts_.begin(), sendCounts_.end(), 0);
-      timer.add(std::string("bloomfilter_findDuplicatesNumberSendDups"), curIteration, totalNumSendDuplicates);
+      timer.add(std::string("bloomfilter_findDuplicatesSendDups"), curIteration, totalNumSendDuplicates * sizeof(size_t));
       timer.start(std::string("bloomfilter_findDuplicatesSendDups"), curIteration);
       int mpiSmallTypes = 0;
       if (totalNumSendDuplicates > 0)
