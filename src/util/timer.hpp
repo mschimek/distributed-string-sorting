@@ -35,6 +35,11 @@ namespace dss_schimek {
     using DescriptionIteration = std::pair<std::string, size_t>;
 
     private: 
+    
+    static Timer timer() {
+      static Timer timer;
+      return timer;
+    }
 
     // make methods more generic to work with iteration and without iterations
     
@@ -164,6 +169,38 @@ template <typename KeyStartingPointMap, typename KeyDurationMap, typename Key>
     public:
     static std::string getName() {
       return "Timer";
+    }
+
+    void setPreix(const std::string& prefix_) {
+      prefix = prefix_;
+    }
+    void reset() {
+     prefix = "";
+     descriptionToValue.clear();
+     descriptionIterationToValue.clear();
+
+     descriptionToStart.clear();
+     descriptionIterationToStart.clear();
+
+     barrierDescriptionToStart.clear();
+     barrierDescriptionIterationToStart.clear();
+
+     descriptionToTime.clear();
+     descriptionIterationToTime.clear();
+
+     descriptionToBarrierTime.clear();
+     descriptionIterationToBarrierTime.clear();
+
+     descriptionToActiveTime.clear();
+     descriptionIterationToActiveTime.clear();
+
+     descriptionToTotalTime.clear();
+     descriptionIterationToTotalTime.clear();
+
+     descriptionToSynchronizedTime.clear();
+    }
+    Timer() {
+      measurementEnabled = true;
     }
     Timer(const std::string& prefix) : prefix(prefix) {};
     void enableMeasurement() {
