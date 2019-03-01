@@ -121,9 +121,16 @@ namespace dss_schimek {
 
   struct AllToAllHashesNaive {
     template <typename DataType>
-      
-      static inline std::vector<DataType> allToAllv(const std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
+      static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes, Timer& timer, size_t curIteration) {
+        using AllToAllv = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+        timer.start(std::string("bloomfilter_sendEncodedValues"), curIteration);
+        auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
+        timer.end(std::string("bloomfilter_sendEncodedValues"), curIteration);
+        return result;
       }
+    static std::string getName() {
+      return "noGolombEncoding";
+    }
   };
 
   struct AllToAllHashesGolomb {
@@ -168,6 +175,9 @@ namespace dss_schimek {
         }
         timer.end(std::string("bloomfilter_golombDecoding"), curIteration);
         return decodedValues;
+      }
+      static std::string getName() {
+        return "sequentialGolombEncoding";
       }
   };
 
@@ -339,7 +349,7 @@ namespace dss_schimek {
     }
    
     
-    void setUniqueElements(std::vector<bool>& duplicates, std::vector<size_t>& depth, const size_t curDepth, const std::vector<HashStringIndex>& originalMapping) {
+    static void setUniqueElements(std::vector<bool>& duplicates, std::vector<size_t>& depth, const size_t curDepth, const std::vector<HashStringIndex>& originalMapping) {
       for (size_t i = 0; i < duplicates.size(); ++i)
         if (!duplicates[i]) {
           const size_t stringIndex = originalMapping[i].stringIndex;
@@ -347,7 +357,7 @@ namespace dss_schimek {
         }
     }
 //TODO add && reference for localDuplicates
-    std::vector<size_t> getIndicesOfDuplicates(std::vector<size_t>& localDuplicates, std::vector<size_t>& remoteDuplicates, const std::vector<HashStringIndex>& originalMapping) {
+    static std::vector<size_t> getIndicesOfDuplicates(std::vector<size_t>& localDuplicates, std::vector<size_t>& remoteDuplicates, const std::vector<HashStringIndex>& originalMapping) {
       std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
       dsss::mpi::environment env;
       //indicesOfAllDuplicates.reserve(localDuplicates.size() + remoteDuplicates.size());
@@ -368,12 +378,6 @@ namespace dss_schimek {
     using SendType = HashStringIndex;
   };
 
-  class AllToAllHashValuesNaive {
-    public:
-      static inline std::vector<HashTriple> allToAllHashTriples(std::vector<HashTriple> hashTriples, std::vector<size_t> intervalSizes) {
-        return dsss::mpi::AllToAllvSmall::alltoallv(hashTriples.data(), intervalSizes);
-      }
-  };
 
   class AllToAllHashValuesPipeline {
     public:
@@ -403,10 +407,8 @@ namespace dss_schimek {
   };
 
 
-  template <typename StringSet, typename AllToAllHashValuePolicy, typename FindDuplicatesPolicy, template<typename> typename SendPolicy>
-    class BloomFilter : private AllToAllHashValuePolicy,
-                        private FindDuplicatesPolicy, 
-                        private SendPolicy<dsss::mpi::AllToAllvSmall> {
+  template <typename StringSet, typename FindDuplicatesPolicy, typename SendPolicy>
+    class BloomFilter {
 
       using String = typename StringSet::String;
       using Iterator = typename StringSet::Iterator;
@@ -711,11 +713,11 @@ namespace dss_schimek {
         timer.end(std::string("bloomfilter_ReducedHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_sendHashStringIndices"), curIteration);
-        RecvData recvData = SendPolicy<AllToAllHashesGolomb>::sendToFilter(reducedHashStringIndices, bloomFilterSize, timer, curIteration);
+        RecvData recvData = SendPolicy::sendToFilter(reducedHashStringIndices, bloomFilterSize, timer, curIteration);
         timer.end(std::string("bloomfilter_sendHashStringIndices"), curIteration);
 
         timer.start(std::string("bloomfilter_addPEIndex"), curIteration);
-        std::vector<HashPEIndex> recvHashPEIndices = SendPolicy<dsss::mpi::AllToAllvSmall>::addPEIndex(recvData);
+        std::vector<HashPEIndex> recvHashPEIndices = SendPolicy::addPEIndex(recvData);
         timer.end(std::string("bloomfilter_addPEIndex"), curIteration);
         
         //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);

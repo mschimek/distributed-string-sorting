@@ -414,7 +414,7 @@ namespace dss_schimek {
         std::vector<size_t> results_tracker;
         std::vector<size_t> candidates_tracker;
 
-        BloomFilter<StringSet, AllToAllHashValuesNaive, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
+        BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<AllToAllHashesNaive>> bloomFilter;
         Tracker<StringSet> tracker(std::numeric_limits<uint32_t>::max());
         tracker.init(local_string_ptr);
         std::cout << "tracker init rank: " << env.rank() << std::endl;
@@ -491,7 +491,7 @@ namespace dss_schimek {
         return results; 
       }
     
-    template <typename StringPtr>
+    template <typename StringPtr, typename GolombPolicy>
       std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, Timer& timer) {
         using StringSet = typename StringPtr::StringSet;
         dsss::mpi::environment env;
@@ -503,7 +503,7 @@ namespace dss_schimek {
         std::vector<size_t> results(ss.size(), 0);
         std::vector<size_t> candidates(ss.size());
         std::iota(candidates.begin(), candidates.end(), 0);
-                BloomFilter<StringSet, AllToAllHashesGolomb, FindDuplicates, SendOnlyHashesToFilter> bloomFilter;
+                BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
 
         timer.end(std::string("bloomfilter_init"));
 
@@ -529,7 +529,7 @@ namespace dss_schimek {
         return results; 
       }
 
-    template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename Timer>
+    template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename GolombEncoding, typename Timer>
       class DistributedMergeSort : private SampleSplittersPolicy, private AllToAllStringPolicy
     {
       public:
@@ -560,7 +560,7 @@ namespace dss_schimek {
           timer.start("bloomfilter_overall");
           //timer.disableMeasurement();
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr, timer);
-          std::vector<size_t> results = computeDistinguishingPrefixes(local_string_ptr, timer);
+          std::vector<size_t> results = computeDistinguishingPrefixes<StringPtr, GolombEncoding>(local_string_ptr, timer);
           //timer.enableMeasurement();
           timer.end("bloomfilter_overall");
 

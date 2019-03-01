@@ -30,6 +30,7 @@ template <typename StringSet, typename StringGenerator,
          typename SampleSplittersPolicy, 
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
+         typename GolombEncoding,
          typename Timer>
            void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
@@ -43,7 +44,8 @@ template <typename StringSet, typename StringGenerator,
                " dToNRatio=" + std::to_string(genStringArgs.dToNRatio) + 
                " stringLength=" + std::to_string(genStringArgs.stringLength) + 
                " MPIAllToAllRoutine=" + MPIAllToAllRoutine::getName() + 
-               " ByteEncoder=" + ByteEncoder::getName() + 
+               " ByteEncoder=" + ByteEncoder::getName() +
+               " GolombEncoding=" + GolombEncoding::getName() +
                " Timer=" + Timer::getName() + 
                " StringSet=" + StringSet::getName() + 
                " iteration=" + std::to_string(iteration) +
@@ -70,7 +72,7 @@ template <typename StringSet, typename StringGenerator,
              timer.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine, Timer>;
 
-             DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
+             DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, GolombEncoding, Timer> sorter;
              std::vector<StringIndexPEIndex> permutation = 
                sorter.sort(rand_string_ptr, timer);
 
@@ -103,6 +105,14 @@ template <typename StringSet, typename StringGenerator,
            }
 
 namespace PolicyEnums {
+  enum class GolombEncoding  {noGolombEncoding = 0, sequentialGolombEncoding = 1};
+  GolombEncoding getGolombEncoding(size_t i) {
+    switch(i) {
+      case 0: return GolombEncoding::noGolombEncoding;
+      case 1: return GolombEncoding::sequentialGolombEncoding;
+      default: std::abort();
+    }
+  }
   enum class StringSet {UCharLengthStringSet = 0, UCharStringSet = 1};
   StringSet getStringSet(size_t i) {
     switch (i) {
@@ -153,17 +163,20 @@ namespace PolicyEnums {
 namespace PolicyEnums {
   struct CombinationKey  {
     CombinationKey(StringSet stringSet, 
+        GolombEncoding golombEncoding,
         StringGenerator stringGenerator,
         SampleString sampleStringPolicy, 
         MPIRoutineAllToAll mpiAllToAllRoutine, 
         ByteEncoder byteEncoder) :
       stringSet_(stringSet), 
+      golombEncoding_(golombEncoding),
       stringGenerator_(stringGenerator), 
       sampleStringPolicy_(sampleStringPolicy), 
       mpiRoutineAllToAll_(mpiAllToAllRoutine), 
       byteEncoder_(byteEncoder) {}
 
     StringSet stringSet_;
+    GolombEncoding golombEncoding_;
     StringGenerator stringGenerator_;
     SampleString sampleStringPolicy_;
     MPIRoutineAllToAll mpiRoutineAllToAll_;
@@ -195,8 +208,8 @@ struct SorterArgs {
 };
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
-  typename MPIRoutineAllToAll, typename ByteEncoder>
-   void sixthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
+  typename MPIRoutineAllToAll, typename ByteEncoder, typename GolombEncoding>
+   void seventhArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
    //execute_sorter<StringSet,
    //               StringGenerator,
    //               SampleString,
@@ -208,8 +221,28 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
+                  GolombEncoding,
                   EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    }
+template<typename StringSet, typename StringGenerator, typename SampleString,
+  typename MPIRoutineAllToAll, typename ByteEncoder>
+   void sixthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
+     switch(key.golombEncoding_) {
+       case PolicyEnums::GolombEncoding::noGolombEncoding : 
+         {
+           using GolombEncoding = dss_schimek::AllToAllHashesNaive;
+           seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder, GolombEncoding>(key, args);
+           break;
+         }
+       case PolicyEnums::GolombEncoding::sequentialGolombEncoding:
+         {
+           using GolombEncoding = dss_schimek::AllToAllHashesGolomb;
+           seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder, GolombEncoding>(key, args);
+           break;
+         }
+     } 
+   }
+ 
 
 template<typename StringSet, typename StringGenerator, typename SampleString,
   typename MPIRoutineAllToAll>
@@ -330,6 +363,7 @@ int main(std::int32_t argc, char const *argv[]) {
   unsigned int generator = 0;
   bool strongScaling = false;
   unsigned int sampleStringsPolicy = static_cast<int>(PolicyEnums::SampleString::numStrings);
+  unsigned int golombPolicy = static_cast<int>(PolicyEnums::GolombEncoding::noGolombEncoding);
   unsigned int byteEncoder = static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderMemCpy);
   unsigned int mpiRoutineAllToAll = static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
   unsigned int numberOfStrings = 100000;
@@ -342,6 +376,7 @@ int main(std::int32_t argc, char const *argv[]) {
   cp.set_author("Matthias Schimek");
   cp.add_double('r', "dToNRatio", dToNRatio, "D/N ratio");
   cp.add_unsigned('s', "size", numberOfStrings, " number of strings to be generated");
+  cp.add_unsigned('x', "golombEncodingPolicy", golombPolicy, " strategy for encoding of hashes sent to filter");
   cp.add_unsigned('p', "sampleStringsPolicy", sampleStringsPolicy, "0 = NumStrings, 1 = NumChars");
   cp.add_unsigned('b', "byteEncoder", byteEncoder, "emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4, emptyLcpByteEncoderMemCpy = 5");
   cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll, "small = 0, directMessages = 1, combined = 2");
@@ -357,6 +392,7 @@ int main(std::int32_t argc, char const *argv[]) {
   
   PolicyEnums::CombinationKey key(
       PolicyEnums::StringSet::UCharLengthStringSet, 
+      PolicyEnums::getGolombEncoding(golombPolicy), 
       PolicyEnums::getStringGenerator(generator),
       PolicyEnums::getSampleString(sampleStringsPolicy),
       PolicyEnums::getMPIRoutineAllToAll(mpiRoutineAllToAll),
