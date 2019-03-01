@@ -2,7 +2,8 @@
 
 #include "strings/stringcontainer.hpp"
 
-#include "merge/stringptr.hpp"
+#include "merge/stringtools.hpp"
+//#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
 #include "mpi/environment.hpp"

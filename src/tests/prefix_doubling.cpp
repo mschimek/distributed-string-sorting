@@ -70,7 +70,7 @@ template <typename StringSet, typename StringGenerator,
              const size_t numGeneratedStrings = generatedContainer.size();
 
              timer.start("sorting_overall");
-             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine, Timer>;
+             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine>;
 
              DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, GolombEncoding> prefixDoublingSorter;
              std::vector<StringIndexPEIndex> permutation = 

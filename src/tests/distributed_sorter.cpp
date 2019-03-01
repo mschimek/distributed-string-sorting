@@ -49,7 +49,8 @@ template <typename StringSet, typename StringGenerator,
                " size=" + std::to_string(numOfStrings) +
                " strongScaling=" + std::to_string(strongScaling);
 
-             dss_schimek::Timer timer(prefix);
+             dss_schimek::Timer& timer = dss_schimek::Timer::timer();//(prefix);
+             timer.setPrefix(prefix);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
@@ -58,49 +59,29 @@ template <typename StringSet, typename StringGenerator,
              std::cout << "container: " << generatedContainer.size() << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
-             //dss_schimek::mpi::execute_in_order([&]() {
-             //    env.barrier();
-             //    std::cout << "rank: " << env.rank() << std::endl;
-             //    multikey_quicksort(rand_container.make_string_lcp_ptr(), 0, 0);
-             //    rand_container.make_string_set().print();
-             //    });
              const size_t numGeneratedChars = generatedContainer.char_size();
              const size_t numGeneratedStrings = generatedContainer.size();
 
              /*
               * MPI WARMUP 
               */
-             std::cout << "MPI_Warmup_sum: " << dss_schimek::mpi::randomDataAllToAllExchange(std::min<size_t>(numOfStrings * 5, 100000u)) << std::endl;
+             std::cout << "MPI_Warmup_sum: " << 
+               dss_schimek::mpi::randomDataAllToAllExchange(std::min<size_t>(numOfStrings * 5, 100000u)) << std::endl;
              /*
               * END MPI WARMUP
               */
 
              timer.start("sorting_overall");
-             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder, Timer>;
-             DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, Timer> sorter;
+             using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder>;
+             DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy> sorter;
              StringLcpContainer<StringSet> sorted_string_cont = 
-               sorter.sort(rand_string_ptr, std::move(generatedContainer), timer);
+               sorter.sort(rand_string_ptr, std::move(generatedContainer));
 
              timer.end("sorting_overall");
 
-             volatile size_t tmpSum = 0;
-             for (size_t i = 0; i < 500000000; ++i)
-               tmpSum += i;
-             env.barrier();
-             env.barrier();
-
-
-
-             //dss_schimek::mpi::execute_in_order([&]() {
-             //    env.barrier();
-             //    sorted_string_cont.extendPrefix(sorted_string_cont.make_string_lcp_ptr());
-             //    std::cout << "rank: " << env.rank() << std::endl;
-             //    sorted_string_cont.make_string_set().print();
-             //    });
-
              timer.start("prefix_decompression");
              if (AllToAllPolicy::PrefixCompression && env.size() > 1)
-                 sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
+               sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
              timer.end("prefix_decompression");
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
@@ -118,11 +99,7 @@ template <typename StringSet, typename StringGenerator,
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
-
-	     for (size_t i = 0; i < 500000000; ++i)
-		     tmpSum += i;
-	     env.barrier();
-	     env.barrier();
+             timer.reset();
 	   }
 
 namespace PolicyEnums {
