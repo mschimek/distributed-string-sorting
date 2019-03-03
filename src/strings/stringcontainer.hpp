@@ -70,7 +70,10 @@ namespace dss_schimek {
       static constexpr size_t approx_string_length = 10;
       public: 
       
-      std::vector<String> init_strings(std::vector<Char>& raw_strings, const std::vector<size_t>& intervalSizes, const std::vector<size_t>& offsets) {
+      std::vector<String> init_strings(std::vector<Char>& raw_strings,
+          const std::vector<size_t>& intervalSizes,
+          const std::vector<size_t>& offsets) {
+
         std::vector<String> strings;
         size_t numStrings = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
         strings.reserve(numStrings);
@@ -78,7 +81,9 @@ namespace dss_schimek {
         
         for (size_t curPEIndex = 0; curPEIndex < intervalSizes.size(); ++curPEIndex) {
           for (size_t stringIndex = 0; stringIndex < intervalSizes[curPEIndex]; ++stringIndex) {
-            strings.emplace_back(raw_strings.data() + curOffset, offsets[curPEIndex] + stringIndex, curPEIndex);
+            strings.emplace_back(raw_strings.data() + curOffset, 
+                                 offsets[curPEIndex] + stringIndex,
+                                 curPEIndex);
             while(raw_strings[curOffset] != 0) ++curOffset;
             ++curOffset;
           }
@@ -87,6 +92,7 @@ namespace dss_schimek {
       }
     };
 
+  //TODO Think about better design (subclasses?) for different StringSets +  additional data like the saved LCP values when doing prefix compression
   template <typename StringSet_>
     class StringLcpContainer : private InitPolicy<StringSet_>
   {
@@ -114,7 +120,10 @@ namespace dss_schimek {
         }
       
       // To be used with GenericCharIndexPEIndexStringSet
-      explicit StringLcpContainer(std::vector<Char>&& raw_strings, std::vector<size_t>&& lcp, const std::vector<size_t>& intervalSizes, const std::vector<size_t>& offsets) : 
+      explicit StringLcpContainer(std::vector<Char>&& raw_strings, 
+          std::vector<size_t>&& lcp, 
+          const std::vector<size_t>& intervalSizes, 
+          const std::vector<size_t>& offsets) : 
     raw_strings_(std::make_unique<std::vector<Char>>(std::move(raw_strings))), savedLcps_() {
 
           update_strings(intervalSizes, offsets);
@@ -145,7 +154,6 @@ namespace dss_schimek {
         using CharIt = typename StringSet::CharIterator;
 
         const size_t L = std::accumulate(lcps.begin(), lcps.end(), 0);
-        //std::cout << "L: " << L << std::endl;
         std::vector<Char> extendedRawStrings(char_size() + L);
         std::vector<Char> curPrefix;
         Char* curPos = extendedRawStrings.data();
@@ -158,7 +166,6 @@ namespace dss_schimek {
         curPos += stringLength; 
         for (size_t i = 1; i < ss.size(); ++i) {
           int64_t lcp_diff = lcps[i] - lcps[i - 1];
-          //std::cout << "lcp_diff: " << lcp_diff << std::endl;
           if (lcp_diff <= 0) {
             while(lcp_diff++ < 0)
               curPrefix.pop_back();
@@ -170,18 +177,11 @@ namespace dss_schimek {
           }
           std::copy(curPrefix.begin(), curPrefix.end(), curPos);
           curPos += curPrefix.size();
-          //std::cout << "curPrefix: " ;
-          //for (size_t j = 0; j < curPrefix.size(); ++j)
-          //  std::cout << curPrefix[j];
-          //std::cout << std::endl;
-
 
           String curString = ss[ss.begin() + i];
           CharIt startCurString = ss.get_chars(curString, 0);
           size_t stringLength = ss.get_length(curString) + 1;
-          //std::cout << "string: " << startCurString << std::endl;
           std::copy(startCurString, startCurString + stringLength, curPos);
-          //std::cout << "copied string: " << (curPos - curPrefix.size()) << std::endl;
           curPos += stringLength;
         }
         update(std::move(extendedRawStrings));
@@ -237,9 +237,9 @@ namespace dss_schimek {
     protected:
       static constexpr size_t approx_string_length = 10;
       std::unique_ptr<std::vector<Char>> raw_strings_;
-      std::vector<String> strings_;
-      std::vector<size_t> lcps_;
-      std::vector<size_t> savedLcps_;
+      std::vector<String> strings_; // strings
+      std::vector<size_t> lcps_; // lcp-values
+      std::vector<size_t> savedLcps_; // only used for prefix compression, -> lcp-values received from other PEs before merging TODO think about better structure
 
       void update_strings()
       {

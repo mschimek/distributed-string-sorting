@@ -103,7 +103,7 @@ namespace dsss::mpi {
       return receive_data;
     }
 
-
+  // uses builtin MPI_Alltoallv for message exchange
   class AllToAllvSmall {
     public:
       static std::string getName()  {
@@ -158,9 +158,10 @@ namespace dsss::mpi {
               env.communicator());
           return receive_data;
         }
-      
-    };
 
+  };
+
+  // Uses direct P2P-messages for alltoallv-exchange
   class AllToAllvDirectMessages {
     public:
       static std::string getName() {
@@ -216,6 +217,7 @@ namespace dsss::mpi {
         }
   };
 
+  // Uses builtin MPI_Alltoallv- function for small messages and direct messages for larger messages
   template<typename AllToAllvSmallPolicy>
     class AllToAllvCombined {
       public:
@@ -342,79 +344,6 @@ namespace dsss::mpi {
     }
 
 
-  inline std::vector<dsss::char_type> alltoallv_strings(
-      dsss::string_set& send_data, const std::vector<size_t>& send_counts,
-      environment env = environment()) {
-
-    const size_t size = send_counts.size();
-    std::vector<size_t> send_counts_char(size, 0);
-    std::vector<dsss::char_type> send_buffer;
-    send_buffer.reserve(send_data.data_container().size());
-    // Determine the number of character that must be sended to each node
-    for (size_t interval = 0, offset = 0; interval < size; ++interval) {
-      // We cannot be sure that the pointers are ordered anymore (i.e., the memory
-      // positions are not monotone Increasing)
-      for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
-        const size_t string_length = dsss::string_length(send_data[j]) + 1;
-        send_counts_char[interval] += string_length;
-        std::copy_n(send_data[j], string_length, std::back_inserter(send_buffer));
-      }
-      offset += send_counts[interval];
-    }
-
-    if constexpr (debug_alltoall) {
-      const size_t total_chars_sent = std::accumulate(
-          send_counts_char.begin(), send_counts_char.end(), 0);
-      const size_t total_chars_count = send_data.data_container().size();
-
-      for (int32_t rank = 0; rank < env.size(); ++rank) {
-        if (env.rank() == rank) {
-          std::cout << rank << ": total_chars_sent " << total_chars_sent
-            << ", total_chars_count: " << total_chars_count << std::endl;
-        }
-        env.barrier();
-      }
-    }
-    return alltoallv(send_buffer, send_counts_char, env);
-  }
-
-  template <typename IndexType>
-    inline dsss::indexed_string_set<IndexType> alltoallv_indexed_strings(
-        dsss::indexed_string_set<IndexType>& send_data,
-        std::vector<size_t>& send_counts_strings,
-        environment env = environment()) {
-
-      // Send the strings
-      assert(send_counts_strings.size() == env.size());
-      const size_t size = send_counts_strings.size();
-      std::vector<dsss::char_type> real_send_data;
-      std::vector<IndexType> index_send_data;
-      std::vector<size_t> send_counts_char(size, 0);
-      std::vector<size_t> send_displacements(size, 0);
-      // Determine the number of character that must be sended to each node
-      for (size_t scs_pos = 0, string_pos = 0; scs_pos < size; ++scs_pos) {
-        for (size_t i = 0; i < send_counts_strings[scs_pos]; ++i) {
-          index_send_data.emplace_back(send_data[string_pos].index);
-          // The "+1" is there to also send the terminating 0
-          const size_t string_length =
-            dsss::string_length(send_data[string_pos].string) + 1;
-          send_counts_char[scs_pos] += string_length;
-          std::copy_n(send_data[string_pos].string, string_length,
-              std::back_inserter(real_send_data));
-          ++string_pos;
-        }
-      }
-
-      std::vector<dsss::char_type> receive_data = alltoallv(real_send_data,
-          send_counts_char,
-          env);
-      std::vector<IndexType> receive_data_indices = alltoallv(index_send_data,
-          send_counts_strings,
-          env);
-      return dsss::indexed_string_set<IndexType>(std::move(receive_data),
-          std::move(receive_data_indices));
-    }
-
   template<typename StringSet, typename ByteEncoder>
     static inline std::vector<size_t> computeSendCountsBytes(
         const StringSet& ss,
@@ -436,28 +365,28 @@ namespace dsss::mpi {
       return sendCountsBytes;
     }
 
+/*
+ * Different functions for the alltoall exchange of strings.
+ * AllToAllPolicy: Used MPIroutine, ie. AllToAllvSmall, AllToAllvCombined, etc.
+ * ByteEncoderPolicy: Different policies for the Memory-Layout
+ * (and the process of making strings contiguous (memcpy, std::copy)) for strings 
+ * and lcps values to send (see byte_encoder.hpp)
+ *
+ */
 
-  //template <typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
-  //  dss_schimek::StringLcpContainer<StringSet> alltoallv(
-  //      dss_schimek::StringLcpContainer<StringSet>& container,
-  //      const std::vector<size_t>& sendCountsString,
-  //      environment env = environment()) {
-  //    static AllToAllStringImpl<StringSet, AllToAllPolicy, ByteEncoderPolicy> sender;
-  //    return sender.alltoallv(container, sendCountsString, env);
-
-  //  }
   template<typename StringSet, typename AllToAllPolicy, typename ByteEncoderPolicy>
-    struct AllToAllStringImpl : private ByteEncoderPolicy {
+    struct AllToAllStringImpl {
       static constexpr bool PrefixCompression = false;
+
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& container,
           const std::vector<size_t>& sendCountsString,
           environment env = environment()) {
 
-        
-        dss_schimek::Timer& timer = dss_schimek::Timer::timer();
-        timer.start("all_to_all_strings_intern_copy");
+
         using namespace dss_schimek;
+        Timer& timer = Timer::timer();
+        timer.start("all_to_all_strings_intern_copy");
         using String = typename StringSet::String;
         using CharIterator = typename StringSet::CharIterator;
 
@@ -491,12 +420,12 @@ namespace dsss::mpi {
         timer.end("all_to_all_strings_read");
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }
-
     };
 
   template<typename StringSet, typename AllToAllPolicy> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderCopy> {
       static constexpr bool PrefixCompression = false;
+
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
           dss_schimek::StringLcpContainer<StringSet>& send_data,
           const std::vector<size_t>& send_counts,
@@ -544,7 +473,7 @@ namespace dsss::mpi {
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
     };
-  
+
   template<typename StringSet, typename AllToAllPolicy> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyByteEncoderMemCpy> {
       static constexpr bool PrefixCompression = false;
@@ -596,7 +525,7 @@ namespace dsss::mpi {
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
     };
-  
+
   template<typename StringSet, typename AllToAllPolicy> 
     struct AllToAllStringImpl<StringSet, AllToAllPolicy, dss_schimek::EmptyLcpByteEncoderMemCpy> {
       static constexpr bool PrefixCompression = true;
@@ -609,8 +538,9 @@ namespace dsss::mpi {
         using namespace dss_schimek;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        dss_schimek::Timer& timer = dss_schimek::Timer::timer();
+        Timer& timer = Timer::timer();
         timer.start("all_to_all_strings_intern_copy");
+
         const EmptyLcpByteEncoderMemCpy byteEncoder;
         const StringSet ss = send_data.make_string_set();
 
@@ -632,7 +562,8 @@ namespace dsss::mpi {
         const size_t numCharsToSend = send_data.char_size() - L;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
-          size_t totalNumWrittenChars = 0;
+        size_t totalNumWrittenChars = 0;
+
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
           auto begin = ss.begin() + stringsWritten;
           StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
@@ -661,91 +592,22 @@ namespace dsss::mpi {
     };
 
   template <typename StringSet>
-  struct RecvDataAllToAll{
-    dss_schimek::StringLcpContainer<StringSet> container;
-    std::vector<size_t> recvStringSizes;
-    RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>&& container, std::vector<size_t>&& recvStringSizes) 
-      : container(std::move(container)), recvStringSizes(std::move(recvStringSizes)) {}
-  };
-  
-  template<typename StringLcpPtr, typename AllToAllPolicy> 
-    struct AllToAllStringImplPrefixDoubling {
-
-      using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
-      static constexpr bool PrefixCompression = true;
-
-      dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(
-          StringLcpPtr stringLcpPtr,
-          const std::vector<size_t>& sendCountsString,
-          const std::vector<size_t>& distinguishingPrefixValues,
-          environment env = environment()){
-
-        using namespace dss_schimek;
-        using StringSet = typename StringLcpPtr::StringSet;
-        using String = typename StringSet::String;
-        using CharIt = typename StringSet::CharIterator;
-        dss_schimek::Timer& timer = dss_schimek::Timer::timer();
-
-        timer.start("all_to_all_strings_intern_copy");
-        const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
-        const StringSet ss = stringLcpPtr.active();
-
-        if (ss.size() == 0)
-          return dss_schimek::StringLcpContainer<ReturnStringSet>();
-
-        std::vector<unsigned char> receive_buffer_char;
-        std::vector<size_t> receive_buffer_lcp;
-        std::vector<size_t> send_counts_lcp(sendCountsString);
-        std::vector<size_t> send_counts_char(sendCountsString.size());
-
-        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
-          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
-          stringsWritten += sendCountsString[interval];
-        }
-        const size_t L = std::accumulate(stringLcpPtr.get_lcp(), stringLcpPtr.get_lcp() + stringLcpPtr.size(), 0);
-        const size_t D = std::accumulate(distinguishingPrefixValues.begin(), distinguishingPrefixValues.end(), stringLcpPtr.size());
-
-        const size_t numCharsToSend = D - L;
-        std::vector<unsigned char> buffer(numCharsToSend);
-        unsigned char* curPos = buffer.data();
-          size_t totalNumWrittenChars = 0;
-        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
-          auto begin = ss.begin() + stringsWritten;
-          StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
-          size_t numWrittenChars = 0;
-          std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
-              subSet, stringLcpPtr.get_lcp() + stringsWritten, distinguishingPrefixValues.data() + stringsWritten);
-
-          totalNumWrittenChars += numWrittenChars;
-          send_counts_char[interval] = numWrittenChars;
-          stringsWritten += sendCountsString[interval];
-        }
-
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
-        receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(stringLcpPtr.get_lcp(), sendCountsString, env);
-        std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
-        std::vector<size_t> offsets;
-        offsets.reserve(env.size());
-        offsets.push_back(0);
-        std::partial_sum(sendCountsString.begin(), sendCountsString.end() - 1, std::back_inserter(offsets));
-        std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("string_exchange_bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
-
-        //// no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read");
-        timer.end("all_to_all_strings_read");
-        return dss_schimek::StringLcpContainer<ReturnStringSet>(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
-      }
+    struct RecvDataAllToAll{
+      dss_schimek::StringLcpContainer<StringSet> container;
+      std::vector<size_t> recvStringSizes;
+      RecvDataAllToAll(dss_schimek::StringLcpContainer<StringSet>&& container, std::vector<size_t>&& recvStringSizes) 
+        : container(std::move(container)), recvStringSizes(std::move(recvStringSizes)) {}
     };
 
+
+  // Function for All-To-All exchange of all strings in the distributed-merge-sort-algorithm,
+  // using the sequentialDelayedByteEncoder
   template<typename StringSet, typename AllToAllPolicy> 
-    struct AllToAllStringImpl<StringSet,
-      AllToAllPolicy,
-      dss_schimek::SequentialDelayedByteEncoder> {
+    struct AllToAllStringImpl<
+    StringSet,
+    AllToAllPolicy,
+    dss_schimek::SequentialDelayedByteEncoder> 
+    {
       static constexpr bool PrefixCompression = false;
 
       dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -810,8 +672,91 @@ namespace dsss::mpi {
       }  
     };
 
-    // Collect Strings specified by string index and PE index -> should be used for verification (probably not as efficient as it could be)
-    template <typename StringSet, typename Iterator>
+  // Method for the All-To-All exchange of the reduced strings, i.e. only distinguishing prefix - common prefix, in the prefix-doubling-algorithm 
+  template<typename StringLcpPtr, typename AllToAllPolicy> 
+    struct AllToAllStringImplPrefixDoubling {
+
+      using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
+      static constexpr bool PrefixCompression = true;
+
+      dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(
+          StringLcpPtr stringLcpPtr,
+          const std::vector<size_t>& sendCountsString,
+          const std::vector<size_t>& distinguishingPrefixValues,
+          environment env = environment()){
+
+        using namespace dss_schimek;
+        using StringSet = typename StringLcpPtr::StringSet;
+        using String = typename StringSet::String;
+        using CharIt = typename StringSet::CharIterator;
+        Timer& timer = Timer::timer();
+
+        timer.start("all_to_all_strings_intern_copy");
+        const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
+        const StringSet ss = stringLcpPtr.active();
+
+        if (ss.size() == 0)
+          return dss_schimek::StringLcpContainer<ReturnStringSet>();
+
+        std::vector<unsigned char> receive_buffer_char;
+        std::vector<size_t> receive_buffer_lcp;
+        std::vector<size_t> send_counts_lcp(sendCountsString);
+        std::vector<size_t> send_counts_char(sendCountsString.size());
+
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
+        const size_t L = std::accumulate(stringLcpPtr.get_lcp(), 
+                                         stringLcpPtr.get_lcp() + stringLcpPtr.size(), 
+                                         0);
+        const size_t D = std::accumulate(distinguishingPrefixValues.begin(), 
+                                         distinguishingPrefixValues.end(), 
+                                         stringLcpPtr.size());
+
+        const size_t numCharsToSend = D - L;
+        std::vector<unsigned char> buffer(numCharsToSend);
+        unsigned char* curPos = buffer.data();
+        size_t totalNumWrittenChars = 0;
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          auto begin = ss.begin() + stringsWritten;
+          StringSet subSet = ss.sub(begin, begin + sendCountsString[interval]);
+          size_t numWrittenChars = 0;
+          std::tie(curPos,  numWrittenChars)= byteEncoder.write(curPos, 
+              subSet, stringLcpPtr.get_lcp() + stringsWritten, 
+              distinguishingPrefixValues.data() + stringsWritten);
+
+          totalNumWrittenChars += numWrittenChars;
+          send_counts_char[interval] = numWrittenChars;
+          stringsWritten += sendCountsString[interval];
+        }
+
+        timer.end("all_to_all_strings_intern_copy");
+        timer.start("all_to_all_strings_mpi");
+        receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
+        receive_buffer_lcp = AllToAllPolicy::alltoallv(stringLcpPtr.get_lcp(), sendCountsString, env);
+        std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+        std::vector<size_t> offsets;
+        offsets.reserve(env.size());
+        offsets.push_back(0);
+        std::partial_sum(sendCountsString.begin(), 
+                         sendCountsString.end() - 1, 
+                         std::back_inserter(offsets));
+
+        std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
+        timer.end("all_to_all_strings_mpi");
+        timer.add("string_exchange_bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
+
+        //// no bytes are read in this version only for evaluation layout
+        timer.start("all_to_all_strings_read");
+        timer.end("all_to_all_strings_read");
+        return dss_schimek::StringLcpContainer<ReturnStringSet>(
+            std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
+      }
+    };
+
+  // Collect Strings specified by string index and PE index -> should be used for verification (probably not as efficient as it could be)
+  template <typename StringSet, typename Iterator>
     dss_schimek::StringLcpContainer<StringSet> getStrings(
         Iterator requestBegin, 
         Iterator requestEnd, 
@@ -825,7 +770,7 @@ namespace dsss::mpi {
 
       std::vector<size_t> requests(requestEnd - requestBegin);
       std::vector<size_t> requestSizes(env.size(), 0);
-      
+
       // get size of each interval
       for(Iterator curIt = requestBegin; curIt != requestEnd; ++curIt) {
         const StringIndexPEIndex indices = *curIt;
@@ -851,7 +796,7 @@ namespace dsss::mpi {
       std::vector<std::vector<unsigned char>> rawStrings(env.size());
       std::vector<size_t> rawStringSizes(env.size());
       size_t offset = 0;
-      
+
       for (size_t curRank = 0; curRank < env.size(); ++curRank) {
         for (size_t i = 0; i < recvRequestSizes[curRank]; ++i) {
           const size_t requestedIndex = recvRequests[offset + i];
@@ -866,10 +811,11 @@ namespace dsss::mpi {
 
       std::vector<unsigned char> rawStringsFlattened = flatten(rawStrings);
 
-      std::vector<unsigned char> recvRequestedStrings = MPIRoutine::alltoallv(rawStringsFlattened.data(), rawStringSizes);
-      
+      std::vector<unsigned char> recvRequestedStrings = 
+        MPIRoutine::alltoallv(rawStringsFlattened.data(), rawStringSizes);
+
       dss_schimek::StringLcpContainer<StringSet> container(std::move(recvRequestedStrings));
-      
+
       return container;
     }
 } // namespace dsss::mpi
