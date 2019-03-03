@@ -592,6 +592,25 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
         }
         return GeneratedHashStructuresEOSCandidates(std::move(hashStringIndices), std::move(eosCandidates));
       }
+      
+      GeneratedHashStructuresEOSCandidates<HashStringIndex> generateHashStringIndices(StringSet ss, const size_t depth) {
+        std::vector<HashStringIndex> hashStringIndices;
+        std::vector<size_t> eosCandidates;
+        hashStringIndices.reserve(ss.size());
+        const Iterator begin = ss.begin();
+
+        for (size_t candidate = 0; candidate < ss.size(); ++candidate) {
+          String curString = ss[begin + candidate];
+          const size_t length = ss.get_length(curString);
+          if (depth > length) {
+            eosCandidates.push_back(candidate);
+          } else {
+            const size_t curHash = hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+            hashStringIndices.emplace_back(curHash, candidate);
+          }
+        }
+        return GeneratedHashStructuresEOSCandidates(std::move(hashStringIndices), std::move(eosCandidates));
+      }
 
       std::vector<size_t> getIndicesOfLocalDuplicates(std::vector<HashStringIndex>& hashStringIndices) {
         std::vector<size_t> indicesOfLocalDuplicates;
@@ -620,6 +639,21 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
         }
         return indicesOfLocalDuplicates;
       }
+      
+      void setDepth(StringLcpPtr strptr, const size_t depth,  
+          const std::vector<size_t>& eosCandidates, std::vector<size_t>& results) {
+
+        // eosCandidates is subset of candidates whose length is <= depth
+        StringSet ss = strptr.active();
+        for (size_t candidate = 0; candidate < ss.size(); ++candidate)
+          results[candidate] = depth;
+
+        for (const size_t curEOSCandidate : eosCandidates) {
+          String str = ss[ss.begin() + curEOSCandidate];
+          size_t length = ss.get_length(str);
+          results[curEOSCandidate] = length;
+        }
+      }
 
       void setDepth(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, 
           const std::vector<size_t>& eosCandidates, std::vector<size_t>& results) {
@@ -636,8 +670,61 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
         }
       }
 
-      
+      // Don't need candidates list in first iteration -> all strings are candidates
+      std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, std::vector<size_t>& results) {
+        dsss::mpi::environment env;
 
+        Timer& timer = Timer::timer();
+        timer.start("bloomfilter_generateHashStringIndices");
+        GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = 
+          generateHashStringIndices(strptr.active(), depth);
+
+        std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
+        const std::vector<size_t>& eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
+        timer.end("bloomfilter_generateHashStringIndices");
+
+        timer.start("bloomfilter_sortHashStringIndices");
+        std::sort(hashStringIndices.begin(), hashStringIndices.end());
+        timer.end("bloomfilter_sortHashStringIndices");
+
+        timer.start("bloomfilter_indicesOfLocalDuplicates");
+        std::vector<size_t> indicesOfLocalDuplicates = getIndicesOfLocalDuplicates(hashStringIndices);
+        timer.end("bloomfilter_indicesOfLocalDuplicates");
+
+        timer.start("bloomfilter_ReducedHashStringIndices");
+        std::vector<HashStringIndex> reducedHashStringIndices;
+        reducedHashStringIndices.reserve(hashStringIndices.size());
+        std::copy_if(hashStringIndices.begin(), 
+            hashStringIndices.end(), 
+            std::back_inserter(reducedHashStringIndices), 
+            [&](const HashStringIndex& v) {
+            return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
+            });
+        timer.end("bloomfilter_ReducedHashStringIndices");
+
+        timer.start("bloomfilter_sendHashStringIndices");
+        RecvData recvData = SendPolicy::sendToFilter(reducedHashStringIndices, bloomFilterSize);
+        timer.end("bloomfilter_sendHashStringIndices");
+
+        timer.start("bloomfilter_addPEIndex");
+        std::vector<HashPEIndex> recvHashPEIndices = SendPolicy::addPEIndex(recvData);
+        timer.end("bloomfilter_addPEIndex");
+
+        //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        std::vector<size_t> indicesOfRemoteDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
+        //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+
+        timer.start("bloomfilter_getIndices");
+        std::vector<size_t> indicesOfAllDuplicates = 
+          FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
+        timer.end("bloomfilter_getIndices");
+
+        timer.start("bloomfilter_setDepth");
+        setDepth(strptr, depth, eosCandidates, results);
+        timer.end("bloomfilter_setDepth");
+
+        return indicesOfAllDuplicates;
+      }
 
       std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
         dsss::mpi::environment env;
@@ -663,8 +750,8 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
         std::vector<HashStringIndex> reducedHashStringIndices;
         reducedHashStringIndices.reserve(hashStringIndices.size());
         std::copy_if(hashStringIndices.begin(), 
-                     hashStringIndices.end(), 
-                     std::back_inserter(reducedHashStringIndices), 
+            hashStringIndices.end(), 
+            std::back_inserter(reducedHashStringIndices), 
                      [&](const HashStringIndex& v) {
                       return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
                      });

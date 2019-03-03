@@ -143,20 +143,20 @@ namespace dss_schimek {
       using StringSet = typename StringPtr::StringSet;
       dsss::mpi::environment env;
       Timer& timer = Timer::timer();
+      const size_t startDepth = 8;
 
       timer.start(std::string("bloomfilter_init"));
       StringSet ss = local_string_ptr.active();
-
-
-      std::vector<size_t> results(ss.size(), 0);
-      std::vector<size_t> candidates(ss.size());
-      std::iota(candidates.begin(), candidates.end(), 0);
       BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
-
+      std::vector<size_t> results(ss.size(), 0);
       timer.end(std::string("bloomfilter_init"));
 
       size_t curIteration = 0;
-      for (size_t i = 8; i < std::numeric_limits<size_t>::max(); i *= 2) {
+      timer.setInternIteration(curIteration);
+      std::vector<size_t> candidates = bloomFilter.filter(local_string_ptr, startDepth, results);
+
+      for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max(); i *= 2) {
+        timer.setInternIteration(++curIteration);
         timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
         candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
 
