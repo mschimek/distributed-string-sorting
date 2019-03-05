@@ -29,6 +29,7 @@
 #include "util/string_set.hpp"
 #include "util/structs.hpp"
 #include "util/timer.hpp"
+#include "util/valueTracker.hpp"
 
 #include "strings/stringptr.hpp"
 #include "strings/stringcontainer.hpp"
@@ -41,6 +42,8 @@ namespace dsss::mpi {
   template <typename DataType>
     inline std::vector<DataType> alltoall(const std::vector<DataType>& send_data,
         environment env = environment()) {
+      ValueTracker& valueTracker = ValueTracker::valueTracker();
+      valueTracker.add(sizeof(DataType) * send_data.size());
       std::vector<DataType> receive_data(send_data.size(), 0);
       data_type_mapper<DataType> dtm;
       MPI_Alltoall(send_data.data(),

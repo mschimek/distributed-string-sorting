@@ -11,8 +11,9 @@
 #include <cstdint>
 #include <mpi.h>
 #include <vector>
+#include <algorithm>
 
-#include "mpi/alltoall.hpp"
+#include "mpi/big_type.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/type_mapper.hpp"
 #include "util/string_set.hpp"

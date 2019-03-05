@@ -41,3 +41,9 @@ target_link_libraries(golomb ${MPI_LIBRARIES} tlx)
 
 add_executable(bloomfilter bloomfilter.cpp ../mpi/environment.cpp)
 target_link_libraries(bloomfilter ${MPI_LIBRARIES} tlx)
+
+add_executable(memory_test memory_test.cpp ../mpi/environment.cpp)
+target_link_libraries(memory_test ${MPI_LIBRARIES} tlx)
+
+add_executable(allTests allTests.cpp ../mpi/environment.cpp)
+target_link_libraries(allTests ${MPI_LIBRARIES} tlx)

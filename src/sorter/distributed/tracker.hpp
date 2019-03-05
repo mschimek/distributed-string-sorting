@@ -53,6 +53,7 @@ namespace dss_schimek {
     }
   };
 
+  // calculates approximate distinguishing prefixes by using a bloomfilter and stores the witnesses for each found duplicate
   template <typename StringSet>
     class Tracker {
       using String = typename StringSet::String;
