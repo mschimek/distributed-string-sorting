@@ -1,12 +1,12 @@
 #include <iostream>
-#include "tests/valueTracker_test.hpp"
+#include <sstream>
+#include "tests/measuringTool_tests.hpp"
+#include "util/measuringTool.hpp"
 
 int main() {
   dsss::mpi::environment env;
   std::cout << "start tests" << std::endl;
-  using namespace tlx;
-  valueTracker_test_1();
-  valueTracker_test_2();
+  measuringTool_basicTest1();
   std::cout << "end tests" << std::endl;
   env.finalize();
 }
