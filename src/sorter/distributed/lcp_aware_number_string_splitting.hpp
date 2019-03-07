@@ -19,7 +19,7 @@
 #include "merge/stringtools.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
-#include "util/timer.hpp"
+#include "util/measuringTool.hpp"
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
 
@@ -128,78 +128,71 @@ namespace dss_schimek {
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
           constexpr bool debug = false;
+          using namespace dss_schimek;
+          using namespace dss_schimek::measurement;
 
           using StringSet = typename StringPtr::StringSet;
           using Char = typename StringSet::Char;
-          dss_schimek::Timer& timer = Timer::timer();
+          MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
           const StringSet& ss = local_string_ptr.active();
           std::size_t local_n = ss.size();
           
           // sort locally
-          timer.start("sort_locally");
+          measuringTool.start("sort_locally");
           tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
 
           //dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
-          timer.end("sort_locally");
-
-          
-
+          measuringTool.stop("sort_locally");
 
 
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
             return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
 
-          timer.start("sample_splitters");
+          measuringTool.start("sample_splitters");
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
-          timer.end("sample_splitters");
+          measuringTool.stop("sample_splitters");
 
-          timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
-          timer.start("allgather_splitters");
+          measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
+          measuringTool.start("allgather_splitters");
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
-          timer.end("allgather_splitters");
+          measuringTool.stop("allgather_splitters");
 
-          timer.start("choose_splitters");
+          measuringTool.start("choose_splitters");
           dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
-          timer.end("choose_splitters");
+          measuringTool.stop("choose_splitters");
 
 
           const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
               chosen_splitters_cont.strings() + chosen_splitters_cont.size());
 
-          timer.start("compute_interval_sizes");
+          measuringTool.start("compute_interval_sizes");
           std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
-          timer.end("compute_interval_sizes");
+          measuringTool.stop("compute_interval_sizes");
 
-          dss_schimek::StringLcpContainer<StringSet> recv_string_cont; 
-          if constexpr(std::is_same<Timer, dss_schimek::Timer>::value) {
-            timer.start("all_to_all_strings");
-            recv_string_cont = 
+            measuringTool.start("all_to_all_strings");
+            dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
               AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes);
-            timer.end("all_to_all_strings");
-          } else {
-            timer.start("all_to_all_strings");
-            recv_string_cont = 
-              AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes);
-            timer.end("all_to_all_strings");
-          }
-          timer.add("num_received_chars", recv_string_cont.char_size() - recv_string_cont.size());
+            measuringTool.stop("all_to_all_strings");
+
+          measuringTool.add(recv_string_cont.char_size() - recv_string_cont.size(), "num_received_chars");
           
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
 
           assert(num_recv_elems == recv_string_cont.size());
 
-          timer.start("compute_ranges");
+          measuringTool.start("compute_ranges");
           std::vector<std::pair<size_t, size_t>> ranges = 
             compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont, receiving_interval_sizes);
-          timer.end("compute_ranges");
+          measuringTool.stop("compute_ranges");
 
-          timer.start("merge_ranges");
+          measuringTool.start("merge_ranges");
           auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont), ranges, num_recv_elems);
-          timer.end("merge_ranges");
+          measuringTool.stop("merge_ranges");
           return sorted_container;
         }
   };

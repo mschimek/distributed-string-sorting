@@ -46,22 +46,6 @@ void measuringTool_basicTest1() {
     tlx_die_if((it == data.end()));
     data.erase(it);
   }
-  //
-  //for (size_t i = 0; i < env.size(); ++i) {
-  //  auto it = std::find_if(results.begin(), results.end(), [&] (const ValueTracker::Result& result) {
-  //      return result.phase == "work" && result.counterPerPhase == 0 && result.description == "none" && result.value == 42 && result.round == 10;
-  //      });
-  //  tlx_die_if((it == results.end()));
-  //  results.erase(it);
-  //}
-  //
-  //for (size_t i = 0; i < env.size(); ++i) {
-  //  auto it = std::find_if(results.begin(), results.end(), [&] (const ValueTracker::Result& result) {
-  //      return result.phase == "work" && result.counterPerPhase == 1 && result.description == "addingRandomNumbers" && result.value == 42 && result.round == 10;
-  //      });
-  //  tlx_die_if((it == results.end()));
-  //  results.erase(it);
-  //}
 
   tlx_die_unless((data.empty()));
 }

@@ -2,7 +2,7 @@
 #include "mpi/warmup.hpp"
 
 #include "util/random_string_generator.hpp"
-#include "util/timer.hpp"
+#include "util/measuringTool.hpp"
 #include "mpi/synchron.hpp"
 #include <map>
 
@@ -28,12 +28,13 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
 template <typename StringSet, typename StringGenerator, 
          typename SampleSplittersPolicy, 
          typename MPIAllToAllRoutine, 
-         typename ByteEncoder, 
-         typename Timer>
+         typename ByteEncoder> 
+      
            void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
              using namespace dss_schimek;
+             using namespace dss_schimek::measurement;
 
              std::string prefix = std::string("RESULT") +
                " numberProcessors=" + std::to_string(env.size()) +
@@ -43,14 +44,13 @@ template <typename StringSet, typename StringGenerator,
                " stringLength=" + std::to_string(genStringArgs.stringLength) + 
                " MPIAllToAllRoutine=" + MPIAllToAllRoutine::getName() + 
                " ByteEncoder=" + ByteEncoder::getName() + 
-               " Timer=" + Timer::getName() + 
                " StringSet=" + StringSet::getName() + 
                " iteration=" + std::to_string(iteration) +
                " size=" + std::to_string(numOfStrings) +
                " strongScaling=" + std::to_string(strongScaling);
 
-             dss_schimek::Timer& timer = dss_schimek::Timer::timer();//(prefix);
-             timer.setPrefix(prefix);
+             MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+             measuringTool.setPrefix(prefix);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
@@ -71,18 +71,18 @@ template <typename StringSet, typename StringGenerator,
               * END MPI WARMUP
               */
 
-             timer.start("sorting_overall");
+             measuringTool.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder>;
              DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy> sorter;
              StringLcpContainer<StringSet> sorted_string_cont = 
                sorter.sort(rand_string_ptr, std::move(generatedContainer));
 
-             timer.end("sorting_overall");
+             measuringTool.stop("sorting_overall");
 
-             timer.start("prefix_decompression");
+             measuringTool.start("prefix_decompression");
              if (AllToAllPolicy::PrefixCompression && env.size() > 1)
                sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
-             timer.end("prefix_decompression");
+             measuringTool.stop("prefix_decompression");
              const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
              const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
                  numGeneratedChars,
@@ -95,11 +95,11 @@ template <typename StringSet, typename StringGenerator,
                std::abort(); 
              }
              std::stringstream buffer;
-             timer.writeToStream(buffer);
+             measuringTool.writeToStream(buffer);
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
-             timer.reset();
+             measuringTool.reset();
 	   }
 
 namespace PolicyEnums {
@@ -207,8 +207,7 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   StringGenerator,
                   SampleString,
                   MPIRoutineAllToAll,
-                  ByteEncoder,
-                  EmptyTimer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
+                  ByteEncoder>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    }
 
 template<typename StringSet, typename StringGenerator, typename SampleString,

@@ -28,8 +28,7 @@
 #include "util/string.hpp"
 #include "util/string_set.hpp"
 #include "util/structs.hpp"
-#include "util/timer.hpp"
-#include "util/valueTracker.hpp"
+#include "util/measuringTool.hpp"
 
 #include "strings/stringptr.hpp"
 #include "strings/stringcontainer.hpp"
@@ -42,8 +41,6 @@ namespace dsss::mpi {
   template <typename DataType>
     inline std::vector<DataType> alltoall(const std::vector<DataType>& send_data,
         environment env = environment()) {
-      ValueTracker& valueTracker = ValueTracker::valueTracker();
-      valueTracker.add(sizeof(DataType) * send_data.size());
       std::vector<DataType> receive_data(send_data.size(), 0);
       data_type_mapper<DataType> dtm;
       MPI_Alltoall(send_data.data(),
@@ -386,10 +383,11 @@ namespace dsss::mpi {
           const std::vector<size_t>& sendCountsString,
           environment env = environment()) {
 
-
         using namespace dss_schimek;
-        Timer& timer = Timer::timer();
-        timer.start("all_to_all_strings_intern_copy");
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+        measuringTool.start("all_to_all_strings_intern_copy");
         using String = typename StringSet::String;
         using CharIterator = typename StringSet::CharIterator;
 
@@ -411,16 +409,16 @@ namespace dsss::mpi {
               container.lcp_array() + stringsWritten);
           stringsWritten += sendCountsString[interval];
         }
-        timer.end("all_to_all_strings_intern_copy");
+        measuringTool.stop("all_to_all_strings_intern_copy");
 
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.start("all_to_all_strings_mpi");
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("bytes_sent", totalNumberSendBytes);
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(totalNumberSendBytes, "bytes_sent");
 
-        timer.start("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
-        timer.end("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }
     };
@@ -435,10 +433,13 @@ namespace dsss::mpi {
           environment env = environment()){
 
         using namespace dss_schimek;
+        using namespace dss_schimek::measurement;
+
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        dss_schimek::Timer& timer = dss_schimek::Timer::timer();
-        timer.start("all_to_all_strings_intern_copy");
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+        measuringTool.start("all_to_all_strings_intern_copy");
         const StringSet ss = send_data.make_string_set();
 
         if (send_data.size() == 0)
@@ -462,16 +463,16 @@ namespace dsss::mpi {
           offset += send_counts[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.stop("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(send_buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), send_counts, env);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("bytes_sent", send_data.char_size() + send_data.size());
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(send_data.char_size() + send_data.size(), "bytes_sent");
 
         // no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read");
-        timer.end("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
@@ -486,10 +487,13 @@ namespace dsss::mpi {
           environment env = environment()){
 
         using namespace dss_schimek;
+        using namespace dss_schimek::measurement;
+
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        dss_schimek::Timer& timer = dss_schimek::Timer::timer();
-        timer.start("all_to_all_strings_intern_copy");
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+        measuringTool.start("all_to_all_strings_intern_copy");
         const EmptyByteEncoderMemCpy byteEncoder;
         const StringSet ss = send_data.make_string_set();
 
@@ -514,16 +518,16 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.stop("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("bytes_sent", send_data.char_size() + send_data.size());
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(send_data.char_size() + send_data.size(),"bytes_sent");
 
         // no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read");
-        timer.end("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
@@ -539,10 +543,11 @@ namespace dsss::mpi {
           environment env = environment()){
 
         using namespace dss_schimek;
+        using namespace dss_schimek::measurement;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        Timer& timer = Timer::timer();
-        timer.start("all_to_all_strings_intern_copy");
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+        measuringTool.start("all_to_all_strings_intern_copy");
 
         const EmptyLcpByteEncoderMemCpy byteEncoder;
         const StringSet ss = send_data.make_string_set();
@@ -579,16 +584,16 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.stop("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(send_data.lcps().data(), sendCountsString, env);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("bytes_sent", numCharsToSend + send_data.lcps().size());
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(numCharsToSend + send_data.lcps().size(), "bytes_sent");
 
         //// no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read");
-        timer.end("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<StringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
       }
@@ -619,13 +624,14 @@ namespace dsss::mpi {
           environment env = environment()){
 
         using namespace dss_schimek;
+        using namespace dss_schimek::measurement;
         using String = typename StringSet::String;
         using CharIterator = typename StringSet::CharIterator;
-        Timer& timer = Timer::timer();
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const SequentialDelayedByteEncoder byteEncoder;
 
-        timer.start("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_intern_copy");
         const StringSet& sendSet = container.make_string_set();
         std::vector<unsigned char> contiguousStrings = 
           dss_schimek::getContiguousStrings(sendSet, container.char_size());
@@ -662,15 +668,15 @@ namespace dsss::mpi {
           stringsWritten += sendCountsLcp[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.stop("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_mpi");
         std::vector<unsigned char> recv = AllToAllPolicy::alltoallv(buffer.data(), sendCountsTotal);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("bytes_sent", totalNumberSendBytes);
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(totalNumberSendBytes, "bytes_sent");
 
-        timer.start("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
         auto [rawStrings, rawLcps] = byteEncoder.read(recv.data(), recv.size());
-        timer.end("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return StringLcpContainer<StringSet>(std::move(rawStrings), std::move(rawLcps));
       }  
     };
@@ -689,12 +695,13 @@ namespace dsss::mpi {
           environment env = environment()){
 
         using namespace dss_schimek;
+        using namespace dss_schimek::measurement;
         using StringSet = typename StringLcpPtr::StringSet;
         using String = typename StringSet::String;
         using CharIt = typename StringSet::CharIterator;
-        Timer& timer = Timer::timer();
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
-        timer.start("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_intern_copy");
         const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
         const StringSet ss = stringLcpPtr.active();
 
@@ -734,8 +741,8 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
-        timer.end("all_to_all_strings_intern_copy");
-        timer.start("all_to_all_strings_mpi");
+        measuringTool.stop("all_to_all_strings_intern_copy");
+        measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(stringLcpPtr.get_lcp(), sendCountsString, env);
         std::vector<size_t> recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
@@ -747,12 +754,12 @@ namespace dsss::mpi {
                          std::back_inserter(offsets));
 
         std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
-        timer.end("all_to_all_strings_mpi");
-        timer.add("string_exchange_bytes_sent", numCharsToSend + stringLcpPtr.size() * sizeof(size_t));
+        measuringTool.stop("all_to_all_strings_mpi");
+        measuringTool.add(numCharsToSend + stringLcpPtr.size() * sizeof(size_t), "string_exchange_bytes_sent");
 
         //// no bytes are read in this version only for evaluation layout
-        timer.start("all_to_all_strings_read");
-        timer.end("all_to_all_strings_read");
+        measuringTool.start("all_to_all_strings_read");
+        measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp), recvNumberStrings, recvOffsets);
       }
