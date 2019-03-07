@@ -201,7 +201,7 @@ namespace dss_schimek {
           if (env.size() == 1)
             return std::vector<StringIndexPEIndex>();
 
-          std::cout << "distinguishing prefix" << std::endl;
+          measuringTool.setPhase("bloomfilter");
           measuringTool.start("bloomfilter_overall");
           //measuringTool.disableMeasurement();
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
@@ -210,6 +210,7 @@ namespace dss_schimek {
           measuringTool.stop("bloomfilter_overall");
 
 
+          measuringTool.setPhase("splitter");
           measuringTool.start("sample_splitters");
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
           measuringTool.stop("sample_splitters");
@@ -233,10 +234,13 @@ namespace dss_schimek {
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           measuringTool.stop("compute_interval_sizes");
 
+          measuringTool.setPhase("string_exchange");
           measuringTool.start("all_to_all_strings");
           dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet> recv_string_cont_tmp =
             AllToAllStringPolicy::alltoallv(local_string_ptr, interval_sizes, results);
           measuringTool.stop("all_to_all_strings");
+
+          measuringTool.setPhase("merging");
 
           measuringTool.add(recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size(), "num_received_chars");
           size_t num_recv_elems = 
@@ -259,6 +263,7 @@ namespace dss_schimek {
           for (auto str : sortedSet)
             permutation.emplace_back(sortedSet.getIndex(str), sortedSet.getPEIndex(str));
           measuringTool.stop("writeback_permutation");
+          measuringTool.setPhase("none");
 
           return permutation;
         }

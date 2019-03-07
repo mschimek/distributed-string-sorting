@@ -110,7 +110,6 @@ namespace dss_schimek {
         }
       }
       rawStrings.resize(curOffset);
-      std::cout << "rawStrings: " << rawStrings.size() << std::endl;
 
       return make_tuple(rawStrings, numGenStrings, stringLength);
     }
@@ -180,7 +179,6 @@ namespace dss_schimek {
       std::mt19937 rand_gen(randSeedGenerator());
       auto rand = [&](size_t n) { return rand_gen() % n; };
       std::random_shuffle(begin, begin + genStrings, rand);
-      std::cout << "chars: " << this->char_size() << std::endl;
     }
 
     static std::string getName() {

@@ -8,7 +8,7 @@
 namespace dss_schimek {
   namespace measurement {
 
-    struct PhaseCounterPerPhaseRoundDescriptionTypeValue {
+    struct PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationValue {
       using PseudoKey = std::string;
 
       std::string phase;
@@ -16,15 +16,18 @@ namespace dss_schimek {
       size_t round;
       std::string description;
       std::string type;
+      bool rawCommunication;
       size_t value;
 
-      PhaseCounterPerPhaseRoundDescriptionTypeValue(const std::string& phase,
+      PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationValue(const std::string& phase,
           const size_t counterPerPhase,
           const size_t round,
           const std::string& description,
           const std::string& type,
+          const bool rawCommunication,
           const size_t value) 
-        : phase(phase), counterPerPhase(counterPerPhase), description(description), round(round), type(type), value(value) {}
+        : phase(phase), counterPerPhase(counterPerPhase), description(description), round(round), 
+          type(type), rawCommunication(rawCommunication), value(value) {}
 
       const std::string& pseudoKey() const {
         return phase;
@@ -46,8 +49,8 @@ namespace dss_schimek {
         return value;
       }
 
-      friend std::ostream& operator<<(std::ostream& stream, PhaseCounterPerPhaseRoundDescriptionTypeValue& elem) {
-        return stream << "[" << elem.phase << ", " << elem.counterPerPhase << ", " << elem.round << ", " << elem.description << ", " << elem.value << "]";
+      friend std::ostream& operator<<(std::ostream& stream, PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationValue& elem) {
+        return stream << "[" << elem.phase << ", " << elem.counterPerPhase << ", " << elem.round << ", " << elem.description << ", " << elem.rawCommunication <<  ", " << elem.value << "]";
       }
     };
 
@@ -76,12 +79,13 @@ namespace dss_schimek {
       }
     };
 
-    struct CounterPerPhaseTypeValue {
+    struct CounterPerPhaseTypeRawCommunicationValue {
       size_t counterPerPhase;
       std::string type;
+      bool rawCommunication;
       size_t value;
-      CounterPerPhaseTypeValue(const size_t counterPerPhase, const std::string& type, const size_t value)
-        : counterPerPhase(counterPerPhase), type(type), value(value) {}
+      CounterPerPhaseTypeRawCommunicationValue(const size_t counterPerPhase, const std::string& type, const bool rawCommunication, const size_t value)
+        : counterPerPhase(counterPerPhase), type(type), rawCommunication(rawCommunication), value(value) {}
 
       void setPseudoKeyCounter(size_t counter) {
         counterPerPhase = counter;
@@ -98,16 +102,16 @@ namespace dss_schimek {
 
     class MeasuringTool {
       // Columns:
-      // Prefix | Phase | CounterPerPhase | Round | Description | Type | Value
+      // Prefix | Phase | CounterPerPhase | Round | Description | Type | RawCommunication | Value
       //
       // NonTimer: Duplicates are allowed (but since counterPerPhase is incremented there are no duplicates if all fields are taken into account)
-      // Timer: Key = (Phase, Round, Description) Value = (CounterPerPhase, Type, Value)
+      // Timer: Key = (Phase, Round, Description) Value = (CounterPerPhase, Type, RawCommunication, Value)
 
-      using NonTimerRecord = PhaseCounterPerPhaseRoundDescriptionTypeValue;
+      using NonTimerRecord = PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationValue;
       // NonTimerRecord must contain type PseudoKey and functions pseudoKey() and setPseudoKeyCounter, setValue(), getValue()
       using TimerKey = PhaseRoundDescription;
       // TimerKey must contain type PseudoKey and function pseudoKey() 
-      using TimerValue = CounterPerPhaseTypeValue;
+      using TimerValue = CounterPerPhaseTypeRawCommunicationValue;
       // TimerValue must contain functions setType() and setPseudoKeyCounter 
 
       struct OutputFormat {
@@ -117,6 +121,7 @@ namespace dss_schimek {
         size_t round;
         std::string description;
         std::string type;
+        bool rawCommunication;
         size_t value;
 
         friend std::ostream& operator<<(std::ostream& stream, const OutputFormat& outputFormat) {
@@ -126,6 +131,7 @@ namespace dss_schimek {
             << " round=" << outputFormat.round 
             << " operation=" << outputFormat.description
             << " type=" << outputFormat.type
+            << " rawCommunication=" << outputFormat.rawCommunication
             << " value=" << outputFormat.value;
         }
       };
@@ -140,7 +146,7 @@ namespace dss_schimek {
         timer = Timer<TimerKey, TimerValue>();
         nonTimer = NonTimer<NonTimerRecord>();
         prefix = "";
-        curPhase = "";
+        curPhase = "none";
         curRound = 0;
       }
 
@@ -149,11 +155,15 @@ namespace dss_schimek {
       }
 
       void add(size_t value, const std::string& description) {
-        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", value));
+        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", false, value));
+      }
+
+      void addRawCommunication(size_t value, const std::string& description) {
+        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", true, value));
       }
 
       void start(const std::string& description) {
-        timer.start(TimerKey(curPhase, curRound, description), TimerValue(0u, "", 0u));
+        timer.start(TimerKey(curPhase, curRound, description), TimerValue(0u, "", false, 0u));
       }
 
       void stop(const std::string& description) {
@@ -174,10 +184,10 @@ namespace dss_schimek {
         timer.collect(std::back_inserter(timerRecords));
 
         for (const auto& nonTimerRecord : nonTimerRecords)
-          data.push_back({prefix, nonTimerRecord.phase, nonTimerRecord.counterPerPhase, nonTimerRecord.round, nonTimerRecord.description, nonTimerRecord.type, nonTimerRecord.value});
+          data.push_back({prefix, nonTimerRecord.phase, nonTimerRecord.counterPerPhase, nonTimerRecord.round, nonTimerRecord.description, nonTimerRecord.type, nonTimerRecord.rawCommunication, nonTimerRecord.value});
 
         for (const auto& [timerKey, timerValue] : timerRecords)
-          data.push_back({prefix, timerKey.phase, timerValue.counterPerPhase, timerKey.round, timerKey.description, timerValue.type, timerValue.value});
+          data.push_back({prefix, timerKey.phase, timerValue.counterPerPhase, timerKey.round, timerKey.description, timerValue.type, timerValue.rawCommunication, timerValue.value});
         return data;
       }
 
@@ -200,7 +210,7 @@ namespace dss_schimek {
 
       private:
       std::string prefix = "";
-      std::string curPhase = "";
+      std::string curPhase = "none";
       size_t curRound = 0;
       NonTimer<NonTimerRecord> nonTimer;
       Timer<TimerKey, TimerValue> timer;
