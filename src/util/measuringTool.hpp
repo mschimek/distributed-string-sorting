@@ -145,11 +145,11 @@ namespace dss_schimek {
       }
 
       void add(size_t value) {
-        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, "unkown", "type", value));
+        add(value, "unkown");
       }
 
       void add(size_t value, const std::string& description) {
-        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "type", value));
+        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", value));
       }
 
       void start(const std::string& description) {

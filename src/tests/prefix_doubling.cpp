@@ -1,6 +1,6 @@
 #include "sorter/distributed/prefix_doubling.hpp"
 #include "util/random_string_generator.hpp"
-#include "util/timer.hpp"
+#include "util/measuringTool.hpp"
 #include "mpi/synchron.hpp"
 #include <map>
 
@@ -29,12 +29,12 @@ template <typename StringSet, typename StringGenerator,
          typename SampleSplittersPolicy, 
          typename MPIAllToAllRoutine, 
          typename ByteEncoder, 
-         typename GolombEncoding,
-         typename Timer>
+         typename GolombEncoding>
            void execute_sorter(size_t numOfStrings, const bool checkInput, size_t iteration, const bool strongScaling, GeneratedStringsArgs genStringArgs,
                dsss::mpi::environment env = dsss::mpi::environment()) { 
              using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
              using namespace dss_schimek;
+             using dss_schimek::measurement::MeasuringTool;
 
              std::string prefix = std::string("RESULT") +
                " numberProcessors=" + std::to_string(env.size()) +
@@ -45,14 +45,13 @@ template <typename StringSet, typename StringGenerator,
                " MPIAllToAllRoutine=" + MPIAllToAllRoutine::getName() + 
                " ByteEncoder=" + ByteEncoder::getName() +
                " GolombEncoding=" + GolombEncoding::getName() +
-               " Timer=" + Timer::getName() + 
                " StringSet=" + StringSet::getName() + 
                " iteration=" + std::to_string(iteration) +
                " size=" + std::to_string(numOfStrings) +
                " strongScaling=" + std::to_string(strongScaling);
 
-             dss_schimek::Timer& timer = Timer::timer();
-             timer.setPrefix(prefix);
+             MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+             measuringTool.setPrefix(prefix);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
@@ -69,14 +68,14 @@ template <typename StringSet, typename StringGenerator,
              const size_t numGeneratedChars = generatedContainer.char_size();
              const size_t numGeneratedStrings = generatedContainer.size();
 
-             timer.start("sorting_overall");
+             measuringTool.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, MPIAllToAllRoutine>;
 
              DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, GolombEncoding> prefixDoublingSorter;
              std::vector<StringIndexPEIndex> permutation = 
                prefixDoublingSorter.sort(rand_string_ptr);
 
-             timer.end("sorting_overall");
+             measuringTool.stop("sorting_overall");
 
              if (env.size() > 1) {
                auto CompleteStringsCont = dsss::mpi::getStrings(
@@ -102,11 +101,11 @@ template <typename StringSet, typename StringGenerator,
 
              env.barrier();
              std::stringstream buffer;
-             timer.writeToStream(buffer);
+             measuringTool.writeToStream(buffer);
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
-             timer.reset();
+             measuringTool.reset();
            }
 
 namespace PolicyEnums {
@@ -226,8 +225,7 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
                   SampleString,
                   MPIRoutineAllToAll,
                   ByteEncoder,
-                  GolombEncoding,
-                  Timer>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
+                  GolombEncoding>(args.size, args.checkInput, args.iteration, args.strongScaling, args.generatorArgs);
    }
 template<typename StringSet, typename StringGenerator, typename SampleString,
   typename MPIRoutineAllToAll, typename ByteEncoder>

@@ -21,13 +21,12 @@
 #include "merge/stringtools.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
-#include "util/timer.hpp"
+#include "util/measuringTool.hpp"
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
 #include <tlx/algorithm/multiway_merge.hpp>
 
 namespace dss_schimek {
-
 
   struct Duplicate {
     size_t index;
@@ -129,12 +128,13 @@ namespace dss_schimek {
     template <typename DataType>
       static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes) {
         using AllToAllv = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
-        Timer& timer = Timer::timer();
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
-        timer.start("bloomfilter_sendEncodedValues");
+        measuringTool.start("bloomfilter_sendEncodedValues");
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
-        timer.end("bloomfilter_sendEncodedValues");
-        timer.add("bloomfilter_sentEncodedValues", sendData.size() * sizeof(DataType));
+        measuringTool.stop("bloomfilter_sendEncodedValues");
+        measuringTool.add(sendData.size() * sizeof(DataType), "bloomfilter_sentEncodedValues");
         return result;
       }
     static std::string getName() {
@@ -146,9 +146,10 @@ namespace dss_schimek {
     template <typename DataType>
       static inline std::vector<DataType> alltoallv(std::vector<DataType>& sendData, const std::vector<size_t>& intervalSizes, const size_t b = 1048576) {
         using AllToAllv = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
-        Timer& timer = Timer::timer(); 
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         dsss::mpi::environment env;
-        timer.start("bloomfilter_golombEncoding");
+        measuringTool.start("bloomfilter_golombEncoding");
         std::vector<size_t> encodedValuesSizes;
         std::vector<size_t> encodedValues;
         encodedValues.reserve(sendData.size());
@@ -165,15 +166,15 @@ namespace dss_schimek {
           encodedValuesSizes.push_back(sizeEncodedValues);
           begin = end;
         }
-        timer.end("bloomfilter_golombEncoding");
-        timer.start("bloomfilter_sendEncodedValues");
+        measuringTool.stop("bloomfilter_golombEncoding");
+        measuringTool.start("bloomfilter_sendEncodedValues");
 
         std::vector<size_t> recvEncodedValues = AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
         size_t s = sizeof(size_t);
-        timer.add("bloomfilter_sentEncodedValues", encodedValues.size() * sizeof(size_t));
+        measuringTool.add(encodedValues.size() * sizeof(size_t), "bloomfilter_sentEncodedValues");
         std::vector<size_t> recvEncodedValuesSizes = dsss::mpi::alltoall(encodedValuesSizes);
-        timer.end("bloomfilter_sendEncodedValues");
-        timer.start("bloomfilter_golombDecoding");
+        measuringTool.stop("bloomfilter_sendEncodedValues");
+        measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
 
         decodedValues.reserve(recvEncodedValues.size());
@@ -185,7 +186,7 @@ namespace dss_schimek {
           getDeltaDecoding(curDecodeIt, end, std::back_inserter(decodedValues), b); 
           curDecodeIt = end;
         }
-        timer.end("bloomfilter_golombDecoding");
+        measuringTool.stop("bloomfilter_golombDecoding");
         return decodedValues;
       }
     static std::string getName() {
@@ -223,7 +224,7 @@ namespace dss_schimek {
       encodedValues[0] = encodedValuesSize;
 
       //if (encodedValuesSize <=  env.mpi_max_int()) {
-        mpi::data_type_mapper<size_t> dtm;
+      dsss::mpi::data_type_mapper<size_t> dtm;
         MPI_Isend(
             encodedValues.data(),
             encodedValuesSize,
@@ -306,7 +307,7 @@ namespace dss_schimek {
           }
         }
       }
-          MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
+          //MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
       return std::vector<size_t>();
     }
   };
@@ -357,9 +358,10 @@ namespace dss_schimek {
       }
 
       static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
-        Timer& timer = Timer::timer();
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool= MeasuringTool::measuringTool();
 
-        timer.start("bloomfilter_sendToFilterSetup");
+        measuringTool.start("bloomfilter_sendToFilterSetup");
         std::vector<size_t> sendValues = extractSendValues(hashes);
         std::vector<size_t> intervalSizes = computeIntervalSizes(sendValues, bloomfilterSize);
         std::vector<size_t> offsets;
@@ -370,7 +372,7 @@ namespace dss_schimek {
         offsets = dsss::mpi::alltoall(offsets);
 
         std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
-        timer.end("bloomfilter_sendToFilterSetup");
+        measuringTool.stop("bloomfilter_sendToFilterSetup");
         std::vector<size_t> result = SendPolicy::alltoallv(sendValues, intervalSizes);
         return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
       }
@@ -398,13 +400,15 @@ namespace dss_schimek {
       using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
-      dsss::mpi::environment env;
-      Timer& timer = Timer::timer();
+      using namespace dss_schimek::measurement;
 
-      timer.add("bloomfilter_recvHashValues", hashPEIndices.size());
+      MeasuringTool& measuringTool= MeasuringTool::measuringTool();
+      dsss::mpi::environment env;
+
+      measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues");
       env.barrier();
-      timer.start("bloomfilter_findDuplicatesOverallIntern");
-      timer.start("bloomfilter_findDuplicatesSetup");
+      measuringTool.start("bloomfilter_findDuplicatesOverallIntern");
+      measuringTool.start("bloomfilter_findDuplicatesSetup");
       std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
@@ -415,18 +419,18 @@ namespace dss_schimek {
         iteratorPairs.emplace_back(it, it + recvData.intervalSizes[i]);
         it += recvData.intervalSizes[i];
       }
-      timer.end("bloomfilter_findDuplicatesSetup");
+      measuringTool.stop("bloomfilter_findDuplicatesSetup");
       //
       //++++++++++++++++++++++++++++++++++++++
       //
-      timer.start("bloomfilter_findDuplicatesMerge");
+      measuringTool.start("bloomfilter_findDuplicatesMerge");
       tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(), mergedElements.begin(), elementsToMerge);
-      timer.end("bloomfilter_findDuplicatesMerge");
+      measuringTool.stop("bloomfilter_findDuplicatesMerge");
       //
       //++++++++++++++++++++++++++++++++++++++
       //
 
-      timer.start("bloomfilter_findDuplicatesFind");
+      measuringTool.start("bloomfilter_findDuplicatesFind");
       std::vector<std::vector<size_t>> result_sets(recvData.intervalSizes.size());
       std::vector<size_t> counters(recvData.intervalSizes.size(), 0);
 
@@ -461,13 +465,13 @@ namespace dss_schimek {
           sendBuffer.push_back(result_sets[i][j] + recvData.globalOffsets[i] );
         }
       }
-      timer.end("bloomfilter_findDuplicatesFind");
+      measuringTool.stop("bloomfilter_findDuplicatesFind");
       //
       //++++++++++++++++++++++++++++
       //
       size_t totalNumSendDuplicates = std::accumulate(sendCounts_.begin(), sendCounts_.end(), 0);
-      timer.add("bloomfilter_findDuplicatesSendDups", totalNumSendDuplicates * sizeof(size_t));
-      timer.start("bloomfilter_findDuplicatesSendDups");
+      measuringTool.add(totalNumSendDuplicates * sizeof(size_t), "bloomfilter_findDuplicatesSendDups");
+      measuringTool.start("bloomfilter_findDuplicatesSendDups");
       int mpiSmallTypes = 0;
       if (totalNumSendDuplicates > 0)
         mpiSmallTypes = 1;
@@ -475,8 +479,8 @@ namespace dss_schimek {
       std::vector<size_t> duplicates;
       if (dupsToSend)
         duplicates = dsss::mpi::AllToAllvSmall::alltoallv(sendBuffer.data(), sendCounts_);
-      timer.end("bloomfilter_findDuplicatesSendDups");
-      timer.end("bloomfilter_findDuplicatesOverallIntern");
+      measuringTool.stop("bloomfilter_findDuplicatesSendDups");
+      measuringTool.stop("bloomfilter_findDuplicatesOverallIntern");
 
       return duplicates; 
     }
@@ -733,25 +737,27 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
       // Don't need candidates list in first iteration -> all strings are candidates
       std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, std::vector<size_t>& results) {
         dsss::mpi::environment env;
+        using namespace dss_schimek::measurement;
 
-        Timer& timer = Timer::timer();
-        timer.start("bloomfilter_generateHashStringIndices");
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+        measuringTool.start("bloomfilter_generateHashStringIndices");
         GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = 
           generateHashStringIndices(strptr.active(), depth);
 
         std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
         const std::vector<size_t>& eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
-        timer.end("bloomfilter_generateHashStringIndices");
+        measuringTool.stop("bloomfilter_generateHashStringIndices");
 
-        timer.start("bloomfilter_sortHashStringIndices");
+        measuringTool.start("bloomfilter_sortHashStringIndices");
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
-        timer.end("bloomfilter_sortHashStringIndices");
+        measuringTool.stop("bloomfilter_sortHashStringIndices");
 
-        timer.start("bloomfilter_indicesOfLocalDuplicates");
+        measuringTool.start("bloomfilter_indicesOfLocalDuplicates");
         std::vector<size_t> indicesOfLocalDuplicates = getIndicesOfLocalDuplicates(hashStringIndices);
-        timer.end("bloomfilter_indicesOfLocalDuplicates");
+        measuringTool.stop("bloomfilter_indicesOfLocalDuplicates");
 
-        timer.start("bloomfilter_ReducedHashStringIndices");
+        measuringTool.start("bloomfilter_ReducedHashStringIndices");
         std::vector<HashStringIndex> reducedHashStringIndices;
         reducedHashStringIndices.reserve(hashStringIndices.size());
         std::copy_if(hashStringIndices.begin(), 
@@ -760,53 +766,55 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
             [&](const HashStringIndex& v) {
             return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
             });
-        timer.end("bloomfilter_ReducedHashStringIndices");
+        measuringTool.stop("bloomfilter_ReducedHashStringIndices");
 
-        timer.start("bloomfilter_sendHashStringIndices");
+        measuringTool.start("bloomfilter_sendHashStringIndices");
         RecvData recvData = SendPolicy::sendToFilter(reducedHashStringIndices, bloomFilterSize);
-        timer.end("bloomfilter_sendHashStringIndices");
+        measuringTool.stop("bloomfilter_sendHashStringIndices");
 
-        timer.start("bloomfilter_addPEIndex");
+        measuringTool.start("bloomfilter_addPEIndex");
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy::addPEIndex(recvData);
-        timer.end("bloomfilter_addPEIndex");
+        measuringTool.stop("bloomfilter_addPEIndex");
 
-        //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //measuringTool.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
         std::vector<size_t> indicesOfRemoteDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
-        //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //measuringTool.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
 
-        timer.start("bloomfilter_getIndices");
+        measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates = 
           FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
-        timer.end("bloomfilter_getIndices");
+        measuringTool.stop("bloomfilter_getIndices");
 
-        timer.start("bloomfilter_setDepth");
+        measuringTool.start("bloomfilter_setDepth");
         setDepth(strptr, depth, eosCandidates, results);
-        timer.end("bloomfilter_setDepth");
+        measuringTool.stop("bloomfilter_setDepth");
 
         return indicesOfAllDuplicates;
       }
 
       std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth, const std::vector<size_t>& candidates, std::vector<size_t>& results) {
         dsss::mpi::environment env;
+        using namespace dss_schimek::measurement;
 
-        Timer& timer = Timer::timer();
-        timer.start("bloomfilter_generateHashStringIndices");
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+        measuringTool.start("bloomfilter_generateHashStringIndices");
         GeneratedHashStructuresEOSCandidates<HashStringIndex> hashStringIndicesEOSCandidates = 
           generateHashStringIndices(strptr.active(), candidates, depth);
 
         std::vector<HashStringIndex>& hashStringIndices = hashStringIndicesEOSCandidates.data;
         const std::vector<size_t>& eosCandidates = hashStringIndicesEOSCandidates.eosCandidates;
-        timer.end("bloomfilter_generateHashStringIndices");
+        measuringTool.stop("bloomfilter_generateHashStringIndices");
 
-        timer.start("bloomfilter_sortHashStringIndices");
+        measuringTool.start("bloomfilter_sortHashStringIndices");
         std::sort(hashStringIndices.begin(), hashStringIndices.end());
-        timer.end("bloomfilter_sortHashStringIndices");
+        measuringTool.stop("bloomfilter_sortHashStringIndices");
 
-        timer.start("bloomfilter_indicesOfLocalDuplicates");
+        measuringTool.start("bloomfilter_indicesOfLocalDuplicates");
         std::vector<size_t> indicesOfLocalDuplicates = getIndicesOfLocalDuplicates(hashStringIndices);
-        timer.end("bloomfilter_indicesOfLocalDuplicates");
+        measuringTool.stop("bloomfilter_indicesOfLocalDuplicates");
 
-        timer.start("bloomfilter_ReducedHashStringIndices");
+        measuringTool.start("bloomfilter_ReducedHashStringIndices");
         std::vector<HashStringIndex> reducedHashStringIndices;
         reducedHashStringIndices.reserve(hashStringIndices.size());
         std::copy_if(hashStringIndices.begin(), 
@@ -815,28 +823,28 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
                      [&](const HashStringIndex& v) {
                       return !v.isLocalDuplicate || v.isLocalDuplicateButSendAnyway;
                      });
-        timer.end("bloomfilter_ReducedHashStringIndices");
+        measuringTool.stop("bloomfilter_ReducedHashStringIndices");
 
-        timer.start("bloomfilter_sendHashStringIndices");
+        measuringTool.start("bloomfilter_sendHashStringIndices");
         RecvData recvData = SendPolicy::sendToFilter(reducedHashStringIndices, bloomFilterSize);
-        timer.end("bloomfilter_sendHashStringIndices");
+        measuringTool.stop("bloomfilter_sendHashStringIndices");
 
-        timer.start("bloomfilter_addPEIndex");
+        measuringTool.start("bloomfilter_addPEIndex");
         std::vector<HashPEIndex> recvHashPEIndices = SendPolicy::addPEIndex(recvData);
-        timer.end("bloomfilter_addPEIndex");
+        measuringTool.stop("bloomfilter_addPEIndex");
 
-        //timer.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //measuringTool.start(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
         std::vector<size_t> indicesOfRemoteDuplicates = FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
-        //timer.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
+        //measuringTool.end(std::string("bloomfilter_findDuplicatesOverall"), curIteration);
 
-        timer.start("bloomfilter_getIndices");
+        measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates = 
           FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
-        timer.end("bloomfilter_getIndices");
+        measuringTool.stop("bloomfilter_getIndices");
 
-        timer.start("bloomfilter_setDepth");
+        measuringTool.start("bloomfilter_setDepth");
         setDepth(strptr, depth, candidates, eosCandidates, results);
-        timer.end("bloomfilter_setDepth");
+        measuringTool.stop("bloomfilter_setDepth");
 
         return indicesOfAllDuplicates;
       }

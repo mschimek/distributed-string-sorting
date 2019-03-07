@@ -23,7 +23,7 @@
 #include "merge/stringtools.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
-#include "util/timer.hpp"
+#include "util/measuringTool.hpp"
 #include "util/structs.hpp"
 
 
@@ -35,7 +35,7 @@ namespace dss_schimek {
 
   // DEGUB FUNCTION
   template <typename StringPtr>
-    std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr, Timer& timer) {
+    std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
       using StringSet = typename StringPtr::StringSet;
       dsss::mpi::environment env;
 
@@ -73,8 +73,7 @@ namespace dss_schimek {
         env.barrier();
         if (env.rank() == 0)
           std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
-        timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
-        candidates = bloomFilter.filter(local_string_ptr, i, candidates, results, timer, curIteration);
+        candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
         tracker.startIteration(i);
         results_tracker = tracker.getResultsOf(env.rank());
         candidates_tracker = tracker.getCandidatesOf(env.rank());
@@ -141,34 +140,36 @@ namespace dss_schimek {
   template <typename StringPtr, typename GolombPolicy>
     std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr) {
       using StringSet = typename StringPtr::StringSet;
+      using namespace dss_schimek::measurement;
+
       dsss::mpi::environment env;
-      Timer& timer = Timer::timer();
+      MeasuringTool& measuringTool = MeasuringTool::measuringTool();
       const size_t startDepth = 8;
 
-      timer.start(std::string("bloomfilter_init"));
+      measuringTool.start(std::string("bloomfilter_init"));
       StringSet ss = local_string_ptr.active();
       BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
       std::vector<size_t> results(ss.size(), 0);
-      timer.end(std::string("bloomfilter_init"));
+      measuringTool.stop(std::string("bloomfilter_init"));
 
       size_t curIteration = 0;
-      timer.setInternIteration(curIteration);
+      measuringTool.setRound(curIteration);
       std::vector<size_t> candidates = bloomFilter.filter(local_string_ptr, startDepth, results);
 
       for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max(); i *= 2) {
-        timer.setInternIteration(++curIteration);
-        timer.add(std::string("bloomfilter_numberCandidates"), curIteration, candidates.size());
+        measuringTool.setRound(++curIteration);
+        measuringTool.add(candidates.size(), std::string("bloomfilter_numberCandidates"));
         candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
 
-        timer.start(std::string("bloomfilter_allreduce"));
+        measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
         bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
-        timer.end(std::string("bloomfilter_allreduce"));
+        measuringTool.stop(std::string("bloomfilter_allreduce"));
         if (allEmpty)
           break;
-        timer.setInternIteration(++curIteration);
+        measuringTool.setRound(++curIteration);
       }
-      timer.setInternIteration(0);
+      measuringTool.setRound(0);
       return results; 
     }
 
@@ -181,80 +182,83 @@ namespace dss_schimek {
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
           constexpr bool debug = false;
+          using dss_schimek::measurement::MeasuringTool;
 
           using StringSet = typename StringPtr::StringSet;
           using Char = typename StringSet::Char;
-          Timer& timer = Timer::timer();
+
+
+          MeasuringTool& measuringTool = MeasuringTool::measuringTool();
           const StringSet& ss = local_string_ptr.active();
           std::size_t local_n = ss.size();
 
           // sort locally
-          timer.start("sort_locally");
+          measuringTool.start("sort_locally");
           tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
-          timer.end("sort_locally");
+          measuringTool.stop("sort_locally");
 
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
             return std::vector<StringIndexPEIndex>();
 
           std::cout << "distinguishing prefix" << std::endl;
-          timer.start("bloomfilter_overall");
-          //timer.disableMeasurement();
+          measuringTool.start("bloomfilter_overall");
+          //measuringTool.disableMeasurement();
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
           std::vector<size_t> results = computeDistinguishingPrefixes<StringPtr, GolombEncoding>(local_string_ptr);
-          //timer.enableMeasurement();
-          timer.end("bloomfilter_overall");
+          //measuringTool.enableMeasurement();
+          measuringTool.stop("bloomfilter_overall");
 
 
-          timer.start("sample_splitters");
+          measuringTool.start("sample_splitters");
           std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
-          timer.end("sample_splitters");
+          measuringTool.stop("sample_splitters");
 
 
-          timer.add("allgather_splitters_bytes_sent", raw_splitters.size());
-          timer.start("allgather_splitters");
+          measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
+          measuringTool.start("allgather_splitters");
           std::vector<Char> splitters =
             dss_schimek::mpi::allgather_strings(raw_splitters, env);
-          timer.end("allgather_splitters");
+          measuringTool.stop("allgather_splitters");
 
-          timer.start("choose_splitters");
+          measuringTool.start("choose_splitters");
           dss_schimek::StringLcpContainer chosen_splitters_cont = choose_splitters(ss, splitters);
           const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
               chosen_splitters_cont.strings() + chosen_splitters_cont.size());
-          timer.end("choose_splitters");
+          measuringTool.stop("choose_splitters");
 
 
-          timer.start("compute_interval_sizes");
+          measuringTool.start("compute_interval_sizes");
           std::vector<std::size_t> interval_sizes = compute_interval_binary(ss, chosen_splitters_set);
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
-          timer.end("compute_interval_sizes");
+          measuringTool.stop("compute_interval_sizes");
 
-          timer.start("all_to_all_strings");
+          measuringTool.start("all_to_all_strings");
           dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet> recv_string_cont_tmp =
             AllToAllStringPolicy::alltoallv(local_string_ptr, interval_sizes, results);
-          timer.end("all_to_all_strings");
+          measuringTool.stop("all_to_all_strings");
 
-          timer.add("num_received_chars", recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size());
+          measuringTool.add(recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size(), "num_received_chars");
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
 
-          timer.start("compute_ranges");
+          measuringTool.start("compute_ranges");
           std::vector<std::pair<size_t, size_t>> ranges = 
             compute_ranges_and_set_lcp_at_start_of_range(recv_string_cont_tmp, receiving_interval_sizes);
-          timer.end("compute_ranges");
+          measuringTool.stop("compute_ranges");
 
-          timer.start("merge_ranges");
+          measuringTool.start("merge_ranges");
           auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont_tmp), ranges, num_recv_elems);
-          timer.end("merge_ranges");
+          measuringTool.stop("merge_ranges");
 
-          timer.start("writeback_permutation");
+          measuringTool.start("writeback_permutation");
           auto sortedSet = sorted_container.make_string_set();
           std::vector<StringIndexPEIndex> permutation;
           permutation.reserve(sortedSet.size());
 
           for (auto str : sortedSet)
             permutation.emplace_back(sortedSet.getIndex(str), sortedSet.getPEIndex(str));
-          timer.end("writeback_permutation");
+          measuringTool.stop("writeback_permutation");
 
           return permutation;
         }
