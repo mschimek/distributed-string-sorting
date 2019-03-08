@@ -224,9 +224,11 @@ int main() {
   measuringTool.disable();
   dsss::mpi::environment env;
 
+  std::cout << "test: AllToAllStringImplPrefixDoubling" << std::endl;
   bool simulateDuplicates = false;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
 
+  std::cout << "test: AllToAllStringImplPrefixDoubling Duplicates" << std::endl;
   simulateDuplicates = true;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
 
