@@ -145,28 +145,39 @@ namespace dss_schimek {
       void reset() {
         timer = Timer<TimerKey, TimerValue>();
         nonTimer = NonTimer<NonTimerRecord>();
+        disabled = false;
         prefix = "";
         curPhase = "none";
         curRound = 0;
       }
 
       void add(size_t value) {
+        if (disabled)
+          return;
         add(value, "unkown");
       }
 
       void add(size_t value, const std::string& description) {
+        if (disabled)
+          return;
         nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", false, value));
       }
 
       void addRawCommunication(size_t value, const std::string& description) {
+        if (disabled)
+          return;
         nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", true, value));
       }
 
       void start(const std::string& description) {
+        if (disabled)
+          return;
         timer.start(TimerKey(curPhase, curRound, description), TimerValue(0u, "", false, 0u));
       }
 
       void stop(const std::string& description) {
+        if (disabled)
+          return;
         timer.stop(TimerKey(curPhase, curRound, description));
       }
 
@@ -184,16 +195,38 @@ namespace dss_schimek {
         timer.collect(std::back_inserter(timerRecords));
 
         for (const auto& nonTimerRecord : nonTimerRecords)
-          data.push_back({prefix, nonTimerRecord.phase, nonTimerRecord.counterPerPhase, nonTimerRecord.round, nonTimerRecord.description, nonTimerRecord.type, nonTimerRecord.rawCommunication, nonTimerRecord.value});
+          data.push_back({prefix, 
+              nonTimerRecord.phase, 
+              nonTimerRecord.counterPerPhase, 
+              nonTimerRecord.round, 
+              nonTimerRecord.description, 
+              nonTimerRecord.type, 
+              nonTimerRecord.rawCommunication, 
+              nonTimerRecord.value});
 
         for (const auto& [timerKey, timerValue] : timerRecords)
-          data.push_back({prefix, timerKey.phase, timerValue.counterPerPhase, timerKey.round, timerKey.description, timerValue.type, timerValue.rawCommunication, timerValue.value});
+          data.push_back({prefix, 
+              timerKey.phase, 
+              timerValue.counterPerPhase, 
+              timerKey.round, 
+              timerKey.description, 
+              timerValue.type, 
+              timerValue.rawCommunication, 
+              timerValue.value});
         return data;
       }
 
       void writeToStream(std::ostream& stream) {
         for (const auto& data : collect()) 
           stream << data << std::endl;
+      }
+
+      void eanble() {
+        disabled = false;
+      }
+      
+      void disable() {
+        disabled = true;
       }
 
       void setPrefix(const std::string& prefix_) {
@@ -209,6 +242,7 @@ namespace dss_schimek {
       }
 
       private:
+      bool disabled = false;
       std::string prefix = "";
       std::string curPhase = "none";
       size_t curRound = 0;

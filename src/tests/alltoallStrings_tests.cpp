@@ -34,7 +34,6 @@ namespace dss_schimek {
 
     std::vector<unsigned char> getExpectedRawStringsForPrefixCompression(size_t sizePerPE, size_t commonPrefixLength, size_t differentSuffixLength) {
       dsss::mpi::environment env;
-      std::cout << "getting called" << std::endl; 
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
           std::fill_n(std::back_inserter(expectedRawStrings), commonPrefixLength, peIndex + 1);
@@ -222,41 +221,32 @@ int main() {
   using dss_schimek::measurement::MeasuringTool;
   using namespace dss_schimek;
   MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+  measuringTool.disable();
   dsss::mpi::environment env;
 
   bool simulateDuplicates = false;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
-  measuringTool.reset(); // TODO add disable feature in measuringTool
 
   simulateDuplicates = true;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
-  measuringTool.reset(); // TODO add disable feature in measuringTool
 
-
-
+  std::cout << "test: EmptyLcpByteEncoderMemCpy" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyLcpByteEncoderMemCpy>();
-  measuringTool.reset(); 
 
-  std::cout << "1" << std::endl;
-
+  std::cout << "test: EmptyByteEncoderMemCpy" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyByteEncoderMemCpy>();
-  measuringTool.reset();
 
-  std::cout << "2" << std::endl;
+  std::cout << "test: EmptyByteEncoderCopy" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyByteEncoderCopy>();
-  measuringTool.reset(); 
 
-  std::cout << "3" << std::endl;
+  std::cout << "test: SequentialDelayedByteEncoder" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<SequentialDelayedByteEncoder>();
-  measuringTool.reset();
 
-  std::cout << "4" << std::endl;
+  std::cout << "test: SequentialByteEncoder" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<SequentialByteEncoder>();
-  measuringTool.reset();
 
-  std::cout << "5" << std::endl;
+  std::cout << "test: InterleavedByteEncoder" << std::endl;
   dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<InterleavedByteEncoder>();
-  measuringTool.reset();
 
   env.finalize();
 }
