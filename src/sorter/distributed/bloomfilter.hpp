@@ -602,6 +602,104 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
       }
     };
 
+  template <typename StringSet>
+    class BloomfilterTest {
+      using String = typename StringSet::String;
+      using Iterator = typename StringSet::Iterator;
+      using CharIt = typename StringSet::CharIterator;
+      using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
+
+      dsss::mpi::environment env;
+
+void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std::vector<size_t>& distinguishingPrefixLength) {
+        dsss::mpi::environment env;
+        if (stringTriples.empty())
+          return;
+
+        std::stable_sort(stringTriples.begin(), stringTriples.end());
+        StringTriple prevHashTriple = stringTriples[0];
+        bool duplicate = false;
+
+        for (size_t i = 1; i < stringTriples.size(); ++i) {
+          const StringTriple prevStringTriple = stringTriples[i - 1];
+          const StringTriple curStringTriple = stringTriples[i];
+
+          const unsigned char * s1 = prevStringTriple.string;
+          const unsigned char * s2 = curStringTriple.string;
+
+          const size_t distValuePrevCur = 1 + dss_schimek::calc_lcp(s1, s2); 
+          if (prevStringTriple.PEIndex == env.rank()) {
+            const size_t oldValue = distinguishingPrefixLength[prevStringTriple.stringIndex];
+            distinguishingPrefixLength[prevStringTriple.stringIndex] = distValuePrevCur > oldValue ? distValuePrevCur : oldValue;
+          }
+          if (curStringTriple.PEIndex == env.rank()) {
+            const size_t oldValue = distinguishingPrefixLength[curStringTriple.stringIndex];
+            distinguishingPrefixLength[curStringTriple.stringIndex] = distValuePrevCur > oldValue ? distValuePrevCur : oldValue;
+          }
+        }
+      }
+
+      struct ContainerSizesIndices {
+        using Container = dss_schimek::StringLcpContainer<StringSet>;
+        Container container;
+        std::vector<size_t> intervalSizes;
+        std::vector<size_t> stringIndices;
+        ContainerSizesIndices(Container&& container, std::vector<size_t>&& intervalSizes, std::vector<size_t>&& stringIndices) 
+          : container(std::move(container)), intervalSizes(std::move(intervalSizes)), stringIndices(std::move(stringIndices)) {}
+      };
+
+      std::vector<StringTriple> generateStringTriples(ContainerSizesIndices& containerSizesIndices) {
+        const std::vector<size_t>& intervalSizes = containerSizesIndices.intervalSizes;
+        const StringSet globalSet = containerSizesIndices.container.make_string_set();
+        std::vector<size_t>& stringIndices = containerSizesIndices.stringIndices;
+
+        size_t totalNumSentStrings = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
+
+        std::vector<StringTriple> stringTriples;
+        if (totalNumSentStrings == 0) 
+          return stringTriples;
+
+        stringTriples.reserve(totalNumSentStrings);
+        size_t curOffset = 0; 
+        auto begin = globalSet.begin();
+
+        for (size_t curRank = 0; curRank < env.size(); ++curRank) {
+          for (size_t i = 0; i < intervalSizes[curRank]; ++i) {
+            String curString = globalSet[begin + curOffset + i];
+            stringTriples.emplace_back(globalSet.get_chars(curString, 0), stringIndices[curOffset + i], curRank);
+          } 
+          curOffset += intervalSizes[curRank];
+        }
+        return stringTriples;
+      }
+
+      ContainerSizesIndices allgatherStrings(StringLcpPtr strptr,
+          std::vector<size_t>& candidates) {
+
+        StringSet ss = strptr.active();
+        std::vector<unsigned char> send_buffer;
+
+        for (size_t j = 0; j < candidates.size(); ++j) {
+          String str = ss[ss.begin() + candidates[j]];
+          size_t string_length = ss.get_length(str) + 1; 
+          std::copy_n(ss.get_chars(str, 0), string_length, std::back_inserter(send_buffer));
+        }
+        size_t numStrings = candidates.size();
+
+        std::vector<size_t> recvCounts = dsss::mpi::allgather(numStrings);
+        std::vector<size_t> stringIndices = dsss::mpi::allgatherv(candidates);
+        std::vector<unsigned char> recvBuffer = dsss::mpi::allgatherv(send_buffer);
+        return ContainerSizesIndices(std::move(recvBuffer), std::move(recvCounts), std::move(stringIndices));
+      }
+      public: 
+      void filter_exact(StringLcpPtr strptr, 
+          std::vector<size_t>& candidates, std::vector<size_t>& results) {
+        ContainerSizesIndices containerSizesIndices = allgatherStrings(strptr, candidates);
+        std::vector<StringTriple> globalStringTriples = generateStringTriples(containerSizesIndices);
+        computeExactDistPrefixLengths(globalStringTriples, results);
+      }
+    };
+
 
   template <typename StringSet, typename FindDuplicatesPolicy, typename SendPolicy>
     class BloomFilter {
