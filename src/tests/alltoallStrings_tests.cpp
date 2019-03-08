@@ -34,10 +34,11 @@ namespace dss_schimek {
 
     std::vector<unsigned char> getExpectedRawStringsForPrefixCompression(size_t sizePerPE, size_t commonPrefixLength, size_t differentSuffixLength) {
       dsss::mpi::environment env;
+      std::cout << "getting called" << std::endl; 
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
-        for (size_t i = 0; i < sizePerPE; ++i) {
           std::fill_n(std::back_inserter(expectedRawStrings), commonPrefixLength, peIndex + 1);
+        for (size_t i = 0; i < sizePerPE; ++i) {
           expectedRawStrings.push_back(i + 1);
           std::fill_n(std::back_inserter(expectedRawStrings), differentSuffixLength, peIndex + 1);
           expectedRawStrings.push_back(0);
@@ -94,16 +95,17 @@ namespace dss_schimek {
     }
 
     template <typename StringSet>
-    struct Data {
+    struct SetupData {
       dss_schimek::StringLcpContainer<StringSet> container;
       std::vector<size_t> sendCounts;
       size_t size;
       size_t sizePerPE;
       size_t commonPrefixLength;
+      size_t differentSuffixLength;
     };
 
     template <typename StringSet>
-      Data<StringSet> commonSetup() {
+      SetupData<StringSet> commonSetup() {
         using namespace dsss::mpi;
         using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
         dsss::mpi::environment env;
@@ -122,11 +124,10 @@ namespace dss_schimek {
           localStringPtr.set_lcp(i, commonPrefixLength);
         localStringPtr.set_lcp(0, 0);
 
-      return {std::move(container), std::move(sendCounts), size, sizePerPE, commonPrefixLength};
+      return {std::move(container), std::move(sendCounts), size, sizePerPE, commonPrefixLength, differentSuffixLength};
     }
     
     void AllToAllStringImplPrefixDoubling_test(bool simulateDuplicates) {
-      using namespace dsss::mpi;
       using StringSet = UCharLengthStringSet;
       using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
       using AllToAllv = dsss::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, dsss::mpi::AllToAllvSmall>;
@@ -134,22 +135,16 @@ namespace dss_schimek {
 
       dsss::mpi::environment env;
 
-
-      auto data = commonSetup<StringSet>();
-      StringLcpContainer<StringSet>& container = data.container; 
-      StringLcpPtr localStringPtr = container.make_string_lcp_ptr();
-      std::vector<size_t>& sendCounts = data.sendCounts;
-      size_t commonPrefixLength = data.commonPrefixLength;
-      size_t size = data.size;
-      size_t sizePerPE = data.sizePerPE;
+      auto setupData = commonSetup<StringSet>();
+      StringLcpPtr localStringPtr = setupData.container.make_string_lcp_ptr();
 
       // all PEs get same amount of strings
       // distinguishing prefix size is reduced by 1 if one wants to simulate that all locally generated strings are equal
-      size_t distinguishingPrefixLength = simulateDuplicates ? commonPrefixLength : commonPrefixLength + 1;
-      std::vector<size_t> distinguishingPrefix(size, distinguishingPrefixLength);
+      size_t distinguishingPrefixLength = simulateDuplicates ? setupData.commonPrefixLength : setupData.commonPrefixLength + 1;
+      std::vector<size_t> distinguishingPrefix(setupData.size, distinguishingPrefixLength);
 
       // exchange strings
-      auto recvContainer = sender.alltoallv(localStringPtr, sendCounts, distinguishingPrefix);
+      auto recvContainer = sender.alltoallv(localStringPtr, setupData.sendCounts, distinguishingPrefix);
 
       
       const auto& recvLcps = recvContainer.lcps();
@@ -158,31 +153,110 @@ namespace dss_schimek {
       // get expected raw strings
       std::vector<unsigned char> expectedRawStrings;
       if (simulateDuplicates)
-        expectedRawStrings = getExpectedRawStrings_DuplicatesForPrefixDoubling(sizePerPE, commonPrefixLength);
+        expectedRawStrings = getExpectedRawStrings_DuplicatesForPrefixDoubling(setupData.sizePerPE, setupData.commonPrefixLength);
       else
-        expectedRawStrings = getExpectedRawStringsForPrefixDoubling(sizePerPE, commonPrefixLength);
-
-      // check whether lcp values are correct, first lcp value from each PE must be 0, the rest equal to commonPrefixLength
-      const std::vector<size_t>& expectedLcps = getExpectedLcpValues(sizePerPE, commonPrefixLength);
+        expectedRawStrings = getExpectedRawStringsForPrefixDoubling(setupData.sizePerPE, setupData.commonPrefixLength);
+      
+      // get expected lcp values
+      const std::vector<size_t>& expectedLcps = getExpectedLcpValues(setupData.sizePerPE, setupData.commonPrefixLength);
 
       tlx_die_unless(recvLcps == expectedLcps);
       tlx_die_unless(recvRawStrings == expectedRawStrings);
     }
+
+    template <typename ByteEncoder>
+      void AllToAllStringsNonPrefixDoubling_test() {
+        using StringSet = UCharLengthStringSet;
+        using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
+        using StringContainer = dss_schimek::StringLcpContainer<StringSet>;
+        using AllToAllv = dsss::mpi::AllToAllStringImpl<StringSet, dsss::mpi::AllToAllvSmall, ByteEncoder>;
+        AllToAllv sender;
+
+
+        auto setupData = commonSetup<StringSet>();
+        StringLcpPtr localStringPtr = setupData.container.make_string_lcp_ptr();
+        auto recvContainer = sender.alltoallv(setupData.container, setupData.sendCounts);
+
+        auto& sendRawStrings = setupData.container.raw_strings();
+
+        //for (size_t i = 0; i < sendRawStrings.size(); ++i) {
+        //  while(sendRawStrings[i] != 0) {
+        //    std::cout << (int) sendRawStrings[i];
+        //    ++i;
+        //  }
+        //  std::cout << (int) sendRawStrings[i] << std::endl;
+        //}
+
+        const auto& recvLcps = recvContainer.lcps();
+        const auto& recvRawStrings = recvContainer.raw_strings();
+
+        //for (size_t i = 0; i < recvRawStrings.size(); ++i) {
+        //  while(recvRawStrings[i] != 0) {
+        //    std::cout << (int) recvRawStrings[i];
+        //    ++i;
+        //  }
+        //  std::cout << (int) recvRawStrings[i] << std::endl;
+        //}
+
+        const std::vector<size_t>& expectedLcpValues = getExpectedLcpValues(setupData.sizePerPE, setupData.commonPrefixLength);
+        std::vector<unsigned char> expectedRawStrings;
+        if (AllToAllv::PrefixCompression) {
+          expectedRawStrings = getExpectedRawStringsForPrefixCompression(setupData.sizePerPE, 
+              setupData.commonPrefixLength, 
+              setupData.differentSuffixLength);
+        } else {
+          expectedRawStrings = getExpectedRawStrings(setupData.sizePerPE, 
+              setupData.commonPrefixLength, 
+              setupData.differentSuffixLength);
+        }
+
+        tlx_die_unless(recvLcps == expectedLcpValues);
+        tlx_die_unless(recvRawStrings == expectedRawStrings);
+      }
+
+
   }
 }
 
 int main() {
   using dss_schimek::measurement::MeasuringTool;
+  using namespace dss_schimek;
   MeasuringTool& measuringTool = MeasuringTool::measuringTool();
   dsss::mpi::environment env;
 
   bool simulateDuplicates = false;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
-
   measuringTool.reset(); // TODO add disable feature in measuringTool
 
   simulateDuplicates = true;
   dss_schimek::tests::AllToAllStringImplPrefixDoubling_test(simulateDuplicates);
+  measuringTool.reset(); // TODO add disable feature in measuringTool
+
+
+
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyLcpByteEncoderMemCpy>();
+  measuringTool.reset(); 
+
+  std::cout << "1" << std::endl;
+
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyByteEncoderMemCpy>();
+  measuringTool.reset();
+
+  std::cout << "2" << std::endl;
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<EmptyByteEncoderCopy>();
+  measuringTool.reset(); 
+
+  std::cout << "3" << std::endl;
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<SequentialDelayedByteEncoder>();
+  measuringTool.reset();
+
+  std::cout << "4" << std::endl;
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<SequentialByteEncoder>();
+  measuringTool.reset();
+
+  std::cout << "5" << std::endl;
+  dss_schimek::tests::AllToAllStringsNonPrefixDoubling_test<InterleavedByteEncoder>();
+  measuringTool.reset();
 
   env.finalize();
 }

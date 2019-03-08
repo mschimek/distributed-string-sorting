@@ -429,6 +429,12 @@ namespace dsss::mpi {
 
         size_t totalNumberSendBytes = std::accumulate(sendCountsTotal.begin(), sendCountsTotal.end(), 0);
 
+        auto stringLcpPtr = container.make_string_lcp_ptr();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
+
         std::vector<unsigned char> buffer(totalNumberSendBytes);
         unsigned char* curPos = buffer.data();
         for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
@@ -479,6 +485,13 @@ namespace dsss::mpi {
         std::vector<size_t> receive_buffer_lcp;
         std::vector<size_t> send_counts_lcp(send_counts);
         std::vector<size_t> send_counts_char(send_counts.size(), 0);
+
+        auto stringLcpPtr = send_data.make_string_lcp_ptr();
+
+        for (size_t interval = 0, stringsWritten = 0; interval < send_counts.size(); ++interval) {
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
+          stringsWritten += send_counts[interval];
+        }
 
         std::vector<unsigned char> send_buffer;
         send_buffer.reserve(send_data.char_size());
@@ -534,6 +547,12 @@ namespace dsss::mpi {
         std::vector<size_t> receive_buffer_lcp;
         std::vector<size_t> send_counts_lcp(sendCountsString);
         std::vector<size_t> send_counts_char(sendCountsString.size());
+          
+        auto stringLcpPtr = send_data.make_string_lcp_ptr();
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
 
         std::vector<unsigned char> buffer(send_data.char_size());
         unsigned char* curPos = buffer.data();
@@ -670,6 +689,13 @@ namespace dsss::mpi {
         std::vector<size_t> sendCountsChar(sendCountsString.size(), 0);
         std::vector<size_t> sendCountsTotal(sendCountsString.size(), 0);
 
+        auto stringLcpPtr = container.make_string_lcp_ptr();
+
+        for (size_t interval = 0, stringsWritten = 0; interval < sendCountsString.size(); ++interval) {
+          *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
+          stringsWritten += sendCountsString[interval];
+        }
+
         for (size_t interval = 0, offset = 0; interval < sendCountsString.size(); ++interval) {
           for (size_t j = offset; j < sendCountsString[interval] + offset; ++j) {
             size_t stringLength = sendSet.get_length(sendSet[sendSet.begin() + j]); 
@@ -747,6 +773,7 @@ namespace dsss::mpi {
           *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
           stringsWritten += sendCountsString[interval];
         }
+
         const size_t L = std::accumulate(stringLcpPtr.get_lcp(), 
                                          stringLcpPtr.get_lcp() + stringLcpPtr.size(), 
                                          0);
