@@ -81,7 +81,6 @@ namespace dss_schimek {
       const size_t numberInternChars = maxInternChar - minInternChar + 1;
       const size_t k = std::max(desiredStringLength * dToN, std::ceil(std::log(numStrings) / std::log(numberInternChars)));
       const size_t stringLength = std::max(desiredStringLength, k);
-      const size_t charLength = std::ceil(0.5 * std::log(numStrings) / log(numberInternChars));
       std::vector<unsigned char> rawStrings(numStrings * (stringLength + 1), minInternChar);
 
       const size_t globalSeed = getSameSeedGlobally();

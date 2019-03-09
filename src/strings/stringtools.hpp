@@ -44,7 +44,6 @@ typedef unsigned int uint128_t __attribute__ ((mode(TI)));
 template<typename StringSet>
   std::vector<typename StringSet::Char> getContiguousStrings(const StringSet& ss, size_t hintNumChars = 1000) {
     using Char = typename StringSet::Char;
-    using CharIterator = typename StringSet::CharIterator;
     using String = typename StringSet::String;
 
     std::vector<Char> contiguousStrings;

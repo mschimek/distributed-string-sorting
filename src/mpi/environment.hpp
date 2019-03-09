@@ -48,11 +48,11 @@ public:
 
   /// \brief Gets rank of the processing element in the group (communicator).
   /// \return The rank of the processing element.
-  std::int32_t rank() const;
+  std::uint32_t rank() const;
 
   /// \brief Gets size of the group (communicator).
   /// \return The size of the group.
-  std::int32_t size() const;
+  std::uint32_t size() const;
 
   /// \return The maximum integer value that MPI can handle as amount of 
   /// that must be communicated
@@ -69,8 +69,8 @@ public:
 
 private:
   MPI_Comm communicator_;
-  std::int32_t world_rank_;
-  std::int32_t world_size_;
+  std::uint32_t world_rank_;
+  std::uint32_t world_size_;
 }; // class environment
 
 } // namespace dsss::mpi

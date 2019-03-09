@@ -152,7 +152,7 @@ static inline std::vector<DataType> allgatherv(
     std::vector<DataType> receiving_data(
       receiving_sizes.back() + receiving_offsets.back());
 
-    for (int32_t i = 0; i < env.size(); ++i) {
+    for (uint32_t i = 0; i < env.size(); ++i) {
       auto receive_type = get_big_type<DataType>(receiving_sizes[i]);
       MPI_Irecv(
         receiving_data.data() + receiving_offsets[i],
@@ -164,7 +164,7 @@ static inline std::vector<DataType> allgatherv(
         &mpi_requests[i]);
     }
     auto send_type = get_big_type<DataType>(local_size);
-    for (int32_t i = env.rank(); i < env.rank() + env.size(); ++i) {
+    for (uint32_t i = env.rank(); i < env.rank() + env.size(); ++i) {
       int32_t target = i % env.size();
       MPI_Isend(
         send_data.data(),

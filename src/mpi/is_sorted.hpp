@@ -12,7 +12,7 @@ namespace dss_schimek {
   bool is_sorted(const StringPtr& strptr, dsss::mpi::environment env = dsss::mpi::environment())
   {
     using StringSet = typename StringPtr::StringSet;
-    using String = typename StringSet::String;
+
     const StringSet& ss = strptr.active();
     bool is_locally_sorted = ss.check_order();
 

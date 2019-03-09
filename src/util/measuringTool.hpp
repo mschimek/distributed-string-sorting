@@ -26,8 +26,8 @@ namespace dss_schimek {
           const std::string& type,
           const bool rawCommunication,
           const size_t value) 
-        : phase(phase), counterPerPhase(counterPerPhase), description(description), round(round), 
-          type(type), rawCommunication(rawCommunication), value(value) {}
+        : phase(phase), counterPerPhase(counterPerPhase), round(round), 
+          description(description), type(type), rawCommunication(rawCommunication), value(value) {}
 
       const std::string& pseudoKey() const {
         return phase;

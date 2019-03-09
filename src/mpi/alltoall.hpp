@@ -284,9 +284,9 @@ namespace dsss::mpi {
               std::vector<MPI_Request> mpi_request(2 * env.size());
               std::vector<DataType> receive_data(receive_displacements.back() +
                   receive_counts.back());
-              for (int32_t i = 0; i < env.size(); ++i) {
+              for (uint32_t i = 0; i < env.size(); ++i) {
                 // start with self send/recv
-                auto source = (env.rank() + (env.size() - i)) % env.size();
+                int32_t source = (env.rank() + (env.size() - i)) % env.size();
                 auto receive_type = get_big_type<DataType>(receive_counts[source]);
                 MPI_Irecv(receive_data.data() + receive_displacements[source],
                     1,
@@ -297,8 +297,8 @@ namespace dsss::mpi {
                     &mpi_request[source]);
               }
               // dispatch sends
-              for (int32_t i = 0; i < env.size(); ++i) {
-                auto target = (env.rank() + i) % env.size();
+              for (uint32_t i = 0; i < env.size(); ++i) {
+                int32_t target = (env.rank() + i) % env.size();
                 auto send_type = get_big_type<DataType>(send_counts[target]);
                 MPI_Isend(send_data + send_displacements[target],
                     1,
@@ -418,8 +418,6 @@ namespace dsss::mpi {
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("all_to_all_strings_intern_copy");
-        using String = typename StringSet::String;
-        using CharIterator = typename StringSet::CharIterator;
 
         const ByteEncoderPolicy byteEncoder;
         const StringSet& sendSet = container.make_string_set();
@@ -472,7 +470,6 @@ namespace dsss::mpi {
         using namespace dss_schimek::measurement;
 
         using String = typename StringSet::String;
-        using CharIt = typename StringSet::CharIterator;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("all_to_all_strings_intern_copy");
@@ -532,8 +529,6 @@ namespace dsss::mpi {
         using namespace dss_schimek;
         using namespace dss_schimek::measurement;
 
-        using String = typename StringSet::String;
-        using CharIt = typename StringSet::CharIterator;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("all_to_all_strings_intern_copy");
@@ -593,8 +588,7 @@ namespace dsss::mpi {
 
         using namespace dss_schimek;
         using namespace dss_schimek::measurement;
-        using String = typename StringSet::String;
-        using CharIt = typename StringSet::CharIterator;
+
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         measuringTool.start("all_to_all_strings_intern_copy");
 
@@ -674,8 +668,7 @@ namespace dsss::mpi {
 
         using namespace dss_schimek;
         using namespace dss_schimek::measurement;
-        using String = typename StringSet::String;
-        using CharIterator = typename StringSet::CharIterator;
+
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const SequentialDelayedByteEncoder byteEncoder;
@@ -753,8 +746,7 @@ namespace dsss::mpi {
         using namespace dss_schimek;
         using namespace dss_schimek::measurement;
         using StringSet = typename StringLcpPtr::StringSet;
-        using String = typename StringSet::String;
-        using CharIt = typename StringSet::CharIterator;
+
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("all_to_all_strings_intern_copy");

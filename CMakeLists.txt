@@ -12,6 +12,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external/misc/cmake")
 project(dsss)
 add_compile_options(-std=c++17)
 add_compile_options(-O3)
+add_compile_options(-Wall)
 
 
 set(CMAKE_CXX_STANDARD 17)

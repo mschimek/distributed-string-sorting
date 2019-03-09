@@ -18,8 +18,17 @@ environment::environment(MPI_Comm communicator)
   if (DSSS_UNLIKELY(!environment::initialized())) {
     MPI_Init(nullptr, nullptr);
   }
-  MPI_Comm_rank(communicator_, &world_rank_);
-  MPI_Comm_size(communicator_, &world_size_);
+  int32_t world_rank_tmp;
+  int32_t world_size_tmp;
+  MPI_Comm_rank(communicator_, &world_rank_tmp);
+  MPI_Comm_size(communicator_, &world_size_tmp);
+  if (DSSS_UNLIKELY(world_rank_tmp < 0 || world_size_tmp < 0)) {
+    std::cout << "rank: " << world_rank_tmp << " or "
+              << "size: " << world_size_tmp << " is negative!" 
+              << std::endl;
+  }
+  world_rank_ = static_cast<uint32_t>(world_rank_tmp);
+  world_size_ = static_cast<uint32_t>(world_size_tmp);
 }
 
 environment::environment(const environment& other) = default;
@@ -37,11 +46,11 @@ void environment::finalize() {
     MPI_Finalize();
   }
 
-std::int32_t environment::rank() const {
+std::uint32_t environment::rank() const {
   return world_rank_;
 }
 
-std::int32_t environment::size() const {
+std::uint32_t environment::size() const {
   return world_size_;
 }
 

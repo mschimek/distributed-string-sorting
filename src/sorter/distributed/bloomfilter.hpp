@@ -265,12 +265,11 @@ namespace dss_schimek {
       startIndices.push_back(0);
       std::partial_sum(intervalSizes.begin(), intervalSizes.end(), std::back_inserter(startIndices));
 
-      const size_t numRecvElements = std::accumulate(recvIntervalSizes.begin(), recvIntervalSizes.end(), 0);
       std::vector<std::vector<size_t>> recvData(env.size());
 
       const bool PESizeIsEven = env.size() % 2 == 0;
-      const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
-      const auto begin = sendData.begin();
+      //const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
+      //const auto begin = sendData.begin();
       std::vector<MPI_Request> requests(env.size() * 2);
       for (size_t j = 0; j < env.size(); ++j) {
         size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
@@ -317,7 +316,6 @@ namespace dss_schimek {
     std::vector<size_t> indices;
     indices.reserve(env.size());
     auto curPosWithinVector = hashes.begin(); 
-    size_t upperPartitionLimit = bloomFilterSize / env.size();
     for (size_t i = 0; i < env.size(); ++i) {
       const size_t upperPartitionLimit = (i + 1) * (bloomFilterSize / env.size()) - 1;
       auto pos = std::upper_bound(curPosWithinVector, hashes.end(), upperPartitionLimit);
@@ -397,7 +395,6 @@ namespace dss_schimek {
     using DataType = HashPEIndex;
 
     static inline std::vector<size_t> findDuplicates(std::vector<HashPEIndex>& hashPEIndices, const RecvData& recvData) {
-      using ConstIterator = std::vector<HashPEIndex>::const_iterator;
       using Iterator = std::vector<HashPEIndex>::iterator;
       using IteratorPair = std::pair<Iterator, Iterator>;
       using namespace dss_schimek::measurement;
@@ -412,7 +409,6 @@ namespace dss_schimek {
       std::vector<IteratorPair> iteratorPairs;
       size_t elementsToMerge = std::accumulate(recvData.intervalSizes.begin(), recvData.intervalSizes.end(), 0);
       std::vector<HashPEIndex> mergedElements(elementsToMerge);
-      auto outputIt = std::back_inserter(mergedElements);
       Iterator it = hashPEIndices.begin(); 
 
       for (size_t i = 0; i < recvData.intervalSizes.size(); ++i) {

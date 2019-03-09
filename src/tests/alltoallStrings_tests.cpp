@@ -166,36 +166,15 @@ namespace dss_schimek {
     template <typename ByteEncoder>
       void AllToAllStringsNonPrefixDoubling_test() {
         using StringSet = UCharLengthStringSet;
-        using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
-        using StringContainer = dss_schimek::StringLcpContainer<StringSet>;
         using AllToAllv = dsss::mpi::AllToAllStringImpl<StringSet, dsss::mpi::AllToAllvSmall, ByteEncoder>;
         AllToAllv sender;
 
 
         auto setupData = commonSetup<StringSet>();
-        StringLcpPtr localStringPtr = setupData.container.make_string_lcp_ptr();
         auto recvContainer = sender.alltoallv(setupData.container, setupData.sendCounts);
-
-        auto& sendRawStrings = setupData.container.raw_strings();
-
-        //for (size_t i = 0; i < sendRawStrings.size(); ++i) {
-        //  while(sendRawStrings[i] != 0) {
-        //    std::cout << (int) sendRawStrings[i];
-        //    ++i;
-        //  }
-        //  std::cout << (int) sendRawStrings[i] << std::endl;
-        //}
 
         const auto& recvLcps = recvContainer.lcps();
         const auto& recvRawStrings = recvContainer.raw_strings();
-
-        //for (size_t i = 0; i < recvRawStrings.size(); ++i) {
-        //  while(recvRawStrings[i] != 0) {
-        //    std::cout << (int) recvRawStrings[i];
-        //    ++i;
-        //  }
-        //  std::cout << (int) recvRawStrings[i] << std::endl;
-        //}
 
         const std::vector<size_t>& expectedLcpValues = getExpectedLcpValues(setupData.sizePerPE, setupData.commonPrefixLength);
         std::vector<unsigned char> expectedRawStrings;

@@ -21,7 +21,6 @@ namespace dss_schimek {
             const StringSet ss) const {
 
           using String = typename StringSet::String;
-          using CharIt = typename StringSet::CharIterator;
 
           const size_t size = ss.size();
           size_t numCharsWritten = 0;
@@ -53,7 +52,6 @@ class EmptyLcpByteEncoderMemCpy{
             const StringSet ss, const size_t* lcps) const {
 
           using String = typename StringSet::String;
-          using CharIt = typename StringSet::CharIterator;
 
           const size_t size = ss.size();
           size_t numCharsWritten = 0;
@@ -87,7 +85,6 @@ class EmptyPrefixDoublingLcpByteEncoderMemCpy{
             const StringSet ss, const size_t* lcps, const size_t* distinguishingPrefixes) const {
 
           using String = typename StringSet::String;
-          using CharIt = typename StringSet::CharIterator;
 
           const size_t size = ss.size();
           size_t numCharsWritten = 0;
@@ -166,7 +163,6 @@ public:
           size_t numChars,
           const size_t* numbersToWrite,
           size_t numNumbers) const {
-        const size_t alignmentSizeT = alignof(size_t);
         const size_t sizeOfSizeT = sizeof(size_t);
 
         memcpy(buffer, &numChars, sizeOfSizeT);
@@ -283,7 +279,6 @@ public:
             const size_t* numbersToWrite) const {
 
           using String = typename StringSet::String;
-          using CharIt = typename StringSet::CharIterator;
 
           unsigned char* const startOfBuffer = buffer;
           size_t numChars = 0;
@@ -388,7 +383,6 @@ public:
             const size_t* numbersToWrite) const {
 
           using String = typename StringSet::String;
-          using CharIt = typename StringSet::CharIterator;
 
           unsigned char* const startOfBuffer = buffer;
           size_t numChars = 0;

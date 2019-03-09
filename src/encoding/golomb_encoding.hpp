@@ -65,7 +65,6 @@ inline void getDeltaEncoding(InputIterator begin, InputIterator end, BlockWriter
 
 template <typename InputIterator, typename OutputIterator>
 inline void getDeltaEncoding(InputIterator begin, InputIterator end, OutputIterator out, size_t b) {
-  using StreamWriter = thrill::core::GolombBitStreamWriter<BlockWriter>;
   BlockWriterIt<OutputIterator> blockWriter(out);
   getDeltaEncoding(begin, end, blockWriter, b);
 }
@@ -76,7 +75,7 @@ std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
   BlockReader reader(values.begin(), values.end());
   std::vector<size_t> decodedValues;
   const size_t b = 8;
-  GolombReader golombReader(reader, 8);
+  GolombReader golombReader(reader, b);
 
   while(golombReader.HasNext())
     decodedValues.push_back(golombReader.Next<size_t>());
