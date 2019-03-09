@@ -78,7 +78,6 @@ namespace dss_schimek {
   template <typename StringSet>
     inline static int binarySearch(const StringSet& ss, typename StringSet::CharIterator elem) {
       using String = typename StringSet::String;
-      using CharIt = typename StringSet::CharIterator;
 
       auto left = ss.begin();
       auto right = ss.end();
@@ -87,7 +86,6 @@ namespace dss_schimek {
       while(left != right) {
         size_t dist = (right - left) / 2;
         String curStr = ss[left + dist];
-        size_t curLcp = 0;
         int res = dss_schimek::scmp(ss.get_chars(curStr, 0), elem);
         if (res < 0) {
           left = left + dist + 1;
@@ -97,7 +95,7 @@ namespace dss_schimek {
           right = left + dist;
         }
       }
-      return left -ss.begin();
+      return left - ss.begin();
     }
 
   template <typename StringSet>
@@ -105,14 +103,9 @@ namespace dss_schimek {
         const StringSet& splitters,
         dsss::mpi::environment env = dsss::mpi::environment())
     {
-      using String = typename StringSet::String;
       using CharIt = typename StringSet::CharIterator;
       std::vector<size_t> interval_sizes;
       interval_sizes.reserve(splitters.size());
-
-      size_t nr_splitters = std::min<size_t>(env.size() - 1, ss.size());
-      size_t splitter_dist = ss.size() / (nr_splitters + 1);
-      size_t element_pos = 0;
 
       for (std::size_t i = 0; i < splitters.size(); ++i) {
         CharIt splitter = splitters.get_chars(splitters[splitters.begin() + i], 0);
@@ -132,7 +125,7 @@ namespace dss_schimek {
   {
     constexpr bool print_interval_details = true;
     if constexpr (print_interval_details) {
-      for (std::int32_t rank = 0; rank < env.size(); ++rank) {
+      for (std::uint32_t rank = 0; rank < env.size(); ++rank) {
         if (env.rank() == rank) {
           std::size_t total_size = 0;
           std::cout << "### Sending interval sizes on PE " << rank << std::endl;
@@ -144,7 +137,7 @@ namespace dss_schimek {
         }
         env.barrier();
       }
-      for (std::int32_t rank = 0; rank < env.size(); ++rank) {
+      for (std::uint32_t rank = 0; rank < env.size(); ++rank) {
         if (env.rank() == rank) {
           std::size_t total_size = 0;
           std::cout << "### Receiving interval sizes on PE " << rank << std::endl;

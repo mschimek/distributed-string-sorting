@@ -189,10 +189,8 @@ namespace dsss::mpi {
           MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
           std::vector<size_t> receive_counts = alltoall(send_counts, env);
-          size_t local_receive_count = std::accumulate(
-              receive_counts.begin(), receive_counts.end(), 0);
-
           std::vector<size_t> send_displacements(env.size(), 0);
+
           for (size_t i = 1; i < send_counts.size(); ++i) {
             send_displacements[i] = send_displacements[i - 1] + send_counts[i - 1];
           }
@@ -210,9 +208,9 @@ namespace dsss::mpi {
           std::vector<MPI_Request> mpi_request(2 * env.size());
           std::vector<DataType> receive_data(receive_displacements.back() +
               receive_counts.back());
-          for (int32_t i = 0; i < env.size(); ++i) {
+          for (uint32_t i = 0; i < env.size(); ++i) {
             // start with self send/recv
-            auto source = (env.rank() + (env.size() - i)) % env.size();
+            int32_t source = (env.rank() + (env.size() - i)) % env.size();
             auto receive_type = get_big_type<DataType>(receive_counts[source]);
             MPI_Irecv(receive_data.data() + receive_displacements[source],
                 1,
@@ -223,8 +221,8 @@ namespace dsss::mpi {
                 &mpi_request[source]);
           }
           // dispatch sends
-          for (int32_t i = 0; i < env.size(); ++i) {
-            auto target = (env.rank() + i) % env.size();
+          for (uint32_t i = 0; i < env.size(); ++i) {
+            int32_t target = (env.rank() + i) % env.size();
             auto send_type = get_big_type<DataType>(send_counts[target]);
             MPI_Isend(send_data + send_displacements[target],
                 1,

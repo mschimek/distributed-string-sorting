@@ -181,7 +181,7 @@ namespace dss_schimek {
         sort(StringPtr& local_string_ptr,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
-          constexpr bool debug = false;
+          //constexpr bool debug = false;
           using dss_schimek::measurement::MeasuringTool;
 
           using StringSet = typename StringPtr::StringSet;
@@ -190,7 +190,6 @@ namespace dss_schimek {
 
           MeasuringTool& measuringTool = MeasuringTool::measuringTool();
           const StringSet& ss = local_string_ptr.active();
-          std::size_t local_n = ss.size();
 
           // sort locally
           measuringTool.start("sort_locally");

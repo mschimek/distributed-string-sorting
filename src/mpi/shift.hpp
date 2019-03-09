@@ -349,8 +349,8 @@ namespace dss_schimek::mpi {
 
    constexpr bool debug = false;
    std::size_t string_length = dss_schimek::string_length(send_data);
-   if constexpr(debug)
-   std::cout << "rank: " << env.rank() << " string_length: " << string_length << std::endl;
+   if (debug)
+     std::cout << "rank: " << env.rank() << " string_length: " << string_length << std::endl;
    std::size_t send_length = string_length + 1;
    std::vector<char_type> real_send_data;
    std::copy_n(send_data, send_length, std::back_inserter(real_send_data));

@@ -25,10 +25,10 @@ namespace dss_schimek {
     if (number_PE_with_data <= 1)
       return is_locally_sorted;
    
-    int own_min_number = has_strings ? env.rank() : env.size();
-    int own_max_number = has_strings ? env.rank() : -1;
-    int min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
-    int max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
+    int64_t own_min_number = has_strings ? env.rank() : env.size();
+    int64_t own_max_number = has_strings ? env.rank() : -1;
+    int64_t min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
+    int64_t max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
     const bool is_left_shift = true;
     std::vector<unsigned char> greater_string;
     std::vector<unsigned char> smaller_string; 
@@ -59,9 +59,9 @@ namespace dss_schimek {
     if (!has_strings)
       return dsss::mpi::allreduce_and(is_overall_sorted, env);
 
-    if (env.rank() != min_PE_with_data)
+    if (static_cast<int64_t>(env.rank()) != min_PE_with_data)
       is_overall_sorted &= dss_schimek::scmp(smaller_string.data(), front) <= 0;
-    if (env.rank() != max_PE_with_data)
+    if (static_cast<int64_t>(env.rank()) != max_PE_with_data)
       is_overall_sorted &= dss_schimek::scmp(back, greater_string.data()) <= 0;
 
     return dsss::mpi::allreduce_and(is_overall_sorted, env);

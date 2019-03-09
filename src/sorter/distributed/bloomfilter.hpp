@@ -170,7 +170,6 @@ namespace dss_schimek {
         measuringTool.start("bloomfilter_sendEncodedValues");
 
         std::vector<size_t> recvEncodedValues = AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
-        size_t s = sizeof(size_t);
         measuringTool.add(encodedValues.size() * sizeof(size_t), "bloomfilter_sentEncodedValues");
         std::vector<size_t> recvEncodedValuesSizes = dsss::mpi::alltoall(encodedValuesSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
@@ -180,7 +179,6 @@ namespace dss_schimek {
         decodedValues.reserve(recvEncodedValues.size());
         auto curDecodeIt = recvEncodedValues.begin();
 
-        size_t j = 0;
         for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
           const auto end = curDecodeIt + encodedIntervalSizes; 
           getDeltaDecoding(curDecodeIt, end, std::back_inserter(decodedValues), b); 
