@@ -172,7 +172,7 @@ namespace dss_schimek {
           } else {
             String prevString = ss[ss.begin() + i - 1];
             CharIt commonPrefix = ss.get_chars(prevString, 0);
-            for (size_t j = 0; j < lcp_diff; ++j) 
+            for (size_t j = 0; j < static_cast<size_t>(lcp_diff); ++j) // lcp_diff > 0 see if-branch
               curPrefix.push_back(*(commonPrefix + j));
           }
           std::copy(curPrefix.begin(), curPrefix.end(), curPos);

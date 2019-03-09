@@ -178,13 +178,13 @@ namespace PolicyEnums {
 
 using namespace dss_schimek;
 
-template<typename StringSet>
-void secondArg_(const PolicyEnums::CombinationKey& key) {
-  using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
-  using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
-  using MPIAllToAllRoutine = dss_schimek::mpi::AllToAllvSmall;
-  using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
-}
+//template<typename StringSet>
+//void secondArg_(const PolicyEnums::CombinationKey& key) {
+//  using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
+//  using StringGenerator = SkewedRandomStringLcpContainer<StringSet>;
+//  using MPIAllToAllRoutine = dss_schimek::mpi::AllToAllvSmall;
+//  using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
+//}
 
 struct SorterArgs {
   size_t size;
@@ -319,7 +319,6 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
  
 int main(std::int32_t argc, char const *argv[]) {
   using namespace dss_schimek;
-  using StringSet = UCharLengthStringSet;
   std::cout << "start program" << std::endl;
 
   dsss::mpi::environment env;

@@ -127,7 +127,7 @@ namespace dss_schimek {
             dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&& local_string_container, 
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
-          constexpr bool debug = false;
+          //constexpr bool debug = false;
           using namespace dss_schimek;
           using namespace dss_schimek::measurement;
 
@@ -136,7 +136,6 @@ namespace dss_schimek {
           MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
           const StringSet& ss = local_string_ptr.active();
-          std::size_t local_n = ss.size();
           
           // sort locally
           measuringTool.start("sort_locally");
