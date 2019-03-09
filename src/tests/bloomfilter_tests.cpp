@@ -12,8 +12,8 @@
 
 namespace dss_schimek {
   namespace tests {
-    template <typename HashFunctor, typename StringSet>
-      class BloomfilterTester {
+    template <typename HashPolicy, typename StringSet>
+      class BloomfilterTester : HashPolicy{
         using String = typename StringSet::String;
 
         struct HashesEOSHashes {
@@ -27,7 +27,6 @@ namespace dss_schimek {
           std::vector<size_t> uniques;
         };
         public:
-        HashFunctor hasher;
         size_t bloomFilterSize = 1000;
 
         HashesEOSHashes generateHashes(StringSet ss, const std::vector<size_t>& candidates, const size_t depth) {
@@ -40,10 +39,10 @@ namespace dss_schimek {
             String curString = ss[begin + curCandidate];
             const size_t length = ss.get_length(curString);
             if (depth > length) {
-              const size_t hash = hasher(ss.get_chars(curString, 0), length, bloomFilterSize);
+              const size_t hash = HashPolicy::hash(ss.get_chars(curString, 0), length, bloomFilterSize);
               eosHashes.push_back(hash);
             } else {
-              const size_t hash = hasher(ss.get_chars(curString, 0), depth, bloomFilterSize);
+              const size_t hash = HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
               hashes.push_back(hash);
             }
           }
@@ -111,41 +110,21 @@ namespace dss_schimek {
   }
 }
 
-std::vector<size_t> getDifference(std::vector<size_t>& superSet, std::vector<size_t>& subSet) {
-  std::vector<size_t> differenceSet;
-  differenceSet.reserve(superSet.size());
-  std::sort(superSet.begin(), superSet.end());
-  std::sort(subSet.begin(), subSet.end());
-  std::set_difference(superSet.begin(), superSet.end(), 
-                      subSet.begin(), subSet.end(),
-                      std::back_inserter(differenceSet));
+std::vector<size_t> getDifference(std::vector<size_t>& minuendSet, std::vector<size_t>& subtrahendSet) {
+  std::vector<size_t> setDifference;
+  setDifference.reserve(minuendSet.size());
+
+  std::sort(minuendSet.begin(), minuendSet.end());
+  std::sort(subtrahendSet.begin(), subtrahendSet.end());
+
+  std::set_difference(minuendSet.begin(), minuendSet.end(), 
+                      subtrahendSet.begin(), subtrahendSet.end(),
+                      std::back_inserter(setDifference));
+  return setDifference;
 }
 
-int main() {
-  dsss::mpi::environment env;
-  using namespace dss_schimek;
-  using namespace dss_schimek::tests;
-
-  using StringSet = UCharLengthStringSet;
-  using Hasher = std::function<size_t(const unsigned char*, size_t, size_t)>;
-  using Generator = DNRatioGenerator<StringSet>;
-
-  using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
-
-  using GolombPolicy = AllToAllHashesNaive;
-  
-  const size_t size = 100;
-  const size_t stringLength = 10;
-  const double dToNRatio = 0.0;
-  const size_t startDepth = 2;
-
-  BloomfilterTester<Hasher, StringSet> bftest;
-  BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
-  Generator container(size, stringLength, dToNRatio);
-  StringLcpPtr localStringPtr = container.make_string_lcp_ptr();
-  StringSet ss = container.make_string_set();
-  Hasher hasher = [](const unsigned char* str, size_t maxDepth, size_t m) {
-    //return tlx::siphash(chars, depth) % bloomFilterSize;
+struct CharacterBasesHash {
+  static inline size_t hash(const unsigned char* str, size_t maxDepth, size_t m) {
     size_t hash = 5381;
     size_t c = 0, i = 0;
 
@@ -154,21 +133,97 @@ int main() {
       ++i;
     }
     return hash % m;
-  };
+  }
+};
+
+template<typename StringSet, typename Hasher>
+std::vector<size_t> getHashValues(StringSet ss, const std::vector<size_t>& indicesToHash, const size_t depth, const size_t bloomFilterSize) {
+  std::vector<size_t> hashes;
+  hashes.reserve(indicesToHash.size());
+  auto begin = ss.begin();
+  for (const size_t index : indicesToHash) {
+    const auto str = ss[begin + index];
+    const auto chars = ss.get_chars(str, 0);
+    const size_t stringLength = ss.get_length(str);
+    const size_t acutalDepth = stringLength < depth ? stringLength : depth;
+    const size_t hash = Hasher::hash(chars, acutalDepth, bloomFilterSize);
+    hashes.push_back(hash);
+  }
+  return hashes;
+}
+
+template<typename GolombPolicy>
+void bloomfilter_test() {
+  using namespace dss_schimek;
+  using namespace dss_schimek::tests;
+
+  using StringSet = UCharLengthStringSet;
+  using Generator = DNRatioGenerator<StringSet>;
+
+  using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
+
+  int aab;
+  //using GolombPolicy = AllToAllHashesNaive;
+
+  const size_t size = 100;
+  const size_t stringLength = 10;
+  const double dToNRatio = 0.0;
+  const size_t startDepth = 20;
+
+  
+
+  BloomfilterTester<CharacterBasesHash, StringSet> bftest;
+  BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
+  Generator container(size, stringLength, dToNRatio);
+  StringLcpPtr localStringPtr = container.make_string_lcp_ptr();
+  StringSet ss = container.make_string_set();
+  const size_t actualSize = ss.size();
+  
   ss.print();
-  bftest.hasher = hasher;
   bftest.bloomFilterSize = bloomFilter.bloomFilterSize;
 
   std::vector<size_t> candidates_init;
-  candidates_init.reserve(size);
-  std::generate_n(std::back_inserter(candidates_init), size, [size]() {static size_t i = 0; return i++;});
+  candidates_init.reserve(actualSize);
+  std::generate_n(std::back_inserter(candidates_init), actualSize, []() {static size_t i = 0; return i++;});
 
 
-  std::vector<size_t> results(size, 0);
-  std::vector<size_t> candidates = bloomFilter.filter(localStringPtr, startDepth, results);
+  std::vector<size_t> results(actualSize, 0);
+  std::vector<size_t> duplicates = bloomFilter.filter(localStringPtr, startDepth, results);
 
-  bftest.filter(ss, candidates_init, 2);
 
+  std::vector<size_t> hashesDuplicates = getHashValues<StringSet, CharacterBasesHash>(ss, duplicates, startDepth, bloomFilter.bloomFilterSize);
+
+  std::vector<size_t> indicesUniqueElems = getDifference(candidates_init, duplicates);
+  dsss::mpi::environment env;
+  std::vector<size_t> hashesUniqueElems = getHashValues<StringSet, CharacterBasesHash>(ss, indicesUniqueElems, startDepth, bloomFilter.bloomFilterSize);
+
+
+  auto duplicatesUniques = bftest.filter(ss, candidates_init, startDepth);
+  std::vector<size_t>& globalDuplicateHashes = duplicatesUniques.duplicates;
+  std::vector<size_t>& globalUniqueHashes = duplicatesUniques.uniques;
+
+
+  std::sort(globalDuplicateHashes.begin(), globalDuplicateHashes.end());
+  std::sort(globalUniqueHashes.begin(), globalUniqueHashes.end());
+
+  const bool foundAllUniqueHashes = std::all_of(hashesUniqueElems.begin(), hashesUniqueElems.end(), [&] (const size_t hash) {
+      return std::binary_search(globalUniqueHashes.begin(), globalUniqueHashes.end(), hash);
+      });
+
+  const bool foundAllDuplicateHashes = std::all_of(hashesDuplicates.begin(), hashesDuplicates.end(), [&] (const size_t hash) {
+      return std::binary_search(globalDuplicateHashes.begin(), globalDuplicateHashes.end(), hash);
+      });
+
+
+  tlx_die_unless(foundAllUniqueHashes);
+  tlx_die_unless(foundAllDuplicateHashes);
+}
+
+int main() {
+  using namespace dss_schimek;
+  dsss::mpi::environment env;
+ 
+  bloomfilter_test<AllToAllHashesNaive>();
   env.finalize();
   return 0;
 }
