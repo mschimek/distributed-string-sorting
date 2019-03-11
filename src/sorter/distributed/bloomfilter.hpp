@@ -195,8 +195,10 @@ namespace dss_schimek {
   //TODO under construction
   struct AllToAllHashValuesPipeline {
     static inline auto getEnd(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
-      if (partnerId + 1 == startIndices.size())
+      dsss::mpi::environment env;
+      if (partnerId + 1 == env.size()) {
         return data.end();
+      }
       return data.begin() + startIndices[partnerId + 1];
     }
 
@@ -205,21 +207,26 @@ namespace dss_schimek {
     }
     private:
     template <typename InputIterator>
-    static inline std::vector<size_t> pointToPoint(const InputIterator begin, const InputIterator end, const size_t partnerId, const size_t b, MPI_Request* mpi_request) {
+    static inline std::vector<size_t> pointToPoint(const InputIterator begin, const InputIterator end, const size_t partnerId, const size_t b, size_t* outputBuffer, MPI_Request* mpi_request) {
       dsss::mpi::environment env;
-      const size_t gigabyte = 1000000000;
+      const size_t gigabyte = 1000;
       const size_t maxSize = 5 * gigabyte;
       std::vector<size_t> encodedValues;
       encodedValues.reserve(1 + end - begin);
       encodedValues.push_back(0);
+      std::cout << "reserve encoded values: " << std::endl;
       std::vector<size_t> recvEncodedValues;
       recvEncodedValues.reserve(maxSize);
-      std::vector<size_t> decodedValues;
-      decodedValues.reserve(maxSize);
+      std::vector<size_t> decodedValues(maxSize);
+      
       getDeltaEncoding(begin, end, std::back_inserter(encodedValues), b);
+      //for (size_t i = 1; i < encodedValues.size(); ++i) {
+      //  std::cout << "rank: " << env.rank() << " " << std::bitset<64>(encodedValues[i]) << std::endl;
+      //}
 
       size_t encodedValuesSize = encodedValues.size();
-      encodedValues[0] = encodedValuesSize;
+      encodedValues[0] = encodedValuesSize - 1;
+      //std::cout << "rank: " << env.rank() << " size: " << encodedValues.front() << std::endl; 
 
       //if (encodedValuesSize <=  env.mpi_max_int()) {
       dsss::mpi::data_type_mapper<size_t> dtm;
@@ -233,7 +240,7 @@ namespace dss_schimek {
             mpi_request   
             );
         MPI_Irecv(
-            recvEncodedValues.data(),
+            outputBuffer,
             env.mpi_max_int(),
             dtm.get_mpi_type(),
             partnerId,
@@ -241,17 +248,18 @@ namespace dss_schimek {
             env.communicator(),
             mpi_request + 1 
             );
-      //}
-     const size_t recvEncodedValuesSize = recvEncodedValues[0];
-     getDeltaDecoding(recvEncodedValues.begin() + 1, recvEncodedValues.begin() + 1 + recvEncodedValuesSize, std::back_inserter(decodedValues), b);
-     return decodedValues;
+
+        std::cout << "\t\t\t\t\t\trank: " << env.rank() << " send to " << partnerId << " recv from " << partnerId << std::endl;
+
+     return recvEncodedValues;
    }
 
       
     public:
-    static inline std::vector<size_t> alltoallv(std::vector<size_t>& sendData, std::vector<size_t>& intervalSizes, const size_t b = 1048576) {
+    static inline std::vector<std::vector<size_t>> alltoallv(std::vector<size_t>& sendData, std::vector<size_t>& intervalSizes, const size_t b = 1048576) {
       dsss::mpi::environment env;
 
+      std::cout << " rank: " << env.rank() << " sendData " << sendData.size() << std::endl;
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
       std::vector<size_t> recvStartIndices;
       recvStartIndices.reserve(env.size());
@@ -263,49 +271,70 @@ namespace dss_schimek {
       startIndices.push_back(0);
       std::partial_sum(intervalSizes.begin(), intervalSizes.end(), std::back_inserter(startIndices));
 
-      std::vector<std::vector<size_t>> recvData(env.size());
+      std::vector<std::vector<size_t>> recvData(env.size(), std::vector<size_t>(1000, 0));
 
-      const bool PESizeIsEven = env.size() % 2 == 0;
       //const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
       //const auto begin = sendData.begin();
-      std::vector<MPI_Request> requests(env.size() * 2);
-      for (size_t j = 0; j < env.size(); ++j) {
+      std::vector<MPI_Request> requests((env.size() - 1) * 2);
+
+      for (size_t j = 0; j < env.size() - 1; ++j) {
         size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
-        if (PESizeIsEven && env.rank() == env.size() - 1) {
+        std::cout << "rank: " << env.rank() << " idle: " << idlePE << std::endl;
+        if (env.rank() == env.size() - 1) {
           const size_t partnerId = idlePE;
           const auto curIt = getStart(partnerId, startIndices, sendData);
           const auto curEnd = getEnd(partnerId, startIndices, sendData);
-          recvData[partnerId] = pointToPoint(curIt, curEnd, partnerId, b, requests.data() + 2 * j);
+          std::cout << "1 Rank: " << env.rank() << " j: " << j << " idlePE: " << idlePE  << " partnerId: " << partnerId 
+            << " curIt: " << curIt - sendData.begin() << " curEnd: " << curEnd - sendData.begin() << std::endl;
+          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + (2 * j));
 
           //exchange with PE idle
+        } else if (env.rank() == idlePE) {
+          const size_t partnerId = env.size() - 1;
+          const auto curIt = getStart(partnerId, startIndices, sendData);
+          const auto curEnd = getEnd(partnerId, startIndices, sendData);
+          std::cout << "2 Rank: " << env.rank() << " j: " << j << " idlePE: " << idlePE  << " partnerId: " << partnerId 
+            << " curIt: " << curIt - sendData.begin() << " curEnd: " << curEnd - sendData.begin() << std::endl;
+          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + 2 * j);
+          //exchange with PE env.size() - 1
         } else {
-          if (PESizeIsEven && env.rank() == idlePE) {
-            const size_t partnerId = env.size() - 1;
-            const auto curIt = getStart(partnerId, startIndices, sendData);
-            const auto curEnd = getEnd(partnerId, startIndices, sendData);
-            recvData[partnerId] = pointToPoint(curIt, curEnd, partnerId, b, requests.data() + 2 * j);
-            //exchange with PE env.size() - 1
-          } else {
-            if (PESizeIsEven) {
-              const size_t partnerId = (j - env.rank()) % (env.size() - 1);
-              const auto curIt = getStart(partnerId, startIndices, sendData);
-              const auto curEnd = getEnd(partnerId, startIndices, sendData);
-              recvData[partnerId] = pointToPoint(curIt, curEnd, partnerId, b, requests.data() + 2 * j);
+          const size_t partnerId = ((j + env.size()) - env.rank() - 1) % (env.size() - 1);
+          const auto curIt = getStart(partnerId, startIndices, sendData);
+          const auto curEnd = getEnd(partnerId, startIndices, sendData);
+          std::cout << "3 Rank: " << env.rank() << " j: " << j << " idlePE: " << idlePE  << " partnerId: " << partnerId 
+            << " curIt: " << curIt - sendData.begin() << " curEnd: " << curEnd - sendData.begin() << std::endl;
+          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + 2 * j);
 
-              // exchange with PE   ((j - i) % env.size() - 1
-            } else {
-              const size_t partnerId = (j - env.rank()) % (env.size());
-              const auto curIt = getStart(partnerId, startIndices, sendData);
-              const auto curEnd = getEnd(partnerId, startIndices, sendData);
-              recvData[partnerId] = pointToPoint(curIt, curEnd, partnerId, b, requests.data() + 2 * j);
-
-              // exchange with PE (( j - i) % env.size() 
-            }
-          }
+          // exchange with PE   ((j - i) % env.size() - 1
         }
       }
-          //MPI_Waitall(2 * env.size(), mpi_request.data(), MPI_STATUSES_IGNORE);
-      return std::vector<size_t>();
+      std::cout << "rank: " << env.rank()  << "\t\t\t before waitall"<< std::endl;
+      MPI_Waitall( requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+      std::cout << "rank: " << env.rank() << "\t\t\t after waitall" << std::endl;
+      env.barrier();
+
+      std::cout << "rank: " << env.rank()  << "  reach end of communication " << std::endl;
+      std::vector<std::vector<size_t>> decodedVectors(env.size());
+      std::copy_n(getStart(env.rank(), startIndices, sendData), intervalSizes[env.rank()], std::back_inserter(decodedVectors[env.rank()]));
+      std::cout << "initialize vector " << std::endl;
+
+      for (size_t i = 0; i < env.size(); ++i) {
+        if (i == env.rank())
+          continue;
+        auto& data = recvData[i];
+        //std::cout << "rank: " << env.rank() << " " << i << " recvData[i] size: " << recvData[i].size() << std::endl;
+     const size_t recvEncodedValuesSize = recvData[i].front();
+        //std::cout << "rank: " << env.rank() <<  " " << i << " recv size: " << recvEncodedValuesSize << std::endl;
+        //for (size_t i = 1; i < recvEncodedValuesSize + 1; ++i) {
+        //  std::cout << "rank: " << env.rank() << " " << std::bitset<64>(data[i]) << std::endl;
+        //}
+     getDeltaDecoding(data.begin() + 1, data.begin() + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[i]), b);
+      }
+      //for (const auto& vec : decodedVectors) {
+      //  for (const auto& elem: vec)
+      //    std::cout << "rank: " << env.rank() << " " << elem << std::endl;
+      //}
+      return decodedVectors;
     }
   };
 

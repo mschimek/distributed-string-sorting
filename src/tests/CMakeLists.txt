@@ -9,3 +9,6 @@ target_link_libraries(dnGeneratorTests ${MPI_LIBRARIES} tlx)
 
 add_executable(measuringToolTests measuringTool_tests.cpp ../mpi/environment.cpp)
 target_link_libraries(measuringToolTests ${MPI_LIBRARIES} tlx)
+
+add_executable(pipelinedGolombEncodingTests pipelinedGolombEncoding_tests.cpp ../mpi/environment.cpp)
+target_link_libraries(pipelinedGolombEncodingTests ${MPI_LIBRARIES} tlx)
