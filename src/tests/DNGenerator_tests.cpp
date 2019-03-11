@@ -1,5 +1,3 @@
-#pragma once
-
 #include <algorithm>
 #include <vector>
 
@@ -46,7 +44,7 @@ namespace dss_schimek {
       return D;
     }
 
-    void DNRatioGenerator_internCall(const size_t size, const size_t stringLength, const double dToNRatio, const double epsilon = 0.01) {
+    void DNRatioGenerator_test(const size_t size, const size_t stringLength, const double dToNRatio, const double epsilon = 0.01) {
       using namespace dss_schimek;
       using StringSet = UCharLengthStringSet;
       using String = StringSet::String;
@@ -81,24 +79,27 @@ namespace dss_schimek {
       tlx_die_unless(allStringsHaveCorrectLength);
       tlx_die_unless(std::abs(acutalDToNRatio - dToNRatio) < epsilon);
     }
-
-    void DNRatioGenerator_test() {
-      std::vector<size_t> sizes = {1000, 10000, 100000, 1000000};
-      std::vector<size_t> stringLengths = {100,250, 500};
-      const double epsilon = 0.01;
-      const double relaxedEpsilon = 0.075; // TODO calculate exact bounds
-      for (const auto& size : sizes) {
-        for (const auto& stringLength : stringLengths) {
-          DNRatioGenerator_internCall(size, stringLength, 0.0,  relaxedEpsilon);
-          DNRatioGenerator_internCall(size, stringLength, 0.2,  epsilon);
-          DNRatioGenerator_internCall(size, stringLength, 0.25, epsilon);
-          DNRatioGenerator_internCall(size, stringLength, 0.45, epsilon);
-          DNRatioGenerator_internCall(size, stringLength, 0.76, epsilon);
-          DNRatioGenerator_internCall(size, stringLength, 0.95, epsilon);
-          DNRatioGenerator_internCall(size, stringLength, 1.0,  epsilon);
-        }
-      }
-    }
-
   }
  }
+
+int main() {
+  using namespace dss_schimek::tests;
+  const std::vector<size_t> sizes = {1000, 10000, 100000, 1000000};
+  const std::vector<size_t> stringLengths = {100,250, 500};
+  const double epsilon = 0.01;
+  const double relaxedEpsilon = 0.075; // TODO calculate exact bounds
+  for (const auto& size : sizes) {
+    std::cout << "start tests with size: " << size << " ";
+    for (const auto& stringLength : stringLengths) {
+      std::cout << " stringLength: " << stringLength << std::endl;
+      DNRatioGenerator_test(size, stringLength, 0.0,  relaxedEpsilon);
+      DNRatioGenerator_test(size, stringLength, 0.2,  epsilon);
+      DNRatioGenerator_test(size, stringLength, 0.25, epsilon);
+      DNRatioGenerator_test(size, stringLength, 0.45, epsilon);
+      DNRatioGenerator_test(size, stringLength, 0.76, epsilon);
+      DNRatioGenerator_test(size, stringLength, 0.95, epsilon);
+      DNRatioGenerator_test(size, stringLength, 1.0,  epsilon);
+    }
+  }
+  std::cout << "completed tests successfully" << std::endl;
+}
