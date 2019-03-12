@@ -16,7 +16,7 @@ namespace dss_schimek {
     void GolombEncodingPipeline_test() {
       using Result = std::vector<std::vector<size_t>>;
       dsss::mpi::environment env;
-      const size_t sizePerPE = 100;
+      const size_t sizePerPE = 1000;
 
       // All PE get same messages, namely {0, 1, 2, ... , sizePerPE - 1} from each PE
       std::vector<size_t> hashes;
@@ -31,11 +31,6 @@ namespace dss_schimek {
       tlx_die_unless(recvData.size() == env.size());
       for (size_t i = 0; i < recvData.size(); ++i) {
         const auto& curVec = recvData[i];
-        std::cout << "rank: " << env.rank() << " curVec size: " << curVec.size() <<  std::endl;
-        for (const auto& elem : curVec) {
-          std::cout << "rank: " << env.rank() << " partner:  " << i <<  " elem: " << elem << std::endl;
-        }
-
         if (!(curVec == sample)) {
           std::cout << "rank: " << env.rank() << " partner:  " << i <<  " failed" << std::endl;
         }

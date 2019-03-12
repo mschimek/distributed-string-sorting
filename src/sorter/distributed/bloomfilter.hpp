@@ -309,27 +309,62 @@ namespace dss_schimek {
         }
       }
       std::cout << "rank: " << env.rank()  << "\t\t\t before waitall"<< std::endl;
-      MPI_Waitall( requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+      //MPI_Waitall( requests.size(), requests.data(), MPI_STATUSES_IGNORE);
       std::cout << "rank: " << env.rank() << "\t\t\t after waitall" << std::endl;
-      env.barrier();
+      //env.barrier();
 
       std::cout << "rank: " << env.rank()  << "  reach end of communication " << std::endl;
       std::vector<std::vector<size_t>> decodedVectors(env.size());
       std::copy_n(getStart(env.rank(), startIndices, sendData), intervalSizes[env.rank()], std::back_inserter(decodedVectors[env.rank()]));
       std::cout << "initialize vector " << std::endl;
 
-      for (size_t i = 0; i < env.size(); ++i) {
-        if (i == env.rank())
-          continue;
-        auto& data = recvData[i];
-        //std::cout << "rank: " << env.rank() << " " << i << " recvData[i] size: " << recvData[i].size() << std::endl;
-     const size_t recvEncodedValuesSize = recvData[i].front();
-        //std::cout << "rank: " << env.rank() <<  " " << i << " recv size: " << recvEncodedValuesSize << std::endl;
-        //for (size_t i = 1; i < recvEncodedValuesSize + 1; ++i) {
-        //  std::cout << "rank: " << env.rank() << " " << std::bitset<64>(data[i]) << std::endl;
-        //}
-     getDeltaDecoding(data.begin() + 1, data.begin() + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[i]), b);
+      std::vector<bool> alreadyRecv(env.size() - 1, false);
+      while (true) {
+        size_t counter = 0; 
+
+        for (size_t j = 0; j < env.size() - 1; ++j) {
+          if (alreadyRecv[j]) {
+            ++counter;
+            continue;
+          }
+          size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
+          size_t partnerId = 0;
+          if (env.rank() == env.size() - 1) {
+            partnerId = idlePE;
+          } else if (env.rank() == idlePE) {
+            partnerId = env.size() - 1;
+          } else {
+            partnerId = ((j + env.size()) - env.rank() - 1) % (env.size() - 1);
+          }
+
+          int32_t flag = 0;
+          MPI_Test(requests.data() +  2*j + 1, &flag, MPI_STATUSES_IGNORE);
+          if (flag != 0) {
+            auto& data = recvData[partnerId];
+            //std::cout << "rank: " << env.rank() << " " << i << " recvData[i] size: " << recvData[i].size() << std::endl;
+            const size_t recvEncodedValuesSize = recvData[partnerId].front();
+            alreadyRecv[j] = true;
+            getDeltaDecoding(data.begin() + 1, data.begin() + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[partnerId]), b);
+          }
+        }
+
+        if (counter == env.size() - 1)
+          break;
+
       }
+
+        //   for (size_t i = 0; i < env.size(); ++i) {
+   //     if (i == env.rank())
+   //       continue;
+   //     auto& data = recvData[i];
+   //     //std::cout << "rank: " << env.rank() << " " << i << " recvData[i] size: " << recvData[i].size() << std::endl;
+   //  const size_t recvEncodedValuesSize = recvData[i].front();
+   //     //std::cout << "rank: " << env.rank() <<  " " << i << " recv size: " << recvEncodedValuesSize << std::endl;
+   //     //for (size_t i = 1; i < recvEncodedValuesSize + 1; ++i) {
+   //     //  std::cout << "rank: " << env.rank() << " " << std::bitset<64>(data[i]) << std::endl;
+   //     //}
+   //  getDeltaDecoding(data.begin() + 1, data.begin() + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[i]), b);
+   //   }
       //for (const auto& vec : decodedVectors) {
       //  for (const auto& elem: vec)
       //    std::cout << "rank: " << env.rank() << " " << elem << std::endl;
