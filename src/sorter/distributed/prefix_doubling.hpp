@@ -138,13 +138,15 @@ namespace dss_schimek {
     }
 
   template <typename StringPtr, typename GolombPolicy>
-    std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr) {
+    std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, const size_t startDepth) {
       using StringSet = typename StringPtr::StringSet;
       using namespace dss_schimek::measurement;
 
+
+      std::cout << "start depth " << startDepth << std::endl;
+
       dsss::mpi::environment env;
       MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-      const size_t startDepth = 8;
 
       measuringTool.start(std::string("bloomfilter_init"));
       StringSet ss = local_string_ptr.active();
@@ -156,10 +158,10 @@ namespace dss_schimek {
       measuringTool.setRound(curIteration);
       std::vector<size_t> candidates = bloomFilter.filter(local_string_ptr, startDepth, results);
 
-      for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max(); i *= 2) {
+      for (size_t i = 2; i < std::numeric_limits<size_t>::max(); i *= 2) {
         measuringTool.setRound(++curIteration);
         measuringTool.add(candidates.size(), std::string("bloomfilter_numberCandidates"));
-        candidates = bloomFilter.filter(local_string_ptr, i, candidates, results);
+        candidates = bloomFilter.filter(local_string_ptr, startDepth + i, candidates, results);
 
         measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
@@ -171,6 +173,26 @@ namespace dss_schimek {
       }
       measuringTool.setRound(0);
       return results; 
+    }
+
+  template <typename StringLcpPtr>
+    size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
+      auto lcps = stringLcpPtr.get_lcp();
+      struct LcpSumNumStrings {
+        size_t lcpSum;
+        size_t numStrings;
+      };
+      size_t localL = std::accumulate(lcps, lcps + stringLcpPtr.active().size(), 0);
+      LcpSumNumStrings lcpSumNumStrings {localL, stringLcpPtr.active().size()};
+
+      std::vector<LcpSumNumStrings> lcpSumsNumStrings = dsss::mpi::allgather(lcpSumNumStrings);
+      size_t totalL = 0;
+      size_t totalNumString = 0;
+      for (const auto& elem : lcpSumsNumStrings) {
+        totalL += elem.lcpSum;
+        totalNumString += elem.numStrings;
+      }
+      return totalL / totalNumString;
     }
 
   template<typename StringPtr, typename SampleSplittersPolicy, typename AllToAllStringPolicy, typename GolombEncoding>
@@ -196,6 +218,10 @@ namespace dss_schimek {
           tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
           measuringTool.stop("sort_locally");
 
+          measuringTool.start("avg_lcp");
+          const size_t globalLcpAvg = getAvgLcp(local_string_ptr);
+          measuringTool.stop("avg_lcp");
+
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
             return std::vector<StringIndexPEIndex>();
@@ -204,7 +230,7 @@ namespace dss_schimek {
           measuringTool.start("bloomfilter_overall");
           //measuringTool.disableMeasurement();
           //std::vector<size_t> results = computeResultsWithChecks(local_string_ptr);
-          std::vector<size_t> results = computeDistinguishingPrefixes<StringPtr, GolombEncoding>(local_string_ptr);
+          std::vector<size_t> results = computeDistinguishingPrefixes<StringPtr, GolombEncoding>(local_string_ptr, globalLcpAvg);
           //measuringTool.enableMeasurement();
           measuringTool.stop("bloomfilter_overall");
 
