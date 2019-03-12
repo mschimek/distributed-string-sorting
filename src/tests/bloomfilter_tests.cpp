@@ -235,16 +235,19 @@ int main() {
   dsss::mpi::environment env;
 
   const size_t size = 10000;
-  const size_t stringLength = 200;
+  const size_t stringLength = 500;
   std::vector<double> dToNRatios{0.0, 0.2, 0.4, 0.6, 0.8, 1.0};
 
   for (const double dToNRatio : dToNRatios) {
     std::cout << "test with dToNRatio: " << dToNRatio << std::endl;
 
     std::cout << "test with " << AllToAllHashesNaive::getName() << std::endl; 
-      bloomfilter_test<AllToAllHashesNaive>(size, stringLength, dToNRatio);
+    bloomfilter_test<AllToAllHashesNaive>(size, stringLength, dToNRatio);
     std::cout << "test with " << AllToAllHashesGolomb::getName() << std::endl; 
-      bloomfilter_test<AllToAllHashesGolomb>(size, stringLength, dToNRatio);
+    bloomfilter_test<AllToAllHashesGolomb>(size, stringLength, dToNRatio);
+    std::cout << "test with " << AllToAllHashValuesPipeline::getName() << std::endl; 
+    bloomfilter_test<AllToAllHashValuesPipeline>(size, stringLength, dToNRatio);
+
   }
   std::cout << "tests completed successfully!" << std::endl;
   env.finalize();

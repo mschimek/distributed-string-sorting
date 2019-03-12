@@ -19,23 +19,30 @@ namespace dss_schimek {
       const size_t sizePerPE = 1000;
 
       // All PE get same messages, namely {0, 1, 2, ... , sizePerPE - 1} from each PE
-      std::vector<size_t> hashes;
-      std::vector<size_t> sample(sizePerPE);
-      std::iota(sample.begin(), sample.end(), 0);
-      for (size_t i = 0; i < env.size(); ++i)
-        std::copy_n(sample.begin(), sample.size(), std::back_inserter(hashes));
-      std::vector<size_t> sendCounts(env.size(), sizePerPE);
+      for (size_t i = 0; i < 2; ++i) {
+        for (volatile size_t j = 0; j < 1000000; ++j);
+        env.barrier();
+        std::cout << "-------------------" << std::endl;
+        env.barrier();
+        std::vector<size_t> hashes;
+        std::vector<size_t> sample(sizePerPE);
+        std::iota(sample.begin(), sample.end(), 0);
+        for (size_t i = 0; i < env.size(); ++i)
+          std::copy_n(sample.begin(), sample.size(), std::back_inserter(hashes));
+        std::vector<size_t> sendCounts(env.size(), sizePerPE);
 
-      Result recvData = AllToAllHashValuesPipeline::alltoallv(hashes, sendCounts);
+        Result recvData = AllToAllHashValuesPipeline::alltoallv(hashes, sendCounts);
 
-      tlx_die_unless(recvData.size() == env.size());
-      for (size_t i = 0; i < recvData.size(); ++i) {
-        const auto& curVec = recvData[i];
-        if (!(curVec == sample)) {
-          std::cout << "rank: " << env.rank() << " partner:  " << i <<  " failed" << std::endl;
+        tlx_die_unless(recvData.size() == env.size());
+        for (size_t i = 0; i < recvData.size(); ++i) {
+          const auto& curVec = recvData[i];
+          if (!(curVec == sample)) {
+            std::cout << "rank: " << env.rank() << " partner:  " << i <<  " failed" << std::endl;
+          }
+          tlx_die_unless(curVec == sample);
         }
-        tlx_die_unless(curVec == sample);
       }
+
     }    
   }
 }
