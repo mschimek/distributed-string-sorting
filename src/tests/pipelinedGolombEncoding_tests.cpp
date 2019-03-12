@@ -20,10 +20,6 @@ namespace dss_schimek {
 
       // All PE get same messages, namely {0, 1, 2, ... , sizePerPE - 1} from each PE
       for (size_t i = 0; i < 2; ++i) {
-        for (volatile size_t j = 0; j < 1000000; ++j);
-        env.barrier();
-        std::cout << "-------------------" << std::endl;
-        env.barrier();
         std::vector<size_t> hashes;
         std::vector<size_t> sample(sizePerPE);
         std::iota(sample.begin(), sample.end(), 0);
