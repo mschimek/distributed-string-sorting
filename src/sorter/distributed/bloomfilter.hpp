@@ -205,9 +205,19 @@ namespace dss_schimek {
     static inline auto getStart(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
       return data.begin() + startIndices[partnerId];
     }
+
+    template <typename InputIterator>
+    static inline void getEncoding(const InputIterator begin, const InputIterator end, const size_t b, std::vector<size_t>& encoding) {
+      encoding.reserve(1 + end - begin);
+      encoding.push_back(0);
+      getDeltaEncoding(begin, end, std::back_inserter(encoding), b);
+      size_t encodingSize = encoding.size();
+      encoding[0] = encodingSize - 1;
+    }
+
     private:
     template <typename InputIterator>
-    static inline void pointToPoint(const InputIterator begin, const InputIterator end, const size_t partnerId, const size_t b, size_t* outputBuffer, MPI_Request* mpi_request, size_t tag) {
+    static inline void pointToPoint(const InputIterator begin, const InputIterator end, const size_t partnerId, const size_t b, size_t* encoding, size_t* outputBuffer, MPI_Request* mpi_request) {
       dsss::mpi::environment env;
       //const size_t gigabyte = 1000;
       //const size_t maxSize = 5 * gigabyte;
@@ -224,20 +234,20 @@ namespace dss_schimek {
       //if (encodedValuesSize <=  env.mpi_max_int()) {
       dsss::mpi::data_type_mapper<size_t> dtm;
         MPI_Isend(
-            encodedValues->data(),
-            encodedValuesSize,
+            encoding,
+            static_cast<int32_t>(*encoding) + 1,
             dtm.get_mpi_type(),
             partnerId,
-            tag,
+            42,
             env.communicator(),
             mpi_request   
             );
         MPI_Irecv(
             outputBuffer,
-            200000,
+            env.mpi_max_int(),
             dtm.get_mpi_type(),
             partnerId,
-            tag,
+            42,
             env.communicator(),
             mpi_request + 1 
             );
@@ -249,8 +259,14 @@ namespace dss_schimek {
     public:
     static inline std::vector<std::vector<size_t>> alltoallv(std::vector<size_t>& sendData, std::vector<size_t>& intervalSizes, const size_t b = 1048576) {
       dsss::mpi::environment env;
-      static size_t round = 0;
-      ++round;
+
+      using namespace dss_schimek::measurement;
+
+      const size_t maxRecvSize = 1000000000u;
+      size_t** recvBuffers = new size_t*[env.size()];
+      for (size_t i = 0; i < env.size(); ++i) {
+        recvBuffers[i] = new size_t[maxRecvSize];
+      }
 
       std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
       std::vector<size_t> recvStartIndices;
@@ -263,10 +279,7 @@ namespace dss_schimek {
       startIndices.push_back(0);
       std::partial_sum(intervalSizes.begin(), intervalSizes.end(), std::back_inserter(startIndices));
 
-      std::vector<std::vector<size_t>> recvData(env.size(), std::vector<size_t>(200000, 0));
-
-      //const size_t modulator = PESizeIsEven ? env.size() - 1 : env.size();
-      //const auto begin = sendData.begin();
+      std::vector<std::vector<size_t>> encodings(env.size());
       std::vector<MPI_Request> requests((env.size() - 1) * 2);
 
       for (size_t j = 0; j < env.size() - 1; ++j) {
@@ -275,20 +288,23 @@ namespace dss_schimek {
           const size_t partnerId = idlePE;
           const auto curIt = getStart(partnerId, startIndices, sendData);
           const auto curEnd = getEnd(partnerId, startIndices, sendData);
-          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + (2 * j), round);
+          getEncoding(curIt, curEnd, b, encodings[partnerId]);
+          pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
 
           //exchange with PE idle
         } else if (env.rank() == idlePE) {
           const size_t partnerId = env.size() - 1;
           const auto curIt = getStart(partnerId, startIndices, sendData);
           const auto curEnd = getEnd(partnerId, startIndices, sendData);
-          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + 2 * j, round);
+          getEncoding(curIt, curEnd, b, encodings[partnerId]);
+          pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
           //exchange with PE env.size() - 1
         } else {
           const size_t partnerId = ((j + env.size()) - env.rank() - 1) % (env.size() - 1);
           const auto curIt = getStart(partnerId, startIndices, sendData);
           const auto curEnd = getEnd(partnerId, startIndices, sendData);
-          pointToPoint(curIt, curEnd, partnerId, b, recvData[partnerId].data(), requests.data() + 2 * j, round);
+          getEncoding(curIt, curEnd, b, encodings[partnerId]);
+          pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
 
           // exchange with PE   ((j - i) % env.size() - 1
         }
@@ -296,27 +312,6 @@ namespace dss_schimek {
 
       std::vector<std::vector<size_t>> decodedVectors(env.size());
       std::copy_n(getStart(env.rank(), startIndices, sendData), intervalSizes[env.rank()], std::back_inserter(decodedVectors[env.rank()]));
-      //std::vector<MPI_Status> statuses(2*(env.size()- 1));
-      //MPI_Waitall(2 * (env.size() - 1), requests.data(), statuses.data());
-      //MPI_Wait(requests.data(), statuses.data());
-      //MPI_Wait(requests.data() + 1, statuses.data() + 1);
-      dsss::mpi::data_type_mapper<size_t> dtm;
-  //    for (size_t i = 1; i < 2*(env.size() - 1); i += 2) {
-  //      int count = -1;
-  //      MPI_Get_count(&statuses[i], dtm.get_mpi_type(), &count);
-  //      std::cout << "rank: " << env.rank() << " source: " << statuses[i].MPI_SOURCE << " tag: " << statuses[i].MPI_TAG << " count: " << count  << std::endl;
-  //  //    for (size_t j = 0; j < count; ++j) {
-
-  //  //  std::cout << "rank: " << env.rank() <<  " " << j <<  " fields: " << recvData[0][j] << std::endl;
-  //  //    }
-  //    }
-  //    std::cout << "rank: " << env.rank() << " field: " << recvData[0].front() <<  " buffer: " << recvData[0].data() << std::endl;
-  //    env.barrier();
-
-      //std::cout << "rank: " << env.rank() << " Send/Recv posted" << std::endl;
-  //    int partner = 1 - env.rank();
-  //    std::cout << "rank: " << env.rank() << " partner: " << partner << " recvBuffer " << recvData[partner].data()  << " front: " << recvData[partner][0]<< std::endl;
-
       std::vector<bool> alreadyRecv(env.size() - 1, false);
       while (true) {
         size_t counter = 0; 
@@ -338,21 +333,19 @@ namespace dss_schimek {
 
           int32_t flag = 0;
           MPI_Test(requests.data() +  2*j + 1, &flag, MPI_STATUSES_IGNORE);
-          //std::cout << "rank: " << env.rank() << " flag: "  << flag << std::endl;
           if (flag != 0) {
-            auto& data = recvData[partnerId];
-            const size_t recvEncodedValuesSize = recvData[partnerId].front();
+            size_t* start = recvBuffers[partnerId]; 
+            const size_t recvEncodedValuesSize = *start;
             alreadyRecv[j] = true;
-            getDeltaDecoding(data.begin() + 1, data.begin() + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[partnerId]), b);
+            getDeltaDecoding(start + 1, start + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[partnerId]), b);
           }
         }
         MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
 
         if (counter == env.size() - 1)
           break;
-
       }
-     return decodedVectors;
+      return decodedVectors;
     }
 
     static std::string getName() {
@@ -421,11 +414,15 @@ namespace dss_schimek {
         std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
         measuringTool.stop("bloomfilter_sendToFilterSetup");
         if constexpr(std::is_same<SendPolicy, dss_schimek::AllToAllHashValuesPipeline>::value) {
+          measuringTool.start("bloomfilter_sendEncodedValuesOverall");
           const auto& unflattenedResult = SendPolicy::alltoallv(sendValues, intervalSizes);
+          measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
           std::vector<size_t> result = flatten(unflattenedResult);
           return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
         } else {
+          measuringTool.start("bloomfilter_sendEncodedValuesOverall");
           std::vector<size_t> result = SendPolicy::alltoallv(sendValues, intervalSizes);
+          measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
           return RecvData(std::move(result), std::move(recvIntervalSizes), std::move(offsets));
         }
       }

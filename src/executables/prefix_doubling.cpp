@@ -109,11 +109,12 @@ template <typename StringSet, typename StringGenerator,
            }
 
 namespace PolicyEnums {
-  enum class GolombEncoding  {noGolombEncoding = 0, sequentialGolombEncoding = 1};
+  enum class GolombEncoding  {noGolombEncoding = 0, sequentialGolombEncoding = 1, pipelinedGolombEncoding = 2};
   GolombEncoding getGolombEncoding(size_t i) {
     switch(i) {
       case 0: return GolombEncoding::noGolombEncoding;
       case 1: return GolombEncoding::sequentialGolombEncoding;
+      case 2: return GolombEncoding::pipelinedGolombEncoding;
       default: std::abort();
     }
   }
@@ -240,6 +241,12 @@ template<typename StringSet, typename StringGenerator, typename SampleString,
        case PolicyEnums::GolombEncoding::sequentialGolombEncoding:
          {
            using GolombEncoding = dss_schimek::AllToAllHashesGolomb;
+           seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder, GolombEncoding>(key, args);
+           break;
+         }
+       case PolicyEnums::GolombEncoding::pipelinedGolombEncoding:
+         {
+           using GolombEncoding = dss_schimek::AllToAllHashValuesPipeline;
            seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll, ByteEncoder, GolombEncoding>(key, args);
            break;
          }
@@ -378,7 +385,7 @@ int main(std::int32_t argc, char const *argv[]) {
   cp.set_author("Matthias Schimek");
   cp.add_double('r', "dToNRatio", dToNRatio, "D/N ratio");
   cp.add_unsigned('s', "size", numberOfStrings, " number of strings to be generated");
-  cp.add_unsigned('x', "golombEncodingPolicy", golombPolicy, " strategy for encoding of hashes sent to filter");
+  cp.add_unsigned('x', "golombEncodingPolicy", golombPolicy, " strategy for encoding of hashes sent to filter: noGolombEncoding = 0, sequentialGolombEncoding = 1, pipelinedGolombEncoding = 2");
   cp.add_unsigned('p', "sampleStringsPolicy", sampleStringsPolicy, "0 = NumStrings, 1 = NumChars");
   cp.add_unsigned('b', "byteEncoder", byteEncoder, "emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, interleavedByteEncoder = 4, emptyLcpByteEncoderMemCpy = 5");
   cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll, "small = 0, directMessages = 1, combined = 2");

@@ -28,14 +28,14 @@ struct BlockWriterIt {
   size_t block_size() { return sizeof(size_t); };
 };
 
+template<typename Iterator>
 struct BlockReader {
-  using iterator = std::vector<size_t>::const_iterator;
 
-  iterator curPos;
-  iterator end;
+  Iterator curPos;
+  Iterator end;
   std::vector<size_t> decoded_data;
 
-  BlockReader(iterator begin, iterator end) :  curPos(begin), end(end) {}
+  BlockReader(Iterator begin, Iterator end) :  curPos(begin), end(end) {}
   bool HasNext() { return curPos != end; }
   template<typename T>
   T GetRaw() { return *(curPos++); }
@@ -69,23 +69,23 @@ inline void getDeltaEncoding(InputIterator begin, InputIterator end, OutputItera
   getDeltaEncoding(begin, end, blockWriter, b);
 }
 
-std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
-  using GolombReader = thrill::core::GolombBitStreamReader<BlockReader>;
-
-  BlockReader reader(values.begin(), values.end());
-  std::vector<size_t> decodedValues;
-  const size_t b = 8;
-  GolombReader golombReader(reader, b);
-
-  while(golombReader.HasNext())
-    decodedValues.push_back(golombReader.Next<size_t>());
-
-  return decodedValues;
-}
+//std::vector<size_t> getDecoding(const std::vector<size_t>& values) {
+//  using GolombReader = thrill::core::GolombBitStreamReader<BlockReader>;
+//
+//  BlockReader reader(values.begin(), values.end());
+//  std::vector<size_t> decodedValues;
+//  const size_t b = 8;
+//  GolombReader golombReader(reader, b);
+//
+//  while(golombReader.HasNext())
+//    decodedValues.push_back(golombReader.Next<size_t>());
+//
+//  return decodedValues;
+//}
 
 template <typename InputIterator, typename OutputIterator>
 void getDeltaDecoding(const InputIterator begin, const InputIterator end, OutputIterator out, size_t b) {
-  using GolombReader = thrill::core::GolombBitStreamReader<BlockReader>;
+  using GolombReader = typename thrill::core::GolombBitStreamReader<BlockReader<InputIterator>>;
   using DeltaReader = thrill::core::DeltaStreamReader<GolombReader, size_t>;
 
   BlockReader reader(begin, end);
@@ -94,6 +94,6 @@ void getDeltaDecoding(const InputIterator begin, const InputIterator end, Output
 
 
   while(golombReader.HasNext()) {
-    out = deltaReader.Next<size_t>();
+    out = deltaReader.template Next<size_t>();
   }
 }
