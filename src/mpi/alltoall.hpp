@@ -43,7 +43,8 @@ namespace dsss::mpi {
         environment env = environment()) {
       using dss_schimek::measurement::MeasuringTool;
       MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-      measuringTool.addRawCommunication(send_data.size() * sizeof(DataType), "alltoall");
+      const size_t sentItems = send_data.size() - 1;
+      measuringTool.addRawCommunication(sentItems * sizeof(DataType), "alltoall");
 
       std::vector<DataType> receive_data(send_data.size(), 0);
       data_type_mapper<DataType> dtm;
@@ -96,6 +97,7 @@ namespace dsss::mpi {
           env.barrier();
         }
       }
+      const size_t sentItems = std::accumulate(real_send_counts.begin(), real_send_counts.end(), 0) - real_send_counts[env.rank()];
       measuringTool.addRawCommunication(send_data.size() * sizeof(DataType), "alltoallv_small");
 
       data_type_mapper<DataType> dtm;
@@ -157,7 +159,7 @@ namespace dsss::mpi {
             }
           }
 
-          const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0);
+          const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0) - send_counts[env.rank()];
           measuringTool.addRawCommunication(elemToSend * sizeof(DataType), "alltoallv_small");
 
           data_type_mapper<DataType> dtm;
@@ -200,7 +202,7 @@ namespace dsss::mpi {
               receive_displacements[i - 1] + receive_counts[i - 1];
           }
 
-          const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0);
+          const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0) - send_counts[env.rank()];
           measuringTool.addRawCommunication(elemToSend * sizeof(DataType), "alltoallv_directMessages");
 
 
@@ -274,7 +276,7 @@ namespace dsss::mpi {
                   receive_displacements[i - 1] + receive_counts[i - 1];
               }
 
-              const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0);
+              const size_t elemToSend = std::accumulate(send_counts.begin(), send_counts.end(), 0) - send_counts[env.rank()];
               measuringTool.addRawCommunication(elemToSend * sizeof(DataType), "alltoallv_combined");
 
 
