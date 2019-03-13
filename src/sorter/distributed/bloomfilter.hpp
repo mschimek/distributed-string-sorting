@@ -340,11 +340,10 @@ namespace dss_schimek {
             getDeltaDecoding(start + 1, start + 1 +  recvEncodedValuesSize, std::back_inserter(decodedVectors[partnerId]), b);
           }
         }
-        MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
-
         if (counter == env.size() - 1)
           break;
       }
+      MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
       return decodedVectors;
     }
 

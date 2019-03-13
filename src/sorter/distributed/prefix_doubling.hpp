@@ -138,12 +138,12 @@ namespace dss_schimek {
     }
 
   template <typename StringPtr, typename GolombPolicy>
-    std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, const size_t startDepth) {
+    std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr, size_t startDepth) {
       using StringSet = typename StringPtr::StringSet;
       using namespace dss_schimek::measurement;
 
 
-      std::cout << "start depth " << startDepth << std::endl;
+      startDepth = 8;
 
       dsss::mpi::environment env;
       MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -158,18 +158,19 @@ namespace dss_schimek {
       measuringTool.setRound(curIteration);
       std::vector<size_t> candidates = bloomFilter.filter(local_string_ptr, startDepth, results);
 
-      for (size_t i = 2; i < std::numeric_limits<size_t>::max(); i *= 2) {
-        measuringTool.setRound(++curIteration);
+      for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max(); i *= 2) {
         measuringTool.add(candidates.size(), std::string("bloomfilter_numberCandidates"));
-        candidates = bloomFilter.filter(local_string_ptr, startDepth + i, candidates, results);
-
         measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
         bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
         measuringTool.stop(std::string("bloomfilter_allreduce"));
         if (allEmpty)
           break;
+
+
         measuringTool.setRound(++curIteration);
+        candidates = bloomFilter.filter(local_string_ptr, startDepth + i, candidates, results);
+        
       }
       measuringTool.setRound(0);
       return results; 
