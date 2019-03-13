@@ -234,7 +234,7 @@ namespace dss_schimek {
       size_t encodedValuesSize = encodedValues->size();
       (*encodedValues)[0] = encodedValuesSize - 1;
  
-      if (encodedValuesSize <=  env.mpi_max_int()) {
+      if (encodedValuesSize >  env.mpi_max_int()) {
         std::cout << " too many values to send in 1-factor algorithm" << std::endl;
         std::abort();
       }

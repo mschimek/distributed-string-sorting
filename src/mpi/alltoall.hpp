@@ -764,16 +764,17 @@ namespace dsss::mpi {
           stringsWritten += sendCountsString[interval];
         }
 
+        
         const size_t L = std::accumulate(stringLcpPtr.get_lcp(), 
                                          stringLcpPtr.get_lcp() + stringLcpPtr.size(), 
                                          0);
         const size_t D = std::accumulate(distinguishingPrefixValues.begin(), 
                                          distinguishingPrefixValues.end(), 
-                                         stringLcpPtr.size());
+                                         0);
         measuringTool.add(L, "localL");
         measuringTool.add(D, "localD");
 
-        const size_t numCharsToSend = D - L;
+        const size_t numCharsToSend = stringLcpPtr.size() + D - L;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
         size_t totalNumWrittenChars = 0;
