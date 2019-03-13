@@ -16,7 +16,7 @@ namespace dss_schimek {
           return "NumStrings";
         }
       protected:
-        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss, const size_t globalLcpAvg,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
           using Char = typename StringSet::Char;
@@ -30,7 +30,7 @@ namespace dss_schimek {
           for (size_t i = 1; i <= nr_splitters; ++i) {
             const String splitter = ss[ss.begin() + i * splitter_dist];
             const size_t splitterLength = ss.get_length(splitter);
-            const size_t usedSplitterLength = splitterLength > 100 ? 100 : splitterLength;
+            const size_t usedSplitterLength = splitterLength > (globalLcpAvg * 1.10)? (globalLcpAvg * 1.10): splitterLength;
             std::copy_n(ss.get_chars(splitter, 0), usedSplitterLength,
                 std::back_inserter(raw_splitters));
             raw_splitters.push_back(0);
@@ -47,7 +47,7 @@ namespace dss_schimek {
           return "NumChars";
         }
       protected:
-        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss, const size_t avgLcp,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
           using Char = typename StringSet::Char;

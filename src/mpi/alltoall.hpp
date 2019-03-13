@@ -770,6 +770,8 @@ namespace dsss::mpi {
         const size_t D = std::accumulate(distinguishingPrefixValues.begin(), 
                                          distinguishingPrefixValues.end(), 
                                          stringLcpPtr.size());
+        measuringTool.add(L, "localL");
+        measuringTool.add(D, "localD");
 
         const size_t numCharsToSend = D - L;
         std::vector<unsigned char> buffer(numCharsToSend);

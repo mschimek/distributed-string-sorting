@@ -237,7 +237,7 @@ namespace dss_schimek {
 
           measuringTool.setPhase("splitter");
           measuringTool.start("sample_splitters");
-          std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
+          std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss, globalLcpAvg);
           measuringTool.stop("sample_splitters");
 
 
