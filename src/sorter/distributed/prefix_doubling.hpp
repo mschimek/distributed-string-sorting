@@ -214,6 +214,12 @@ namespace dss_schimek {
           MeasuringTool& measuringTool = MeasuringTool::measuringTool();
           const StringSet& ss = local_string_ptr.active();
 
+          size_t charactersInSet = 0;
+          for(const auto& str : ss) {
+            charactersInSet = ss.get_length(str) + 1;
+          }
+
+          measuringTool.add(charactersInSet, "charactersInSet");
           // sort locally
           measuringTool.start("sort_locally");
           tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);

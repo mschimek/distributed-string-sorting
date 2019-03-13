@@ -238,8 +238,8 @@ namespace dss_schimek {
         std::cout << " too many values to send in 1-factor algorithm" << std::endl;
         std::abort();
       }
-      measuringTool.addRawCommunication(*encoding + 1, "1factor");
       dsss::mpi::data_type_mapper<size_t> dtm;
+      measuringTool.addRawCommunication((*encoding + 1) * sizeof(size_t) , "1factor");
         MPI_Isend(
             encoding,
             static_cast<int32_t>(*encoding) + 1,
