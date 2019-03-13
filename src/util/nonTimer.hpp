@@ -52,9 +52,10 @@ class NonTimer {
       // -> workaround send only values
       auto ownValue = record.getValue();
       auto globalValues = dsss::mpi::allgather(ownValue);
-      for (auto& globalValue: globalValues) {
-        record.setValue(globalValue);
+      const size_t sum = std::accumulate(globalValues.begin(), globalValues.end(), 0);
+      //for (auto& globalValue: globalValues) {
+        record.setValue(sum);
         out = record;
-      }
+      //}
     }
 };
