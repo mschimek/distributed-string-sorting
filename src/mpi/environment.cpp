@@ -6,6 +6,7 @@
  * All rights reserved. Published under the BSD-2 license in the LICENSE file.
  ******************************************************************************/
 
+#include <iostream>
 #include "mpi/environment.hpp"
 #include "util/macros.hpp"
 

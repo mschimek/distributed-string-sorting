@@ -6,7 +6,7 @@ numOfStrings=1000000
 numOfIterations=10
 byteEncoder=5
 generator=0
-stringLength=5000
+stringLength=500
 MPIRoutineAllToAll=2
 
 for sampleStringsPolicy in 0

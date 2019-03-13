@@ -16,8 +16,10 @@ namespace dss_schimek {
           return "NumStrings";
         }
       protected:
-        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss, const size_t globalLcpAvg,
+        std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss, size_t globalLcpAvg,
             dsss::mpi::environment env = dsss::mpi::environment()) {
+
+	  globalLcpAvg = 250;
 
           using Char = typename StringSet::Char;
           using String = typename StringSet::String;

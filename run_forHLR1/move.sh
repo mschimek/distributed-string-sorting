@@ -9,9 +9,9 @@ grep -oE '[^ ]+$' $1 > processedJobIds.txt
 for jobid in $(cat processedJobIds.txt)
 do
   echo "$jobid"
-  counter=$(($counter * 2))
   jobFile="slurm-${jobid}.out"
   newName="nodes_${counter}"
+  counter=$(($counter * 2))
   echo "moving ${jobFile} to ${dir}/${newName}"
   mv $jobFile $dir/$newName
 done
