@@ -216,7 +216,7 @@ namespace dss_schimek {
 
           size_t charactersInSet = 0;
           for(const auto& str : ss) {
-            charactersInSet = ss.get_length(str) + 1;
+            charactersInSet += ss.get_length(str) + 1;
           }
 
           measuringTool.add(charactersInSet, "charactersInSet");
