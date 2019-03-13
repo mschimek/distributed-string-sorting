@@ -219,6 +219,9 @@ namespace dss_schimek {
     template <typename InputIterator>
     static inline void pointToPoint(const InputIterator begin, const InputIterator end, const size_t partnerId, const size_t b, size_t* encoding, size_t* outputBuffer, MPI_Request* mpi_request) {
       dsss::mpi::environment env;
+      using dss_schimek::measurement::MeasuringTool;
+      MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
       //const size_t gigabyte = 1000;
       //const size_t maxSize = 5 * gigabyte;
       std::vector<size_t>*  encodedValues = new std::vector<size_t>();
@@ -231,7 +234,11 @@ namespace dss_schimek {
       size_t encodedValuesSize = encodedValues->size();
       (*encodedValues)[0] = encodedValuesSize - 1;
  
-      //if (encodedValuesSize <=  env.mpi_max_int()) {
+      if (encodedValuesSize <=  env.mpi_max_int()) {
+        std::cout << " too many values to send in 1-factor algorithm" << std::endl;
+        std::abort();
+      }
+      measuringTool.addRawCommunication(*encoding + 1, "1factor");
       dsss::mpi::data_type_mapper<size_t> dtm;
         MPI_Isend(
             encoding,
@@ -263,7 +270,7 @@ namespace dss_schimek {
       using namespace dss_schimek::measurement;
 
       const size_t maxRecvSize = 1000000000u;
-      size_t** recvBuffers = new size_t*[env.size()];
+      std::vector<size_t*> recvBuffers(env.size(), nullptr);
       for (size_t i = 0; i < env.size(); ++i) {
         recvBuffers[i] = new size_t[maxRecvSize];
       }
@@ -344,6 +351,9 @@ namespace dss_schimek {
           break;
       }
       MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
+      for (size_t * ptr : recvBuffers) {
+        delete[] ptr;
+      }
       return decodedVectors;
     }
 
