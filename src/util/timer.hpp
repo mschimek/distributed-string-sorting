@@ -12,7 +12,6 @@
 #include <tuple>
 
 #include "mpi/allreduce.hpp"
-#include "mpi/allgather.hpp"
 
 namespace dss_schimek {
 //j  class EmptyTimer { // do not measure, used in alltoall-variants 

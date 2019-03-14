@@ -182,6 +182,7 @@ namespace dss_schimek {
       }
 
       std::vector<OutputFormat> collect() {
+        disable();
         const size_t numMeasurements = 1000;
 
         std::vector<OutputFormat> data;
@@ -213,6 +214,7 @@ namespace dss_schimek {
               timerValue.type, 
               timerValue.rawCommunication, 
               timerValue.value});
+        enable();
         return data;
       }
 
@@ -221,7 +223,7 @@ namespace dss_schimek {
           stream << data << std::endl;
       }
 
-      void eanble() {
+      void enable() {
         disabled = false;
       }
       

@@ -17,6 +17,7 @@
 #include "mpi/environment.hpp"
 #include "mpi/type_mapper.hpp"
 #include "util/string_set.hpp"
+#include "util/measuringTool.hpp"
 
 namespace dsss::mpi {
 template <typename DataType>
@@ -37,6 +38,11 @@ template <typename DataType>
 inline std::vector<DataType> allgather(DataType& send_data,
   environment env = environment()) {
 
+  using dss_schimek::measurement::MeasuringTool;
+  
+  MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+  measuringTool.addRawCommunication(sizeof(DataType), "allgather");
+
   data_type_mapper<DataType> dtm;
   std::vector<DataType> receive_data(env.size());
   MPI_Allgather(
@@ -50,53 +56,55 @@ inline std::vector<DataType> allgather(DataType& send_data,
   return receive_data;
 }
 
-template<typename DataType>
-std::vector<DataType> allgatherv_my(DataType* data, size_t size,
-                dsss::mpi::environment env = dsss::mpi::environment()) {
-
-  std::vector<size_t> sendCounts = dsss::mpi::allgather(size);
-  std::vector<size_t> offsets;
-  offsets.reserve(env.size());
-  offsets.emplace_back(0);
-  for (size_t i = 1; i < env.size(); ++i) {
-    offsets.emplace_back(offsets.back() + sendCounts[i -  1]);
-  }
-  //if (env.rank() == 0)
-  //for (size_t i = 0; i < offsets.size(); ++i) {
-  //  std::cout << i <<  "offset: " << offsets[i] << std::endl;
-  //}
-
-  std::vector<DataType> recvBuffer(offsets.back() + sendCounts.back());
-  std::copy_n(data, size, recvBuffer.data() + offsets[env.rank()]);
-
-  dsss::mpi::data_type_mapper<DataType> dtm;
-  std::vector<MPI_Request> mpiRequest(2 * (env.size() - 1));
-  for (size_t i = 1; i < env.size(); ++i) {
-    int partner = (env.rank() + i) % env.size();
-    MPI_Isend(data, 
-        size, 
-        dtm.get_mpi_type(),
-        partner,
-        42,
-        env.communicator(),
-        &mpiRequest[2*(i - 1)]);
-
-    MPI_Irecv(
-        recvBuffer.data() + offsets[partner],
-        sendCounts[partner],
-        dtm.get_mpi_type(),
-        partner,
-        42,
-        env.communicator(),
-        &mpiRequest[2*(i -1) + 1]);
-  }
-  MPI_Waitall(2 * env.size() - 2, mpiRequest.data(), MPI_STATUSES_IGNORE);
-  return recvBuffer;
-}
+//template<typename DataType>
+//std::vector<DataType> allgatherv_my(DataType* data, size_t size,
+//                dsss::mpi::environment env = dsss::mpi::environment()) {
+//
+//  std::vector<size_t> sendCounts = dsss::mpi::allgather(size);
+//  std::vector<size_t> offsets;
+//  offsets.reserve(env.size());
+//  offsets.emplace_back(0);
+//  for (size_t i = 1; i < env.size(); ++i) {
+//    offsets.emplace_back(offsets.back() + sendCounts[i -  1]);
+//  }
+//  //if (env.rank() == 0)
+//  //for (size_t i = 0; i < offsets.size(); ++i) {
+//  //  std::cout << i <<  "offset: " << offsets[i] << std::endl;
+//  //}
+//
+//  std::vector<DataType> recvBuffer(offsets.back() + sendCounts.back());
+//  std::copy_n(data, size, recvBuffer.data() + offsets[env.rank()]);
+//
+//  dsss::mpi::data_type_mapper<DataType> dtm;
+//  std::vector<MPI_Request> mpiRequest(2 * (env.size() - 1));
+//  for (size_t i = 1; i < env.size(); ++i) {
+//    int partner = (env.rank() + i) % env.size();
+//    MPI_Isend(data, 
+//        size, 
+//        dtm.get_mpi_type(),
+//        partner,
+//        42,
+//        env.communicator(),
+//        &mpiRequest[2*(i - 1)]);
+//
+//    MPI_Irecv(
+//        recvBuffer.data() + offsets[partner],
+//        sendCounts[partner],
+//        dtm.get_mpi_type(),
+//        partner,
+//        42,
+//        env.communicator(),
+//        &mpiRequest[2*(i -1) + 1]);
+//  }
+//  MPI_Waitall(2 * env.size() - 2, mpiRequest.data(), MPI_STATUSES_IGNORE);
+//  return recvBuffer;
+//}
 
 template <typename DataType>
 static inline std::vector<DataType> allgatherv_small(
   std::vector<DataType>& send_data, environment env = environment()) {
+
+  //measurement in overload that sends
 
   int32_t local_size = send_data.size();
   std::vector<int32_t> receiving_sizes = allgather(local_size);
@@ -106,6 +114,8 @@ static inline std::vector<DataType> allgatherv_small(
 template <typename DataType>
 static inline std::vector<DataType> allgatherv_small(
   std::vector<DataType>& send_data, std::vector<int32_t>& receiving_sizes, environment env = environment()) {
+  using dss_schimek::measurement::MeasuringTool;
+  MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
   int32_t local_size = send_data.size();
 
@@ -116,6 +126,8 @@ static inline std::vector<DataType> allgatherv_small(
 
   std::vector<DataType> receiving_data(
     receiving_sizes.back() + receiving_offsets.back());
+
+  measuringTool.addRawCommunication(send_data.size() * sizeof(DataType), "allgatherv_small");
 
   data_type_mapper<DataType> dtm;
   MPI_Allgatherv(
@@ -132,7 +144,9 @@ static inline std::vector<DataType> allgatherv_small(
 }
 template <typename DataType>
 static inline std::vector<DataType> allgatherv(
-  std::vector<DataType>& send_data, environment env = environment()) {
+    std::vector<DataType>& send_data, environment env = environment()) {
+  using dss_schimek::measurement::MeasuringTool;
+  MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
   size_t local_size = send_data.size();
   std::vector<size_t> receiving_sizes = allgather(local_size);
@@ -148,6 +162,9 @@ static inline std::vector<DataType> allgatherv(
       receiving_sizes_small[i] = receiving_sizes[i];
     return allgatherv_small(send_data, receiving_sizes_small, env);
   } else {
+
+    measuringTool.addRawCommunication(send_data.size() * sizeof(DataType), "allgatherv_small");
+
     std::vector<MPI_Request> mpi_requests(2 * env.size());
     std::vector<DataType> receiving_data(
       receiving_sizes.back() + receiving_offsets.back());
@@ -195,6 +212,7 @@ namespace dss_schimek::mpi {
   std::vector<Char>& raw_string_data,
   dsss::mpi::environment env = dsss::mpi::environment()) {
 
+  // measure is downward the call stack
   auto receiving_data = dsss::mpi::allgatherv(raw_string_data, env);
   return std::vector(std::move(receiving_data));
 }

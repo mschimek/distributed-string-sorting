@@ -1,12 +1,31 @@
 #pragma once
 
 #include "mpi/environment.hpp"
+#include "mpi/type_mapper.hpp"
 #include <vector>
+#include <algorithm>
+#include <numeric>
 #include <map>
 #include <iostream>
 
-#include "mpi/allgather.hpp"
 
+template <typename DataType>
+inline std::vector<DataType> allgather_(DataType& send_data,
+  dsss::mpi::environment env = dsss::mpi::environment()) {
+  
+
+  dsss::mpi::data_type_mapper<DataType> dtm;
+  std::vector<DataType> receive_data(env.size());
+  MPI_Allgather(
+    &send_data,
+    1,
+    dtm.get_mpi_type(),
+    receive_data.data(),
+    1,
+    dtm.get_mpi_type(),
+    env.communicator());
+  return receive_data;
+}
 
 template<typename Record>
 class NonTimer {
@@ -51,7 +70,7 @@ class NonTimer {
       // Cannot allgather Record as a whole since it is not trivially_copyable
       // -> workaround send only values
       auto ownValue = record.getValue();
-      auto globalValues = dsss::mpi::allgather(ownValue);
+      auto globalValues = allgather_(ownValue);
       const size_t sum = std::accumulate(globalValues.begin(), globalValues.end(), 0);
       //for (auto& globalValue: globalValues) {
         record.setValue(sum);
