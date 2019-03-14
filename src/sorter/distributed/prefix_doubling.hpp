@@ -167,7 +167,6 @@ namespace dss_schimek {
         if (allEmpty)
           break;
 
-
         measuringTool.setRound(++curIteration);
         candidates = bloomFilter.filter(local_string_ptr, startDepth + i, candidates, results);
         
@@ -229,6 +228,7 @@ namespace dss_schimek {
           const size_t globalLcpAvg = getAvgLcp(local_string_ptr);
           measuringTool.stop("avg_lcp");
 
+
           // There is only one PE, hence there is no need for distributed sorting 
           if (env.size() == 1)
             return std::vector<StringIndexPEIndex>();
@@ -266,6 +266,7 @@ namespace dss_schimek {
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           measuringTool.stop("compute_interval_sizes");
 
+          
           measuringTool.setPhase("string_exchange");
           measuringTool.start("all_to_all_strings");
           dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet> recv_string_cont_tmp =
@@ -296,6 +297,7 @@ namespace dss_schimek {
             permutation.emplace_back(sortedSet.getIndex(str), sortedSet.getPEIndex(str));
           measuringTool.stop("writeback_permutation");
           measuringTool.setPhase("none");
+
 
           return permutation;
         }

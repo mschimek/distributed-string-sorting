@@ -194,24 +194,19 @@ namespace dss_schimek {
 
   //TODO under construction
   struct AllToAllHashValuesPipeline {
-    static inline auto getEnd(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
-      dsss::mpi::environment env;
-      if (partnerId + 1 == env.size()) {
-        return data.end();
-      }
-      return data.begin() + startIndices[partnerId + 1];
-    }
-
+   
+ 
     static inline auto getStart(size_t partnerId, const std::vector<size_t>& startIndices, std::vector<size_t>& data) {
       return data.begin() + startIndices[partnerId];
     }
 
     template <typename InputIterator>
     static inline void getEncoding(const InputIterator begin, const InputIterator end, const size_t b, std::vector<size_t>& encoding) {
+      encoding.clear();
       encoding.reserve(1 + end - begin);
       encoding.push_back(0);
       getDeltaEncoding(begin, end, std::back_inserter(encoding), b);
-      size_t encodingSize = encoding.size();
+            size_t encodingSize = encoding.size();
       encoding[0] = encodingSize - 1;
     }
 
@@ -224,25 +219,17 @@ namespace dss_schimek {
 
       //const size_t gigabyte = 1000;
       //const size_t maxSize = 5 * gigabyte;
-      std::vector<size_t>*  encodedValues = new std::vector<size_t>();
-      encodedValues->reserve(1 + end - begin);
-      encodedValues->push_back(0);
 
-      
-      getDeltaEncoding(begin, end, std::back_inserter(*encodedValues), b);
-
-      size_t encodedValuesSize = encodedValues->size();
-      (*encodedValues)[0] = encodedValuesSize - 1;
- 
-      if (encodedValuesSize >  env.mpi_max_int()) {
+      if (*encoding >  env.mpi_max_int()) {
         std::cout << " too many values to send in 1-factor algorithm" << std::endl;
         std::abort();
       }
+      int32_t sendSize = *encoding + 1;
       dsss::mpi::data_type_mapper<size_t> dtm;
       measuringTool.addRawCommunication((*encoding + 1) * sizeof(size_t) , "1factor");
         MPI_Isend(
             encoding,
-            static_cast<int32_t>(*encoding) + 1,
+            sendSize,
             dtm.get_mpi_type(),
             partnerId,
             42,
@@ -259,7 +246,6 @@ namespace dss_schimek {
             mpi_request + 1 
             );
 
-        //MPI_Waitall(2, mpi_request, MPI_STATUSES_IGNORE);
    }
 
     
@@ -268,23 +254,45 @@ namespace dss_schimek {
       dsss::mpi::environment env;
 
       using namespace dss_schimek::measurement;
-
+	
+//
+//      const std::vector<size_t> recvSizesRef = dsss::mpi::alltoall(intervalSizes);
+//dss_schimek::mpi::execute_in_order([&](){
+//	std::cout << "rank: " << env.rank() << " recvSizes";
+//	for (size_t i = 0; i < recvSizesRef.size(); ++i)
+//		std::cout << " " << i << " " << recvSizesRef[i];
+//	std::cout << std::endl;
+//});
+//env.barrier();
+//      const std::vector<size_t> recvValuesRef = dsss::mpi::alltoallv_small(sendData, intervalSizes);
+//
       const size_t maxRecvSize = 1000000000u;
       std::vector<size_t*> recvBuffers(env.size(), nullptr);
       for (size_t i = 0; i < env.size(); ++i) {
         recvBuffers[i] = new size_t[maxRecvSize];
-      }
-
-      std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
-      std::vector<size_t> recvStartIndices;
-      recvStartIndices.reserve(env.size());
-      recvStartIndices.push_back(0);
-      std::partial_sum(recvIntervalSizes.begin(), recvIntervalSizes.end(), std::back_inserter(recvStartIndices));
+    }
+//
+//      std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
+//      std::vector<size_t> recvStartIndices;
+//      recvStartIndices.reserve(env.size());
+//      recvStartIndices.push_back(0);
+//      std::partial_sum(recvIntervalSizes.begin(), recvIntervalSizes.end(), std::back_inserter(recvStartIndices));
 
       std::vector<size_t> startIndices;
       startIndices.reserve(env.size());
       startIndices.push_back(0);
       std::partial_sum(intervalSizes.begin(), intervalSizes.end(), std::back_inserter(startIndices));
+      
+//      dss_schimek::mpi::execute_in_order([&](){
+//	std::cout << "rank: " << env.rank() << " sendSizes";
+//	for (size_t i = 0; i < intervalSizes.size(); ++i)
+//		std::cout << " " << i << " " << intervalSizes[i];
+//	std::cout << std::endl;
+//	for (size_t i = 0; i < startIndices.size(); ++i)
+//		std::cout << " " << i << " " << startIndices[i];
+//	std::cout << std::endl;
+//});
+//env.barrier();
 
       std::vector<std::vector<size_t>> encodings(env.size());
       std::vector<MPI_Request> requests((env.size() - 1) * 2);
@@ -293,23 +301,23 @@ namespace dss_schimek {
         size_t idlePE = (env.size() / 2 * j) % (env.size() - 1);
         if (env.rank() == env.size() - 1) {
           const size_t partnerId = idlePE;
-          const auto curIt = getStart(partnerId, startIndices, sendData);
-          const auto curEnd = getEnd(partnerId, startIndices, sendData);
+          const auto curIt = sendData.begin() + startIndices[partnerId];
+          const auto curEnd = curIt + intervalSizes[partnerId]; 
           getEncoding(curIt, curEnd, b, encodings[partnerId]);
           pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
 
           //exchange with PE idle
         } else if (env.rank() == idlePE) {
           const size_t partnerId = env.size() - 1;
-          const auto curIt = getStart(partnerId, startIndices, sendData);
-          const auto curEnd = getEnd(partnerId, startIndices, sendData);
+          const auto curIt = sendData.begin() + startIndices[partnerId];
+          const auto curEnd = curIt + intervalSizes[partnerId]; 
           getEncoding(curIt, curEnd, b, encodings[partnerId]);
           pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
           //exchange with PE env.size() - 1
         } else {
           const size_t partnerId = ((j + env.size()) - env.rank() - 1) % (env.size() - 1);
-          const auto curIt = getStart(partnerId, startIndices, sendData);
-          const auto curEnd = getEnd(partnerId, startIndices, sendData);
+          const auto curIt = sendData.begin() + startIndices[partnerId];
+          const auto curEnd = curIt + intervalSizes[partnerId]; 
           getEncoding(curIt, curEnd, b, encodings[partnerId]);
           pointToPoint(curIt, curEnd, partnerId, b, encodings[partnerId].data(), recvBuffers[partnerId], requests.data() + 2 * j);
 
@@ -350,7 +358,30 @@ namespace dss_schimek {
         if (counter == env.size() - 1)
           break;
       }
+//      env.barrier();
+//      for (size_t i = 0; i < env.size(); ++i) {
+//	      auto it = recvValuesRef.begin();
+//	      std::vector<size_t> ref(it + recvStartIndices[i], it + recvStartIndices[i] + recvSizesRef[i]);
+//	      if (ref != decodedVectors[i]) {
+//	              for (size_t j = 0; j < decodedVectors[i].size() ; ++j) {
+//	        	      std::cout << "rank: " << env.rank() << " " << j << " " << ref[j] << " " << decodedVectors[i][j] << std::endl;
+//	        	      if (decodedVectors[i][j] != ref[j])
+//	        		      break;
+//
+//	              }
+//	              std::cout << "rank: " << env.rank() << i << " not recv what i sended "  << std::endl;
+//	      }
+//	      if (decodedVectors[i].size() != recvSizesRef[i]) {
+//
+//		std::cout << "rank: " << env.rank() << " from: " << i << " decoded size" << decodedVectors[i].size() << " != " << recvSizesRef[i] << std::endl;
+//		std::cout << "rank: " << env.rank() << " from: " << i << " recvBufferSize " << *recvBuffers[i]  << std::endl;
+//		decodedVectors[i].pop_back();
+//		}
+//      }
+//      if (env.rank() == 0)
+//	std::cout << "reached end of sending" << std::endl;
       MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
+      env.barrier();
       for (size_t * ptr : recvBuffers) {
         delete[] ptr;
       }
@@ -363,16 +394,18 @@ namespace dss_schimek {
   };
 
   std::vector<size_t> computeIntervalSizes(const std::vector<size_t>& hashes, const size_t bloomFilterSize,
-      dsss::mpi::environment env = dsss::mpi::environment()) {
+    dsss::mpi::environment env = dsss::mpi::environment()) {
     std::vector<size_t> indices;
+
     indices.reserve(env.size());
     auto curPosWithinVector = hashes.begin(); 
-    for (size_t i = 0; i < env.size(); ++i) {
+    for (size_t i = 0; i + 1 < env.size(); ++i) {
       const size_t upperPartitionLimit = (i + 1) * (bloomFilterSize / env.size()) - 1;
       auto pos = std::upper_bound(curPosWithinVector, hashes.end(), upperPartitionLimit);
       indices.push_back(pos - curPosWithinVector);
       curPosWithinVector = pos;
     }
+    indices.push_back(hashes.size() - (curPosWithinVector - hashes.begin()));
     return indices;
   }
 
@@ -408,16 +441,24 @@ namespace dss_schimek {
 
       static inline RecvData sendToFilter(const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
         using namespace dss_schimek::measurement;
+	dsss::mpi::environment env;
         MeasuringTool& measuringTool= MeasuringTool::measuringTool();
 
         measuringTool.start("bloomfilter_sendToFilterSetup");
         std::vector<size_t> sendValues = extractSendValues(hashes);
         std::vector<size_t> intervalSizes = computeIntervalSizes(sendValues, bloomfilterSize);
+
+	// assert TODO normal assert
+	const size_t sumIntervalSizes = std::accumulate(intervalSizes.begin(), intervalSizes.end(), 0);
+	if (hashes.size() != sumIntervalSizes) {
+		std::cout << "rank: " << env.rank() << " sendValues.size() " << sendValues.size() << " " << sumIntervalSizes << std::endl;
+		std::abort();
+        }	
+
         std::vector<size_t> offsets;
         offsets.reserve(intervalSizes.size());
         offsets.push_back(0);
         std::partial_sum(intervalSizes.begin(), intervalSizes.end() - 1, std::back_inserter(offsets));
-        dsss::mpi::environment env;
         offsets = dsss::mpi::alltoall(offsets);
 
         std::vector<size_t> recvIntervalSizes = dsss::mpi::alltoall(intervalSizes);
@@ -543,7 +584,7 @@ namespace dss_schimek {
     }
     
     //TODO add && reference for localDuplicates
-    static std::vector<size_t> getIndicesOfDuplicates(std::vector<size_t>& localDuplicates, std::vector<size_t>& remoteDuplicates, const std::vector<HashStringIndex>& originalMapping) {
+    static std::vector<size_t> getIndicesOfDuplicates(const size_t size, std::vector<size_t>& localDuplicates, std::vector<size_t>& remoteDuplicates, const std::vector<HashStringIndex>& originalMapping) {
       std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
       dsss::mpi::environment env;
       //indicesOfAllDuplicates.reserve(localDuplicates.size() + remoteDuplicates.size());
@@ -553,6 +594,9 @@ namespace dss_schimek {
         if (!isAlsoLocalDuplicate) {
           const size_t stringIndex = originalMapping[curIndex].stringIndex;
           indicesOfAllDuplicates.push_back(stringIndex);
+	  if (indicesOfAllDuplicates.back() >= size) {
+		std::cout << "rank: " << env.rank() << " elem: " << indicesOfAllDuplicates.back()  << " map.size() " << originalMapping.size() << " curIndex " << curIndex << std::endl;
+}
         }
       }  
 
@@ -937,7 +981,7 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
 
         measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates = 
-          FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
+          FindDuplicatesPolicy::getIndicesOfDuplicates(strptr.active().size(), indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
         measuringTool.stop("bloomfilter_getIndices");
 
         measuringTool.start("bloomfilter_setDepth");
@@ -994,12 +1038,13 @@ void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples, std
 
         measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates = 
-          FindDuplicatesPolicy::getIndicesOfDuplicates(indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
+          FindDuplicatesPolicy::getIndicesOfDuplicates(strptr.active().size(), indicesOfLocalDuplicates, indicesOfRemoteDuplicates, reducedHashStringIndices);
         measuringTool.stop("bloomfilter_getIndices");
 
         measuringTool.start("bloomfilter_setDepth");
         setDepth(strptr, depth, candidates, eosCandidates, results);
         measuringTool.stop("bloomfilter_setDepth");
+
 
         return indicesOfAllDuplicates;
       }

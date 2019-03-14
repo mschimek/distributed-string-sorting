@@ -102,6 +102,7 @@ template <typename StringSet, typename StringGenerator,
              env.barrier();
              std::stringstream buffer;
              measuringTool.writeToStream(buffer);
+	
              if (env.rank() == 0) {
                std::cout << buffer.str() << std::endl;
              }
