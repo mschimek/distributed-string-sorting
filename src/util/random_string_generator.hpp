@@ -81,7 +81,8 @@ namespace dss_schimek {
       const size_t numberInternChars = maxInternChar - minInternChar + 1;
       const size_t k = std::max(desiredStringLength * dToN, std::ceil(std::log(numStrings) / std::log(numberInternChars)));
       const size_t stringLength = std::max(desiredStringLength, k);
-      std::vector<unsigned char> rawStrings(numStrings * (stringLength + 1), minInternChar);
+      std::vector<unsigned char> rawStrings;//(numStrings * (stringLength + 1), minInternChar);
+      rawStrings.reserve(numStrings * (stringLength + 1));
 
       const size_t globalSeed = getSameSeedGlobally();
       std::mt19937 randGen(globalSeed);
@@ -97,14 +98,17 @@ namespace dss_schimek {
           ++numGenStrings; 
           size_t curIndex = i;
           for (size_t j = 0; j < k; ++j) {
+            rawStrings.push_back(minInternChar);
+          }
+          for (size_t j = 0; j < k; ++j) {
             if (curIndex == 0)
               break;
             rawStrings[curOffset + k - 1 - j] = minInternChar + (curIndex % numberInternChars);
             curIndex /= numberInternChars;
           } 
           for (size_t j = k; j < stringLength; ++j) 
-            rawStrings[curOffset + j] = randomChar;
-          rawStrings[curOffset + stringLength] = 0;
+            rawStrings.push_back(randomChar);
+          rawStrings.push_back(0);
           curOffset += stringLength + 1;
         }
       }
