@@ -97,7 +97,8 @@ namespace dsss::mpi {
           env.barrier();
         }
       }
-      const size_t sentItems = std::accumulate(real_send_counts.begin(), real_send_counts.end(), 0) - real_send_counts[env.rank()];
+      const size_t sentItems = 
+        std::accumulate(real_send_counts.begin(), real_send_counts.end(), static_cast<size_t>(0u)) - real_send_counts[env.rank()];
       measuringTool.addRawCommunication(sentItems * sizeof(DataType), "alltoallv_small");
 
       data_type_mapper<DataType> dtm;
@@ -769,14 +770,18 @@ namespace dsss::mpi {
         
         const size_t L = std::accumulate(stringLcpPtr.get_lcp(), 
                                          stringLcpPtr.get_lcp() + stringLcpPtr.size(), 
-                                         0);
+                                         static_cast<size_t>(0));
         const size_t D = std::accumulate(distinguishingPrefixValues.begin(), 
                                          distinguishingPrefixValues.end(), 
-                                         0);
+                                         0u);
         measuringTool.add(L, "localL");
         measuringTool.add(D, "localD");
 
         const size_t numCharsToSend = stringLcpPtr.size() + D - L;
+
+	std::cout << "numCharsToSend : " << numCharsToSend << std::endl;
+	std::cout << "localL : " << L << std::endl;
+	std::cout << "localD : " << D << std::endl;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
         size_t totalNumWrittenChars = 0;

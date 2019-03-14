@@ -2,6 +2,7 @@
 
 #include <ostream>
 #include <vector>
+#include "mpi/environment.hpp"
 #include "util/nonTimer.hpp"
 #include "util/timer.hpp"
 
@@ -113,6 +114,8 @@ namespace dss_schimek {
       // TimerKey must contain type PseudoKey and function pseudoKey() 
       using TimerValue = CounterPerPhaseTypeRawCommunicationValue;
       // TimerValue must contain functions setType() and setPseudoKeyCounter 
+      //
+      dsss::mpi::environment env;
 
       struct OutputFormat {
         std::string prefix;
@@ -146,6 +149,7 @@ namespace dss_schimek {
         timer = Timer<TimerKey, TimerValue>();
         nonTimer = NonTimer<NonTimerRecord>();
         disabled = false;
+	verbose = false;
         prefix = "";
         curPhase = "none";
         curRound = 0;
@@ -160,24 +164,32 @@ namespace dss_schimek {
       void add(size_t value, const std::string& description) {
         if (disabled)
           return;
+	if (verbose && env.rank() == 0)
+	  std::cout << description << std::endl;
         nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", false, value));
       }
 
       void addRawCommunication(size_t value, const std::string& description) {
         if (disabled)
           return;
+	if (verbose && env.rank() == 0)
+	  std::cout << description << std::endl;
         nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description, "number", true, value));
       }
 
       void start(const std::string& description) {
         if (disabled)
           return;
+	if (verbose && env.rank() == 0)
+	  std::cout << description << std::endl;
         timer.start(TimerKey(curPhase, curRound, description), TimerValue(0u, "", false, 0u));
       }
 
       void stop(const std::string& description) {
         if (disabled)
           return;
+	if (verbose && env.rank() == 0)
+	  std::cout << description << std::endl;
         timer.stop(TimerKey(curPhase, curRound, description));
       }
 
@@ -230,6 +242,10 @@ namespace dss_schimek {
       void disable() {
         disabled = true;
       }
+      
+      void setVerbose(const bool value) {
+       verbose = value;
+      }
 
       void setPrefix(const std::string& prefix_) {
         prefix = prefix_;
@@ -245,6 +261,7 @@ namespace dss_schimek {
 
       private:
       bool disabled = false;
+      bool verbose = false;
       std::string prefix = "";
       std::string curPhase = "none";
       size_t curRound = 0;

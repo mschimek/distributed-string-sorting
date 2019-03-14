@@ -56,7 +56,10 @@ template <typename StringSet, typename StringGenerator,
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
              
+	std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+		env.barrier();
+		std::cout << "rank: " << env.rank() <<  " generate strings completed" << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
              //dss_schimek::mpi::execute_in_order([&]() {
@@ -77,6 +80,8 @@ template <typename StringSet, typename StringGenerator,
 
              measuringTool.stop("sorting_overall");
 
+	const bool check = false;
+ 	if (check) {
              if (env.size() > 1) {
                auto CompleteStringsCont = dsss::mpi::getStrings(
                    permutation.begin(), 
@@ -98,7 +103,7 @@ template <typename StringSet, typename StringGenerator,
                }
 
              }
-
+	}
              env.barrier();
              std::stringstream buffer;
              measuringTool.writeToStream(buffer);

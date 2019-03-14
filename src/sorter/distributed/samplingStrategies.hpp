@@ -19,7 +19,7 @@ namespace dss_schimek {
         std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss, size_t globalLcpAvg,
             dsss::mpi::environment env = dsss::mpi::environment()) {
 
-	  globalLcpAvg = 250;
+	  globalLcpAvg = 1000;
 
           using Char = typename StringSet::Char;
           using String = typename StringSet::String;
