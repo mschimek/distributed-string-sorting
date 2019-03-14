@@ -136,6 +136,14 @@ namespace dss_schimek {
           MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
           const StringSet& ss = local_string_ptr.active();
+
+          size_t charactersInSet = 0;
+          for(const auto& str : ss) {
+            charactersInSet += ss.get_length(str) + 1;
+          }
+
+          measuringTool.add(charactersInSet, "charactersInSet");
+
           
           // sort locally
           measuringTool.start("sort_locally");
@@ -149,8 +157,10 @@ namespace dss_schimek {
           if (env.size() == 1)
             return dss_schimek::StringLcpContainer<StringSet>(std::move(local_string_container));
 
+          measuringTool.setPhase("splitter");
+          const size_t dummy = 0; //Todo think about lcp-value splitting
           measuringTool.start("sample_splitters");
-          std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss);
+          std::vector<Char> raw_splitters = SampleSplittersPolicy::sample_splitters(ss, dummy);
           measuringTool.stop("sample_splitters");
 
           measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
@@ -172,12 +182,14 @@ namespace dss_schimek {
           std::vector<std::size_t> receiving_interval_sizes = dsss::mpi::alltoall(interval_sizes);
           measuringTool.stop("compute_interval_sizes");
 
+          measuringTool.setPhase("string_exchange");
             measuringTool.start("all_to_all_strings");
             dss_schimek::StringLcpContainer<StringSet> recv_string_cont = 
               AllToAllStringPolicy::alltoallv(local_string_container, interval_sizes);
             measuringTool.stop("all_to_all_strings");
 
           measuringTool.add(recv_string_cont.char_size() - recv_string_cont.size(), "num_received_chars");
+          measuringTool.setPhase("merging");
           
           size_t num_recv_elems = 
             std::accumulate(receiving_interval_sizes.begin(), receiving_interval_sizes.end(), 0);
@@ -192,6 +204,7 @@ namespace dss_schimek {
           measuringTool.start("merge_ranges");
           auto sorted_container = choose_merge<AllToAllStringPolicy>(std::move(recv_string_cont), ranges, num_recv_elems);
           measuringTool.stop("merge_ranges");
+          measuringTool.setPhase("none");
           return sorted_container;
         }
   };

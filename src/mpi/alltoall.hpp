@@ -98,7 +98,7 @@ namespace dsss::mpi {
         }
       }
       const size_t sentItems = std::accumulate(real_send_counts.begin(), real_send_counts.end(), 0) - real_send_counts[env.rank()];
-      measuringTool.addRawCommunication(send_data.size() * sizeof(DataType), "alltoallv_small");
+      measuringTool.addRawCommunication(sentItems * sizeof(DataType), "alltoallv_small");
 
       data_type_mapper<DataType> dtm;
       MPI_Alltoallv(send_data.data(),
