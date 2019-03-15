@@ -245,7 +245,7 @@ public:
         const std::vector<size_t>& send_counts,
         environment env = environment()) {
 
-	std::cout << "MPI Routine : combined" << std::endl;
+        std::cout << "MPI Routine : combined" << std::endl;
         using dss_schimek::measurement::MeasuringTool;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -629,7 +629,7 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
             std::accumulate(lcps.begin(), lcps.end(), static_cast<size_t>(0u));
 
         const size_t numCharsToSend = send_data.char_size() - L;
-	std::cout << " numCharsToSend: " << numCharsToSend << std::endl;
+        std::cout << " numCharsToSend: " << numCharsToSend << std::endl;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
         size_t totalNumWrittenChars = 0;
@@ -647,13 +647,17 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
             send_counts_char[interval] = numWrittenChars;
             stringsWritten += sendCountsString[interval];
         }
+        send_data.deleteRawStrings();
+        send_data.deleteStrings();
 
         measuringTool.stop("all_to_all_strings_intern_copy");
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
+            
         receive_buffer_lcp = AllToAllPolicy::alltoallv(
             send_data.lcps().data(), sendCountsString, env);
+        send_data.deleteAll();
         measuringTool.stop("all_to_all_strings_mpi");
         measuringTool.add(
             numCharsToSend + send_data.lcps().size(), "bytes_sent");
@@ -661,14 +665,16 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         //// no bytes are read in this version only for evaluation layout
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
-	
-	measuringTool.start("container_construction");
-	std::cout << "receive_buffer_char: " << receive_buffer_char.size() << std::endl;
-	std::cout << "receive_buffer_lcp" << receive_buffer_lcp.size() << std::endl;
+
+        measuringTool.start("container_construction");
+        std::cout << "receive_buffer_char: " << receive_buffer_char.size()
+                  << std::endl;
+        std::cout << "receive_buffer_lcp" << receive_buffer_lcp.size()
+                  << std::endl;
         dss_schimek::StringLcpContainer<StringSet> recvContainer(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
-	measuringTool.stop("container_construction");
-	return recvContainer;
+        measuringTool.stop("container_construction");
+        return recvContainer;
     }
 };
 

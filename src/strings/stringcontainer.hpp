@@ -49,17 +49,18 @@ public:
     std::vector<String> init_strings(std::vector<Char>& raw_strings) {
         std::vector<String> strings;
         size_t approx_string_size = raw_strings.size() / approx_string_length;
-	std::cout << " approx string length: " << approx_string_size << std::endl;
-        //strings.reserve(approx_string_size);
-	std::cout << "reserve in init" << std::endl;
+        std::cout << " approx string length: " << approx_string_size
+                  << std::endl;
+        strings.reserve(approx_string_size);
+        std::cout << "reserve in init" << std::endl;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             strings.emplace_back(raw_strings.data() + i, i);
             while (raw_strings[i] != 0)
                 ++i;
             strings.back().length = i - strings.back().length;
         }
-	
-	std::cout << "return in init" << std::endl;
+
+        std::cout << "return in init" << std::endl;
         return strings;
     }
 };
@@ -125,7 +126,7 @@ public:
               std::make_unique<std::vector<Char>>(std::move(raw_strings))),
           savedLcps_() {
 
-	std::cout << "reached cstor" << std::endl;
+        std::cout << "reached cstor" << std::endl;
         update_strings();
         lcps_ = std::move(lcp);
     }
@@ -212,6 +213,21 @@ public:
     make_string_lcp_ptr() {
         return tlx::sort_strings_detail::StringLcpPtr(
             make_string_set(), lcp_array());
+    }
+
+    void deleteRawStrings() { raw_strings_->clear(); }
+
+    void deleteStrings() { strings_.clear(); }
+
+    void deleteLcps() { lcps_.clear(); }
+
+    void deleteSavedLcps() { savedLcps_.clear(); }
+
+    void deleteAll() {
+        deleteRawStrings();
+        deleteStrings();
+        deleteLcps();
+        deleteSavedLcps();
     }
 
     void set(std::vector<Char>&& raw_strings) {
