@@ -51,10 +51,12 @@ template <typename StringSet, typename StringGenerator,
 
              MeasuringTool& measuringTool = MeasuringTool::measuringTool();
              measuringTool.setPrefix(prefix);
+	     measuringTool.setVerbose(true);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
              
+	     std::cout << " string generation start " << std::endl;
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
              std::cout << "container: " << generatedContainer.size() << std::endl;
              StringLcpPtr rand_string_ptr = 
