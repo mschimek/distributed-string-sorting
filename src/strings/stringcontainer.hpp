@@ -133,7 +133,6 @@ public:
               std::make_unique<std::vector<Char>>(std::move(raw_strings))),
           savedLcps_() {
 
-        std::cout << "reached cstor" << std::endl;
         update_strings();
         lcps_ = std::move(lcp);
     }

@@ -51,14 +51,14 @@ template <typename StringSet, typename StringGenerator,
 
              MeasuringTool& measuringTool = MeasuringTool::measuringTool();
              measuringTool.setPrefix(prefix);
-	     measuringTool.setVerbose(true);
+	     measuringTool.setVerbose(false);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
              
-	     std::cout << " string generation start " << std::endl;
+	     //std::cout << " string generation start " << std::endl;
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
-             std::cout << "container: " << generatedContainer.size() << std::endl;
+             //std::cout << "container: " << generatedContainer.size() << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
              const size_t numGeneratedChars = generatedContainer.char_size();
@@ -66,12 +66,11 @@ template <typename StringSet, typename StringGenerator,
 
              /*
               * MPI WARMUP 
-              */
-             std::cout << "MPI_Warmup_sum: " << 
-               dss_schimek::mpi::randomDataAllToAllExchange(std::min<size_t>(numOfStrings * 5, 100000u)) << std::endl;
+              */dss_schimek::mpi::randomDataAllToAllExchange(std::min<size_t>(numOfStrings * 5, 100000u));
              /*
               * END MPI WARMUP
               */
+	     env.barrier();
 
              measuringTool.start("sorting_overall");
              using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet, MPIAllToAllRoutine, ByteEncoder>;

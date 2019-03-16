@@ -56,10 +56,10 @@ template <typename StringSet, typename StringGenerator,
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
              
-	std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
+	//std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+		//std::cout << "rank: " << env.rank() <<  " generate strings completed" << std::endl;
 		env.barrier();
-		std::cout << "rank: " << env.rank() <<  " generate strings completed" << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
              //dss_schimek::mpi::execute_in_order([&]() {

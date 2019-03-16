@@ -667,10 +667,6 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         measuringTool.stop("all_to_all_strings_read");
 
         measuringTool.start("container_construction");
-        std::cout << "receive_buffer_char: " << receive_buffer_char.size()
-                  << std::endl;
-        std::cout << "receive_buffer_lcp" << receive_buffer_lcp.size()
-                  << std::endl;
         dss_schimek::StringLcpContainer<StringSet> recvContainer(
             std::move(receive_buffer_char), std::move(receive_buffer_lcp));
         measuringTool.stop("container_construction");
