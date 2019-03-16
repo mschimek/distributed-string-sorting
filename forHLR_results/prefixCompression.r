@@ -25,10 +25,8 @@ globalSize <- 5000000
 
 filename = paste(args[[1]], "/data.txt", sep="")
 allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
-allData <- filter(allData)#, iteration == 0)
+allData <- filter(allData, iteration != 0)
 allData$numberProcessors <- as.factor(allData$numberProcessors)
-allDataWithoutIt1_Timer <- filter(allData,  Timer == "Timer", iteration != 0)
-allDataWithoutIt1_EmptyTimer <- filter(allData,  Timer == "EmptyTimer", iteration != 0)
 
 availableProcessorCounts <- unique(allData$numberProcessors)
 availableByteEncoders <- unique(allData$ByteEncoder)
@@ -253,7 +251,7 @@ barPlot <- function(data_, operations_, type_, size_, title = " ") {
   valueMean$size <- as.factor(valueMean$size)
   plot <- ggplot(data = valueMean)
   plot <- plot + geom_bar(mapping = aes(x = ByteEncoder, y = value, fill = operation), stat="identity")
-  plot <- plot + facet_wrap(numberProcessors ~ dToNRatio, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(numberProcessors ~ samplePolicy, labeller = label_both, nrow=1)
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title)
   return(plot)
@@ -293,15 +291,82 @@ numAllgatherBytesSent <- function(data_) {
   return(plot)
 }
 
+communicationVolume <- function(data, title = " ") {
+  allPhases <- unique(data$phase)
+  onlyRawCommunication <- filter(data, rawCommunication == 1, phase != "none")
+  onlyRawCommunication$numberProcessors <- as.factor(onlyRawCommunication$numberProcessors)
+  processorGroup <- group_by(onlyRawCommunication, numberProcessors, samplePolicy, StringGenerator, dToNRatio, stringLength, MPIAllToAllRoutine,  ByteEncoder, StringSet, iteration, size, strongScaling, phase, operation) 
+
+  summedValues <- summarise(processorGroup, value = sum(value, rm.na = TRUE))
+
+  meanOfIteration <- group_by(summedValues, numberProcessors, samplePolicy, StringGenerator, dToNRatio, stringLength, MPIAllToAllRoutine,  ByteEncoder, StringSet, size, phase, operation)
+  
+  valueMean <- summarise(meanOfIteration, value = mean(value, rm.na = TRUE))
+  plot <- ggplot(data = valueMean)
+  plot <- plot + geom_bar(mapping = aes(x = phase, y = value, fill = numberProcessors, colour = operation), position="dodge", stat="identity")
+  plot <- plot + facet_wrap(~ dToNRatio)
+  plot <- plot + ylab("# sent bytes")
+  plot <- plot + ggtitle(title)
+  plot
+}
+
+numberPlot <- function(data, operation_, title = " ") {
+  filteredData <- filter(data, operation == operation_)
+  processorGroup <- group_by(filteredData, numberProcessors, samplePolicy, StringGenerator, dToNRatio, stringLength, MPIAllToAllRoutine,  ByteEncoder, StringSet, iteration, size, strongScaling, phase, operation) 
+
+  summedValues <- summarise(processorGroup, value = sum(value, rm.na = TRUE))
+
+  meanOfIteration <- group_by(summedValues, numberProcessors, samplePolicy, StringGenerator, dToNRatio, stringLength, MPIAllToAllRoutine,  ByteEncoder, StringSet, size, phase)
+  
+  valueMean <- summarise(meanOfIteration, value = mean(value, rm.na = TRUE))
+  plot <- ggplot(data = valueMean)
+  plot <- plot + geom_bar(mapping = aes(x = numberProcessors, y = value), position="dodge", stat="identity")
+  plot <- plot + facet_wrap(~ dToNRatio)
+  plot <- plot + ggtitle(title)
+  plot
+}
+barPlotWhitelist <- function(data_, operations_, type_, size_, title = " ") {
+  filteredData <- filter(data_, operation %in% operations_, type == type_, size == size_)
+  filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
+  sumInternIteration <- group_by(filteredData, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type, iteration)
+  sumInternIteration <- summarise(sumInternIteration, value = sum(value, rm.na = TRUE))
+  group <- group_by(sumInternIteration, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type)
+  valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
+  valueMean$size <- as.factor(valueMean$size)
+  plot <- ggplot(data = valueMean)
+  plot <- plot + geom_bar(mapping = aes(x = numberProcessors, y = value, fill = operation), stat="identity")
+  plot <- plot + facet_wrap(~ dToNRatio, labeller = label_both, nrow=1)
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  plot <- plot + ggtitle(title)
+  return(plot)
+}
+
 pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
-efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "efficiency sorting")
-efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "efficiency overall")
-speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "speedup sorting")
-speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "speedup overall")
-sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "sorting")
-sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "sum overall")
+communicationVolume(allData, "communication volume ")
+numberPlot(allData, "charactersInSet")
+
+ operations <- c("merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
+
+ operations <- c("merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
+
+
+#efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "efficiency sorting")
+#efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "efficiency overall")
+#speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "speedup sorting")
+#speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "speedup overall")
+#sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "sorting")
+#sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "sum overall")
+
 #numAllgatherBytesSent(filter(allDataWithoutIt1_EmptyTimer, numberProcessors %in% c(2,4) ))
   #numAllgatherBytesSent(filter(allDataWithoutIt1_EmptyTimer, numberProcessors %in% c(8, 16) ))
   #
@@ -325,33 +390,37 @@ sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overa
 
 
 
-operations <- c("all_to_all_strings")
-data <- filter(allDataWithoutIt1_EmptyTimer, size == globalSize)
+#operations <- c("all_to_all_strings")
+#data <- filter(allDataWithoutIt1_EmptyTimer, size == globalSize)
 #scatterPlotAllProcessors(data, operations, "avgTime")
 #scatterPlotAllProcessors(data, operations, "maxTime")
 #scatterPlotAllProcessors(data, operations, "avgLoss")
 #scatterPlotAllProcessors(data, operations, "maxLoss")
 
-operations <- c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi")
-data <- filter(allDataWithoutIt1_Timer, size == globalSize)
+#operations <- c("all_to_all_strings_intern_copy", "all_to_all_strings_read", "all_to_all_strings_mpi")
+#data <- filter(allDataWithoutIt1_Timer, size == globalSize)
 #scatterPlotAllProcessors(data, operations, "avgTime")
 #scatterPlotAllProcessors(data, operations, "maxTime")
 #scatterPlotAllProcessors(data, operations, "avgLoss")
 #scatterPlotAllProcessors(data, operations, "maxLoss")
 
-  operations <- c("prefix_decompression")
+#  operations <- c("prefix_decompression")
   
-  data <- filter(allDataWithoutIt1_EmptyTimer, size == globalSize)
-  #scatterPlotAllProcessors(data, operations, "avgTime")
-  
-  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, dToNRatio == 0.0), operations_ = c("sorting_overall", "prefix_decompression", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
-  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, dToNRatio == 0.0), operations_ = c("sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
-  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
-  barPlot(data_ = allDataWithoutIt1_EmptyTimer,  operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
-  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
-  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
-  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("choose_splitters","allgatherv_test_before", "sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
-
+#  data <- filter(allDataWithoutIt1_EmptyTimer, size == globalSize)
+#  #scatterPlotAllProcessors(data, operations, "avgTime")
+#  
+##  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, dToNRatio == 0.0), operations_ = c("sorting_overall", "prefix_decompression", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+##  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, dToNRatio == 0.0), operations_ = c("sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sorting_overall"), operations_ = c(), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sorting_overall", numberProcessors %in% c(32, 64, 128)), operations_ = c(), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall"), type_ = "maxTime", size_ = globalSize, title = "maxmax  overall Time")
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer,  operations_ = c("sorting_overall", "prefix_decompression"), type_ = "avgTime", size_ = globalSize, title = "overall Time")
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
+#  barPlot(data_ = allDataWithoutIt1_EmptyTimer, operations_ = c("choose_splitters","allgatherv_test_before", "sorting_overall", "prefix_decompression", "sort_locally", "all_to_all_strings", "merge_ranges", "compute_interval_sizes"), type_ = "avgTime", size_ = globalSize, title = "overall Time") #
+#
 #numBytesSent(allDataWithoutIt1_Timer)
 #plot1 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 2), c("all_to_all_strings"), 0.5, " 2 procs")
 #plot2 <- scatter(filter(allDataWithoutIt1_Timer, numberProcessors == 4), c("all_to_all_strings"), 0.5, " 4 procs")
