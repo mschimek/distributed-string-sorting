@@ -47,16 +47,15 @@ void printBits(const T& value) {
   std::cout << std::bitset<sizeof(T) * 8>(value) << std::endl;
 }
 
-size_t getB(const size_t maxValue, const size_t numberValues) {
+size_t getB(const size_t maxValue, const size_t numberValues) { // see  Moffat, Turpin, Compression And Coding Algorithms page. 40
   if (numberValues == 0)
     return 1; 
   const size_t avgGap = maxValue / numberValues;
-  if (avgGap < 2)
+  if (avgGap < 1)
     return 1;
-  const double logE2 = 0.693147181l;
-  const size_t res = logE2 * avgGap;
+  const size_t k = static_cast<size_t>(std::floor(std::log2(avgGap)));
   size_t exponent = 1u;
-  return exponent <<  static_cast<size_t>(std::ceil(std::log2(res)));
+  return exponent <<  k;
 }
 
 template <typename InputIterator, typename OutputIterator>
