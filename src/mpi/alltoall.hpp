@@ -808,9 +808,9 @@ struct AllToAllStringImplPrefixDoubling {
 
         const size_t L = std::accumulate(stringLcpPtr.get_lcp(),
             stringLcpPtr.get_lcp() + stringLcpPtr.size(),
-            static_cast<size_t>(0));
+            static_cast<size_t>(0u));
         const size_t D = std::accumulate(distinguishingPrefixValues.begin(),
-            distinguishingPrefixValues.end(), 0u);
+            distinguishingPrefixValues.end(), static_cast<size_t>(0u));
         measuringTool.add(L, "localL");
         measuringTool.add(D, "localD");
 
