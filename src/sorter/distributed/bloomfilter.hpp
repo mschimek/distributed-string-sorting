@@ -175,7 +175,6 @@ struct AllToAllHashesGolomb {
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
             const size_t bFromBook = getB(bloomFilterSize, intervalSize);
-            std::cout << "bFrom Book " << bFromBook << std::endl;
             encodedValues.push_back(bFromBook);
 
             getDeltaEncoding(begin, end, std::back_inserter(encodedValues), bFromBook);

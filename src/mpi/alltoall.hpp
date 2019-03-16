@@ -245,7 +245,7 @@ public:
         const std::vector<size_t>& send_counts,
         environment env = environment()) {
 
-        std::cout << "MPI Routine : combined" << std::endl;
+        //std::cout << "MPI Routine : combined" << std::endl;
         using dss_schimek::measurement::MeasuringTool;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -629,7 +629,7 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
             std::accumulate(lcps.begin(), lcps.end(), static_cast<size_t>(0u));
 
         const size_t numCharsToSend = send_data.char_size() - L;
-        std::cout << " numCharsToSend: " << numCharsToSend << std::endl;
+        //std::cout << " numCharsToSend: " << numCharsToSend << std::endl;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
         size_t totalNumWrittenChars = 0;
@@ -816,9 +816,9 @@ struct AllToAllStringImplPrefixDoubling {
 
         const size_t numCharsToSend = stringLcpPtr.size() + D - L;
 
-        std::cout << "numCharsToSend : " << numCharsToSend << std::endl;
-        std::cout << "localL : " << L << std::endl;
-        std::cout << "localD : " << D << std::endl;
+        //std::cout << "numCharsToSend : " << numCharsToSend << std::endl;
+        //std::cout << "localL : " << L << std::endl;
+        //std::cout << "localD : " << D << std::endl;
         std::vector<unsigned char> buffer(numCharsToSend);
         unsigned char* curPos = buffer.data();
         size_t totalNumWrittenChars = 0;

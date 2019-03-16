@@ -56,10 +56,10 @@ public:
             ++stringNum; 
         }
 
-        std::cout << " stringNum: " << stringNum
-                  << std::endl;
+        //std::cout << " stringNum: " << stringNum
+        //          << std::endl;
         strings.reserve(stringNum);
-        std::cout << "reserve in init" << std::endl;
+        //std::cout << "reserve in init" << std::endl;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             strings.emplace_back(raw_strings.data() + i, i);
             while (raw_strings[i] != 0)
