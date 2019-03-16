@@ -48,10 +48,17 @@ class InitPolicy<GenericCharLengthStringSet<CharType>> {
 public:
     std::vector<String> init_strings(std::vector<Char>& raw_strings) {
         std::vector<String> strings;
-        size_t approx_string_size = raw_strings.size() / approx_string_length;
-        std::cout << " approx string length: " << approx_string_size
+
+	size_t stringNum = 0;
+        for (size_t i = 0; i < raw_strings.size(); ++i) {
+            while (raw_strings[i] != 0)
+                ++i;
+            ++stringNum; 
+        }
+
+        std::cout << " stringNum: " << stringNum
                   << std::endl;
-        strings.reserve(approx_string_size);
+        strings.reserve(stringNum);
         std::cout << "reserve in init" << std::endl;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             strings.emplace_back(raw_strings.data() + i, i);
