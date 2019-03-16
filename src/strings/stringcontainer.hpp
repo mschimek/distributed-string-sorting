@@ -67,7 +67,7 @@ public:
             strings.back().length = i - strings.back().length;
         }
 
-        std::cout << "return in init" << std::endl;
+        //std::cout << "return in init" << std::endl;
         return strings;
     }
 };
