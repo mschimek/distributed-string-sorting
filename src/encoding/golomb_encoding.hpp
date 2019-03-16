@@ -47,6 +47,18 @@ void printBits(const T& value) {
   std::cout << std::bitset<sizeof(T) * 8>(value) << std::endl;
 }
 
+size_t getB(const size_t maxValue, const size_t numberValues) {
+  if (numberValues == 0)
+    return 1; 
+  const size_t avgGap = maxValue / numberValues;
+  if (avgGap < 2)
+    return 1;
+  const double logE2 = 0.693147181l;
+  const size_t res = logE2 * avgGap;
+  size_t exponent = 1u;
+  return exponent <<  static_cast<size_t>(std::ceil(std::log2(res)));
+}
+
 template <typename InputIterator, typename OutputIterator>
 inline void getDeltaEncoding(InputIterator begin, InputIterator end, BlockWriterIt<OutputIterator>& blockWriter, size_t b) {
   using BlockWriter = BlockWriterIt<OutputIterator>;

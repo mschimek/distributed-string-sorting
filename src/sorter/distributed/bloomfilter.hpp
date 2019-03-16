@@ -25,6 +25,7 @@
 #include <tlx/algorithm/multiway_merge.hpp>
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
+#include <tlx/siphash.hpp>
 
 namespace dss_schimek {
 
@@ -156,7 +157,7 @@ struct AllToAllHashesGolomb {
     template <typename DataType>
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
-        const std::vector<size_t>& intervalSizes, const size_t b = 1048576) {
+        const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize, const size_t b = 1048576) {
         using AllToAllv =
             dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
@@ -165,7 +166,7 @@ struct AllToAllHashesGolomb {
         measuringTool.start("bloomfilter_golombEncoding");
         std::vector<size_t> encodedValuesSizes;
         std::vector<size_t> encodedValues;
-        encodedValues.reserve(sendData.size());
+        encodedValues.reserve(sendData.size() + 2);
 
         auto begin = sendData.begin();
 
@@ -173,8 +174,11 @@ struct AllToAllHashesGolomb {
             const auto intervalSize = intervalSizes[j];
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
+            const size_t bFromBook = getB(bloomFilterSize, intervalSize);
+            std::cout << "bFrom Book " << bFromBook << std::endl;
+            encodedValues.push_back(bFromBook);
 
-            getDeltaEncoding(begin, end, std::back_inserter(encodedValues), b);
+            getDeltaEncoding(begin, end, std::back_inserter(encodedValues), bFromBook);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
             encodedValuesSizes.push_back(sizeEncodedValues);
@@ -198,8 +202,9 @@ struct AllToAllHashesGolomb {
 
         for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
             const auto end = curDecodeIt + encodedIntervalSizes;
+            const size_t bFromBook = *(curDecodeIt++);
             getDeltaDecoding(
-                curDecodeIt, end, std::back_inserter(decodedValues), b);
+                curDecodeIt, end, std::back_inserter(decodedValues), bFromBook);
             curDecodeIt = end;
         }
         measuringTool.stop("bloomfilter_golombDecoding");
@@ -516,8 +521,17 @@ struct SendOnlyHashesToFilter : private SendPolicy {
             return RecvData(std::move(result), std::move(recvIntervalSizes),
                 std::move(offsets));
         }
-        else {
+        if constexpr(std::is_same<SendPolicy, dss_schimek::AllToAllHashesGolomb
+            >::value){
             measuringTool.start("bloomfilter_sendEncodedValuesOverall");
+            std::vector<size_t> result =
+                SendPolicy::alltoallv(sendValues, intervalSizes, bloomfilterSize);
+            measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
+            return RecvData(std::move(result), std::move(recvIntervalSizes),
+                std::move(offsets));
+        }
+        if constexpr(std::is_same<SendPolicy, dss_schimek::AllToAllHashesNaive>::value) {
+measuringTool.start("bloomfilter_sendEncodedValuesOverall");
             std::vector<size_t> result =
                 SendPolicy::alltoallv(sendValues, intervalSizes);
             measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
@@ -910,8 +924,15 @@ public:
     }
 };
 
+
+struct SipHasher {
+  static inline size_t hash(const unsigned char* str, size_t length, size_t bloomFilterSize) {
+    return tlx::siphash(str, length) % bloomFilterSize;
+  }
+};
+
 template <typename StringSet, typename FindDuplicatesPolicy,
-    typename SendPolicy>
+    typename SendPolicy, typename HashPolicy>
 class BloomFilter {
 
     using String = typename StringSet::String;
@@ -927,16 +948,16 @@ public:
         max(); // set to this size because distribution/load balancing was not
                // good enough TODO Discuss Multisequence Selection?
 
-    inline size_t hash(CharIt str, const size_t maxDepth, const size_t m) {
-        size_t hash = 5381;
-        size_t c = 0, i = 0;
+    //inline size_t hash(CharIt str, const size_t maxDepth, const size_t m) {
+    //    size_t hash = 5381;
+    //    size_t c = 0, i = 0;
 
-        while ((c = *str++) && i < maxDepth) {
-            hash = ((hash << 5) + hash) + c * 33; /* hash * 33 + c */
-            ++i;
-        }
-        return hash % m;
-    }
+    //    while ((c = *str++) && i < maxDepth) {
+    //      Hasher::hash = ((hash << 5) + hash) + c * 33; /* hash * 33 + c */
+    //        ++i;
+    //    }
+    //    return hash % m;
+    //}
 
     template <typename T>
     struct GeneratedHashStructuresEOSCandidates {
@@ -963,7 +984,7 @@ public:
             }
             else {
                 const size_t curHash =
-                    hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+                    HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
                 hashStringIndices.emplace_back(curHash, curCandidate);
             }
         }
@@ -986,7 +1007,7 @@ public:
             }
             else {
                 const size_t curHash =
-                    hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+                    HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
                 hashStringIndices.emplace_back(curHash, candidate);
             }
         }

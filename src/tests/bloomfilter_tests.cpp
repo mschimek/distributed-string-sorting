@@ -170,6 +170,7 @@ namespace dss_schimek {
 
         using StringSet = UCharLengthStringSet;
         using Generator = DNRatioGenerator<StringSet>;
+        using HashPolicy = SipHasher;
         using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
         const size_t startDepth = 2;
@@ -179,8 +180,8 @@ namespace dss_schimek {
         StringSet ss = container.make_string_set();
         const size_t actualSize = ss.size();
 
-        BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>> bloomFilter;
-        BloomfilterTester<CharacterBasesHash, StringSet> bftest(bloomFilter.bloomFilterSize);
+        BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>, HashPolicy> bloomFilter;
+        BloomfilterTester<HashPolicy, StringSet> bftest(bloomFilter.bloomFilterSize);
 
         std::vector<size_t> results(actualSize, 0);
         std::vector<size_t> duplicates(actualSize);
@@ -199,9 +200,9 @@ namespace dss_schimek {
           std::vector<size_t>& globalUniqueHashes = duplicatesUniques.uniques;
 
 
-          std::vector<size_t> hashesDuplicates = getHashValues<StringSet, CharacterBasesHash>(ss, duplicates, depth, bloomFilter.bloomFilterSize);
+          std::vector<size_t> hashesDuplicates = getHashValues<StringSet, HashPolicy>(ss, duplicates, depth, bloomFilter.bloomFilterSize);
           std::vector<size_t> indicesUniqueElems = getDifference(candidates, duplicates);
-          std::vector<size_t> hashesUniqueElems = getHashValues<StringSet, CharacterBasesHash>(ss, indicesUniqueElems, depth, bloomFilter.bloomFilterSize);
+          std::vector<size_t> hashesUniqueElems = getHashValues<StringSet, HashPolicy>(ss, indicesUniqueElems, depth, bloomFilter.bloomFilterSize);
 
           // basic tests
           tlx_die_unless(depth != startDepth || candidates.size() == actualSize); // depth == startDepth -> all indices are candidates
