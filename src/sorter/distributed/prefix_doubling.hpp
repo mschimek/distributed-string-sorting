@@ -192,27 +192,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
     return results;
 }
 
-template <typename StringLcpPtr>
-size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
-    auto lcps = stringLcpPtr.get_lcp();
-    struct LcpSumNumStrings {
-        size_t lcpSum;
-        size_t numStrings;
-    };
-    size_t localL = std::accumulate(
-        lcps, lcps + stringLcpPtr.active().size(), static_cast<size_t>(0u));
-    LcpSumNumStrings lcpSumNumStrings{localL, stringLcpPtr.active().size()};
 
-    std::vector<LcpSumNumStrings> lcpSumsNumStrings =
-        dsss::mpi::allgather(lcpSumNumStrings);
-    size_t totalL = 0;
-    size_t totalNumString = 0;
-    for (const auto& elem : lcpSumsNumStrings) {
-        totalL += elem.lcpSum;
-        totalNumString += elem.numStrings;
-    }
-    return totalL / totalNumString;
-}
 
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy, typename GolombEncoding>
@@ -228,13 +208,17 @@ public:
         using StringSet = typename StringPtr::StringSet;
         using Char = typename StringSet::Char;
 
+
+
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         const StringSet& ss = local_string_ptr.active();
+        const size_t lcpSummand = 5u;
 
         size_t charactersInSet = 0;
         for (const auto& str : ss) {
             charactersInSet += ss.get_length(str) + 1;
         }
+
 
         measuringTool.add(charactersInSet, "charactersInSet");
         // sort locally
@@ -243,7 +227,7 @@ public:
         measuringTool.stop("sort_locally");
 
         measuringTool.start("avg_lcp");
-        const size_t globalLcpAvg = getAvgLcp(local_string_ptr);
+        const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
         measuringTool.stop("avg_lcp");
 
         // There is only one PE, hence there is no need for distributed sorting

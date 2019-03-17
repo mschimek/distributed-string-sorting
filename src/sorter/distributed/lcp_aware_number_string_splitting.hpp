@@ -142,6 +142,7 @@ public:
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const StringSet& ss = local_string_ptr.active();
+        const size_t lcpSummand = 5u;
 
         size_t charactersInSet = 0;
         for (const auto& str : ss) {
@@ -162,11 +163,14 @@ public:
             return dss_schimek::StringLcpContainer<StringSet>(
                 std::move(local_string_container));
 
+        measuringTool.start("avg_lcp");
+        const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
+        measuringTool.stop("avg_lcp");
+
         measuringTool.setPhase("splitter");
-        const size_t dummy = 0; // Todo think about lcp-value splitting
         measuringTool.start("sample_splitters");
         std::vector<Char> raw_splitters =
-            SampleSplittersPolicy::sample_splitters(ss, dummy);
+            SampleSplittersPolicy::sample_splitters(ss, globalLcpAvg);
         measuringTool.stop("sample_splitters");
 
         measuringTool.add(

@@ -972,6 +972,7 @@ public:
         const std::vector<size_t>& candidates, const size_t depth) {
         std::vector<HashStringIndex> hashStringIndices;
         std::vector<size_t> eosCandidates;
+        eosCandidates.reserve(candidates.size());
         hashStringIndices.reserve(candidates.size());
         const Iterator begin = ss.begin();
 
@@ -1214,7 +1215,7 @@ public:
 
         measuringTool.start("bloomfilter_setDepth");
         setDepth(strptr, depth, candidates, eosCandidates, results);
-        measuringTool.stop("bloomfilter_postprocessing");
+        measuringTool.stop("bloomfilter_setDepth");
 
         return indicesOfAllDuplicates;
     }

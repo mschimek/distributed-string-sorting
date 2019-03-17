@@ -15,10 +15,8 @@ public:
 
 protected:
     std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
-        size_t globalLcpAvg,
+        const size_t maxLength,
         dsss::mpi::environment env = dsss::mpi::environment()) {
-
-        globalLcpAvg = 10000;
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
@@ -28,13 +26,13 @@ protected:
             std::min<size_t>(env.size() - 1, local_num_strings);
         const size_t splitter_dist = local_num_strings / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
+        raw_splitters.reserve(nr_splitters * (maxLength + 1u));
 
         for (size_t i = 1; i <= nr_splitters; ++i) {
             const String splitter = ss[ss.begin() + i * splitter_dist];
             const size_t splitterLength = ss.get_length(splitter);
             const size_t usedSplitterLength =
-                splitterLength > (globalLcpAvg * 1.10) ? (globalLcpAvg * 1.10)
-                                                       : splitterLength;
+                splitterLength > (maxLength) ? (maxLength) : splitterLength;
             std::copy_n(ss.get_chars(splitter, 0), usedSplitterLength,
                 std::back_inserter(raw_splitters));
             raw_splitters.push_back(0);
@@ -50,7 +48,7 @@ public:
 
 protected:
     std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
-        const size_t avgLcp,
+        const size_t maxLength,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
         using Char = typename StringSet::Char;
@@ -67,18 +65,24 @@ protected:
             std::min<size_t>(env.size() - 1, local_num_strings);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
+        raw_splitters.reserve(nr_splitters * (maxLength + 1));
 
         size_t string_index = 0;
         for (size_t i = 1; i <= nr_splitters; ++i) {
             size_t num_chars_seen = 0;
-            while (num_chars_seen < splitter_dist) {
+            while (num_chars_seen < splitter_dist &&
+                   string_index < local_num_strings) {
                 num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
                 ++string_index;
             }
 
             const String splitter = ss[ss.begin() + string_index - 1];
-            std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
+            const size_t splitterLength = ss.get_length(splitter);
+            const size_t usedSplitterLength =
+                splitterLength > (maxLength) ? (maxLength) : splitterLength;
+            std::copy_n(ss.get_chars(splitter, 0), usedSplitterLength,
                 std::back_inserter(raw_splitters));
+            raw_splitters.push_back(0);
         }
         return raw_splitters;
     }
