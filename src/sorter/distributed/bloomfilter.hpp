@@ -1214,7 +1214,7 @@ public:
 
         measuringTool.start("bloomfilter_setDepth");
         setDepth(strptr, depth, candidates, eosCandidates, results);
-        measuringTool.stop("bloomfilter_setDepth");
+        measuringTool.stop("bloomfilter_postprocessing");
 
         return indicesOfAllDuplicates;
     }
