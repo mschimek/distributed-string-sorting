@@ -51,14 +51,14 @@ template <typename StringSet, typename StringGenerator,
 
              MeasuringTool& measuringTool = MeasuringTool::measuringTool();
              measuringTool.setPrefix(prefix);
-	     measuringTool.setVerbose(false);
+	     measuringTool.setVerbose(true);
 
              if (!strongScaling)
                 genStringArgs.numOfStrings *= env.size();
              
-	     //std::cout << " string generation start " << std::endl;
+	     std::cout << " string generation start " << std::endl;
              StringGenerator generatedContainer = getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
-             //std::cout << "container: " << generatedContainer.size() << std::endl;
+             std::cout << "container: " << generatedContainer.size() << std::endl;
              StringLcpPtr rand_string_ptr = 
                generatedContainer.make_string_lcp_ptr();
              const size_t numGeneratedChars = generatedContainer.char_size();
@@ -80,21 +80,21 @@ template <typename StringSet, typename StringGenerator,
 
              measuringTool.stop("sorting_overall");
 
-             measuringTool.start("prefix_decompression");
-             if (AllToAllPolicy::PrefixCompression && env.size() > 1)
-               sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
-             measuringTool.stop("prefix_decompression");
-             const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-             const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
-                 numGeneratedChars,
-                 sorted_string_cont.char_size(),
-                 numGeneratedStrings,
-                 sorted_string_cont.size()); 
-             
-             if (!is_complete_and_sorted) {
-               std::cout << "not sorted" << std::endl;
-               std::abort(); 
-             }
+             //measuringTool.start("prefix_decompression");
+             //if (AllToAllPolicy::PrefixCompression && env.size() > 1)
+             //  sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(), sorted_string_cont.savedLcps());
+             //measuringTool.stop("prefix_decompression");
+             //const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
+             ////const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(sorted_strptr,
+             ////    numGeneratedChars,
+             ////    sorted_string_cont.char_size(),
+             ////    numGeneratedStrings,
+             ////    sorted_string_cont.size()); 
+             ////
+             ////if (!is_complete_and_sorted) {
+             ////  std::cout << "not sorted" << std::endl;
+             ////  std::abort(); 
+             ////}
              std::stringstream buffer;
              measuringTool.writeToStream(buffer);
              if (env.rank() == 0) {

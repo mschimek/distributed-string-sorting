@@ -18,7 +18,7 @@ protected:
         size_t globalLcpAvg,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
-        globalLcpAvg = 1000;
+        globalLcpAvg = 10000;
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
