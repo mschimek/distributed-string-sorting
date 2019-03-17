@@ -204,7 +204,7 @@ public:
 
         measuringTool.add(
             recv_string_cont.char_size() - recv_string_cont.size(),
-            "num_received_chars");
+            "num_received_chars", false);
         measuringTool.setPhase("merging");
 
         size_t num_recv_elems =

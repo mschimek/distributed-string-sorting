@@ -61,13 +61,22 @@ private:
     inline void collect(OutIt out, Record& record) {
         // Cannot allgather Record as a whole since it is not trivially_copyable
         // -> workaround send only values
+
         auto ownValue = record.getValue();
         auto globalValues = allgather_(ownValue);
-        const size_t sum = std::accumulate(
-            globalValues.begin(), globalValues.end(), static_cast<size_t>(0u));
+        if (record.getSumUp()) {
+            const size_t sum = std::accumulate(globalValues.begin(),
+                globalValues.end(), static_cast<size_t>(0u));
+            record.setValue(sum);
+            out = record;
+        }
+        else {
+            for (auto& globalValue : globalValues) {
+                record.setValue(globalValue);
+                out = record;
+            }
+        }
         // for (auto& globalValue: globalValues) {
-        record.setValue(sum);
-        out = record;
         //}
     }
 };

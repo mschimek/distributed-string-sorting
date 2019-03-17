@@ -282,7 +282,7 @@ public:
 
         measuringTool.add(
             recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size(),
-            "num_received_chars");
+            "num_received_chars", false);
         size_t num_recv_elems =
             std::accumulate(receiving_interval_sizes.begin(),
                 receiving_interval_sizes.end(), static_cast<size_t>(0u));
