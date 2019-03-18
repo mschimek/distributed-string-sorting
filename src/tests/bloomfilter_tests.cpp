@@ -170,7 +170,7 @@ namespace dss_schimek {
 
         using StringSet = UCharLengthStringSet;
         using Generator = DNRatioGenerator<StringSet>;
-        using HashPolicy = SipHasher;
+        using HashPolicy = XXHasher;
         using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
         const size_t startDepth = 2;

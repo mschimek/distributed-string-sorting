@@ -23,9 +23,11 @@
 
 #include "util/measuringTool.hpp"
 #include <tlx/algorithm/multiway_merge.hpp>
+#include <tlx/siphash.hpp>
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
-#include <tlx/siphash.hpp>
+
+#include "hash/xxhash.hpp"
 
 namespace dss_schimek {
 
@@ -157,7 +159,8 @@ struct AllToAllHashesGolomb {
     template <typename DataType>
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
-        const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize, const size_t b = 1048576) {
+        const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize,
+        const size_t b = 1048576) {
         using AllToAllv =
             dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
@@ -177,7 +180,8 @@ struct AllToAllHashesGolomb {
             const size_t bFromBook = getB(bloomFilterSize, intervalSize);
             encodedValues.push_back(bFromBook);
 
-            getDeltaEncoding(begin, end, std::back_inserter(encodedValues), bFromBook);
+            getDeltaEncoding(
+                begin, end, std::back_inserter(encodedValues), bFromBook);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
             encodedValuesSizes.push_back(sizeEncodedValues);
@@ -520,17 +524,18 @@ struct SendOnlyHashesToFilter : private SendPolicy {
             return RecvData(std::move(result), std::move(recvIntervalSizes),
                 std::move(offsets));
         }
-        if constexpr(std::is_same<SendPolicy, dss_schimek::AllToAllHashesGolomb
-            >::value){
+        if constexpr (std::is_same<SendPolicy,
+                          dss_schimek::AllToAllHashesGolomb>::value) {
             measuringTool.start("bloomfilter_sendEncodedValuesOverall");
-            std::vector<size_t> result =
-                SendPolicy::alltoallv(sendValues, intervalSizes, bloomfilterSize);
+            std::vector<size_t> result = SendPolicy::alltoallv(
+                sendValues, intervalSizes, bloomfilterSize);
             measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
             return RecvData(std::move(result), std::move(recvIntervalSizes),
                 std::move(offsets));
         }
-        if constexpr(std::is_same<SendPolicy, dss_schimek::AllToAllHashesNaive>::value) {
-measuringTool.start("bloomfilter_sendEncodedValuesOverall");
+        if constexpr (std::is_same<SendPolicy,
+                          dss_schimek::AllToAllHashesNaive>::value) {
+            measuringTool.start("bloomfilter_sendEncodedValuesOverall");
             std::vector<size_t> result =
                 SendPolicy::alltoallv(sendValues, intervalSizes);
             measuringTool.stop("bloomfilter_sendEncodedValuesOverall");
@@ -923,11 +928,22 @@ public:
     }
 };
 
-
 struct SipHasher {
-  static inline size_t hash(const unsigned char* str, size_t length, size_t bloomFilterSize) {
-    return tlx::siphash(str, length) % bloomFilterSize;
-  }
+    static inline size_t hash(
+        const unsigned char* str, size_t length, size_t bloomFilterSize) {
+        return tlx::siphash(str, length) % bloomFilterSize;
+    }
+};
+
+struct XXHasher {
+    static inline size_t hash(
+        const unsigned char* str, size_t length, size_t bloomFilterSize) {
+
+        xxh::hash_state_t<64> hash_stream;
+        hash_stream.update(str, length);
+        xxh::hash_t<64> hashV = hash_stream.digest();
+        return hashV % bloomFilterSize;
+    }
 };
 
 template <typename StringSet, typename FindDuplicatesPolicy,
@@ -947,7 +963,7 @@ public:
         max(); // set to this size because distribution/load balancing was not
                // good enough TODO Discuss Multisequence Selection?
 
-    //inline size_t hash(CharIt str, const size_t maxDepth, const size_t m) {
+    // inline size_t hash(CharIt str, const size_t maxDepth, const size_t m) {
     //    size_t hash = 5381;
     //    size_t c = 0, i = 0;
 
@@ -983,8 +999,8 @@ public:
                 eosCandidates.push_back(curCandidate);
             }
             else {
-                const size_t curHash =
-                    HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+                const size_t curHash = HashPolicy::hash(
+                    ss.get_chars(curString, 0), depth, bloomFilterSize);
                 hashStringIndices.emplace_back(curHash, curCandidate);
             }
         }
@@ -1006,8 +1022,8 @@ public:
                 eosCandidates.push_back(candidate);
             }
             else {
-                const size_t curHash =
-                    HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize);
+                const size_t curHash = HashPolicy::hash(
+                    ss.get_chars(curString, 0), depth, bloomFilterSize);
                 hashStringIndices.emplace_back(curHash, candidate);
             }
         }
@@ -1199,12 +1215,8 @@ public:
             SendPolicy::addPEIndex(recvData);
         measuringTool.stop("bloomfilter_addPEIndex");
 
-        // measuringTool.start(std::string("bloomfilter_findDuplicatesOverall"),
-        // curIteration);
         std::vector<size_t> indicesOfRemoteDuplicates =
             FindDuplicatesPolicy::findDuplicates(recvHashPEIndices, recvData);
-        // measuringTool.end(std::string("bloomfilter_findDuplicatesOverall"),
-        // curIteration);
 
         measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates =

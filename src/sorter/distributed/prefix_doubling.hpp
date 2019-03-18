@@ -156,6 +156,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
     StringPtr local_string_ptr, size_t startDepth) {
     using StringSet = typename StringPtr::StringSet;
     using namespace dss_schimek::measurement;
+    using Hasher = XXHasher;
 
     startDepth = 8;
 
@@ -164,7 +165,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
 
     measuringTool.start(std::string("bloomfilter_init"));
     StringSet ss = local_string_ptr.active();
-    BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>, SipHasher>
+    BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>, Hasher>
         bloomFilter;
     std::vector<size_t> results(ss.size(), 0);
     measuringTool.stop(std::string("bloomfilter_init"));
