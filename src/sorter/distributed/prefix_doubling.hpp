@@ -178,7 +178,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
     for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max();
          i *= 2) {
         measuringTool.add(
-            candidates.size(), std::string("bloomfilter_numberCandidates"));
+            candidates.size(), std::string("bloomfilter_numberCandidates"), false);
         measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
         bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
