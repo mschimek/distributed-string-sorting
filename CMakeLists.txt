@@ -42,6 +42,7 @@ endif()
 #add_subdirectory(external/tests)
 include_directories(src)
 include_directories(tlx)
+include_directories(ips4o)
 add_subdirectory(tlx)
 add_subdirectory(src)
 

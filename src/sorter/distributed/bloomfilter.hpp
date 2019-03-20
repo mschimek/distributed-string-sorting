@@ -27,6 +27,8 @@
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
 
+#include "ips4o.hpp"
+
 #include "hash/xxhash.hpp"
 
 namespace dss_schimek {
@@ -1152,7 +1154,8 @@ public:
         measuringTool.stop("bloomfilter_generateHashStringIndices");
 
         measuringTool.start("bloomfilter_sortHashStringIndices");
-        std::sort(hashStringIndices.begin(), hashStringIndices.end());
+        ips4o::sort(hashStringIndices.begin(), hashStringIndices.end());
+        //std::sort(hashStringIndices.begin(), hashStringIndices.end());
         measuringTool.stop("bloomfilter_sortHashStringIndices");
 
         measuringTool.start("bloomfilter_indicesOfLocalDuplicates");

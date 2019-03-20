@@ -1,3 +1,6 @@
 [submodule "tlx2"]
 	path = tlx
 	url = https://github.com/mschimek/tlx
+[submodule "ips4o"]
+	path = ips4o
+	url = https://github.com/SaschaWitt/ips4o.git
