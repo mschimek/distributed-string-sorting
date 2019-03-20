@@ -59,10 +59,11 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
     std::iota(candidates_exact.begin(), candidates_exact.end(), 0);
     std::vector<size_t> results_tracker;
     std::vector<size_t> candidates_tracker;
+    const size_t startDepth = 4u;
 
     BloomFilter<StringSet, FindDuplicates,
         SendOnlyHashesToFilter<AllToAllHashesNaive>, SipHasher>
-        bloomFilter;
+        bloomFilter(ss.size(), startDepth);
     ExcatDistinguishingPrefix<StringSet> exactDistinguishingPrefixAlgo;
     exactDistinguishingPrefixAlgo.filter_exact(
         local_string_ptr, candidates_exact, results_exact);
@@ -74,7 +75,7 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
     std::cout << "filter_exact rank: " << env.rank() << std::endl;
     size_t curIteration = 0;
 
-    for (size_t i = 4; i < std::numeric_limits<size_t>::max(); i *= 2) {
+    for (size_t i = startDepth; i < std::numeric_limits<size_t>::max(); i *= 2) {
         env.barrier();
         if (env.rank() == 0)
             std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
@@ -165,8 +166,9 @@ std::vector<size_t> computeDistinguishingPrefixes(
 
     measuringTool.start(std::string("bloomfilter_init"));
     StringSet ss = local_string_ptr.active();
-    BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>, Hasher>
-        bloomFilter;
+    BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>,
+        Hasher>
+        bloomFilter(ss.size(), startDepth);
     std::vector<size_t> results(ss.size(), 0);
     measuringTool.stop(std::string("bloomfilter_init"));
 
@@ -177,8 +179,8 @@ std::vector<size_t> computeDistinguishingPrefixes(
 
     for (size_t i = (startDepth * 2); i < std::numeric_limits<size_t>::max();
          i *= 2) {
-        measuringTool.add(
-            candidates.size(), std::string("bloomfilter_numberCandidates"), false);
+        measuringTool.add(candidates.size(),
+            std::string("bloomfilter_numberCandidates"), false);
         measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
         bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
@@ -192,8 +194,6 @@ std::vector<size_t> computeDistinguishingPrefixes(
     measuringTool.setRound(0);
     return results;
 }
-
-
 
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy, typename GolombEncoding>
@@ -209,8 +209,6 @@ public:
         using StringSet = typename StringPtr::StringSet;
         using Char = typename StringSet::Char;
 
-
-
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         const StringSet& ss = local_string_ptr.active();
         const size_t lcpSummand = 5u;
@@ -220,9 +218,9 @@ public:
             charactersInSet += ss.get_length(str) + 1;
         }
 
-
         measuringTool.add(charactersInSet, "charactersInSet");
         // sort locally
+        env.barrier();
         measuringTool.start("sort_locally");
         tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
         measuringTool.stop("sort_locally");

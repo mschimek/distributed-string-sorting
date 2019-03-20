@@ -944,6 +944,15 @@ struct XXHasher {
         xxh::hash_t<64> hashV = hash_stream.digest();
         return hashV % bloomFilterSize;
     }
+
+    static inline size_t hash(const unsigned char* str, size_t length,
+        size_t bloomFilterSize, const size_t oldHashValue) {
+
+        xxh::hash_state_t<64> hash_stream;
+        hash_stream.update(str, length);
+        xxh::hash_t<64> hashV = hash_stream.digest();
+        return (oldHashValue ^ hashV) % bloomFilterSize;
+    }
 };
 
 template <typename StringSet, typename FindDuplicatesPolicy,
@@ -958,21 +967,17 @@ class BloomFilter {
 
     dsss::mpi::environment env;
 
+    size_t* hashValues;
+    const size_t startDepth;
+    static constexpr bool hashValueOptimization = true;
+
 public:
+    BloomFilter(size_t size, const size_t startDepth)
+        : hashValues(new size_t[size]), startDepth(startDepth) {}
+    ~BloomFilter() { delete[] hashValues; }
     const size_t bloomFilterSize = std::numeric_limits<uint32_t>::
         max(); // set to this size because distribution/load balancing was not
                // good enough TODO Discuss Multisequence Selection?
-
-    // inline size_t hash(CharIt str, const size_t maxDepth, const size_t m) {
-    //    size_t hash = 5381;
-    //    size_t c = 0, i = 0;
-
-    //    while ((c = *str++) && i < maxDepth) {
-    //      Hasher::hash = ((hash << 5) + hash) + c * 33; /* hash * 33 + c */
-    //        ++i;
-    //    }
-    //    return hash % m;
-    //}
 
     template <typename T>
     struct GeneratedHashStructuresEOSCandidates {
@@ -999,9 +1004,20 @@ public:
                 eosCandidates.push_back(curCandidate);
             }
             else {
-                const size_t curHash = HashPolicy::hash(
-                    ss.get_chars(curString, 0), depth, bloomFilterSize);
-                hashStringIndices.emplace_back(curHash, curCandidate);
+                if (!hashValueOptimization || depth == startDepth) {
+                    const size_t curHash = HashPolicy::hash(
+                        ss.get_chars(curString, 0), depth, bloomFilterSize);
+                    hashStringIndices.emplace_back(curHash, curCandidate);
+                    hashValues[curCandidate] = curHash;
+                } else {
+                    const size_t halfDepth = depth / 2;
+                    const size_t curHash = HashPolicy::hash(
+                        ss.get_chars(curString, halfDepth), halfDepth, bloomFilterSize, hashValues[curCandidate]);
+                    std::cout << curHash << std::endl;
+                    std::cout << "actual value: " << HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize) << std::endl;
+                    hashStringIndices.emplace_back(curHash, curCandidate);
+                    hashValues[curCandidate] = curHash;
+                }
             }
         }
         return GeneratedHashStructuresEOSCandidates(
