@@ -12,3 +12,6 @@ target_link_libraries(measuringToolTests ${MPI_LIBRARIES} tlx)
 
 add_executable(pipelinedGolombEncodingTests pipelinedGolombEncoding_tests.cpp ../mpi/environment.cpp)
 target_link_libraries(pipelinedGolombEncodingTests ${MPI_LIBRARIES} tlx)
+
+add_executable(readFilesTests readFilesTests.cpp ../mpi/environment.cpp)
+target_link_libraries(readFilesTests ${MPI_LIBRARIES} tlx)

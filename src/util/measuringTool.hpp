@@ -40,12 +40,11 @@ struct PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationSumUpValue {
 
     size_t getValue() const { return value; }
 
-    bool getSumUp() {
-      return sumUp;
-    }
+    bool getSumUp() { return sumUp; }
 
     friend std::ostream& operator<<(std::ostream& stream,
-        PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationSumUpValue& elem) {
+        PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationSumUpValue&
+            elem) {
         return stream << "[" << elem.phase << ", " << elem.counterPerPhase
                       << ", " << elem.round << ", " << elem.description << ", "
                       << elem.rawCommunication << ", " << elem.sumUp
@@ -165,18 +164,19 @@ public:
         add(value, "unkown");
     }
 
-    void add(size_t value, const std::string& description, const bool sumUp = true) {
+    void add(
+        size_t value, const std::string& description, const bool sumUp = true) {
         if (disabled) return;
         if (verbose && env.rank() == 0) std::cout << description << std::endl;
-        nonTimer.add(NonTimerRecord(
-            curPhase, 0u, curRound, description, "number", false, sumUp, value));
+        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description,
+            "number", false, sumUp, value));
     }
 
     void addRawCommunication(size_t value, const std::string& description) {
         if (disabled) return;
         if (verbose && env.rank() == 0) std::cout << description << std::endl;
-        nonTimer.add(NonTimerRecord(
-            curPhase, 0u, curRound, description, "number", true, "true", value));
+        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description,
+            "number", true, "true", value));
     }
 
     void start(const std::string& description) {
@@ -207,15 +207,17 @@ public:
         timer.collect(std::back_inserter(timerRecords));
 
         for (const auto& nonTimerRecord : nonTimerRecords)
-            data.push_back({prefix, nonTimerRecord.phase,
-                nonTimerRecord.counterPerPhase, nonTimerRecord.round,
-                nonTimerRecord.description, nonTimerRecord.type,
-                nonTimerRecord.rawCommunication, nonTimerRecord.sumUp, nonTimerRecord.value});
+            data.push_back(
+                {prefix, nonTimerRecord.phase, nonTimerRecord.counterPerPhase,
+                    nonTimerRecord.round, nonTimerRecord.description,
+                    nonTimerRecord.type, nonTimerRecord.rawCommunication,
+                    nonTimerRecord.sumUp, nonTimerRecord.value});
 
         for (const auto& [timerKey, timerValue] : timerRecords)
             data.push_back({prefix, timerKey.phase, timerValue.counterPerPhase,
                 timerKey.round, timerKey.description, timerValue.type,
-                timerValue.rawCommunication, timerValue.sumUp, timerValue.value});
+                timerValue.rawCommunication, timerValue.sumUp,
+                timerValue.value});
         enable();
         return data;
     }
