@@ -997,32 +997,46 @@ public:
         eosCandidates.reserve(candidates.size());
         hashStringIndices.reserve(candidates.size());
         const Iterator begin = ss.begin();
-
-        for (const size_t curCandidate : candidates) {
-            String curString = ss[begin + curCandidate];
-            const size_t length = ss.get_length(curString);
-            if (depth > length) {
-                eosCandidates.push_back(curCandidate);
-            }
-            else {
-                if (!hashValueOptimization || depth == startDepth) {
+        if (!hashValueOptimization) {
+            for (const size_t curCandidate : candidates) {
+                String curString = ss[begin + curCandidate];
+                const size_t length = ss.get_length(curString);
+                if (depth > length) {
+                    eosCandidates.push_back(curCandidate);
+                }
+                else {
                     const size_t curHash = HashPolicy::hash(
                         ss.get_chars(curString, 0), depth, bloomFilterSize);
-                    hashStringIndices.emplace_back(curHash, curCandidate);
-                    hashValues[curCandidate] = curHash;
-                } else {
-                    const size_t halfDepth = depth / 2;
-                    if (curCandidate >= size) {
-                      std::cout << "cur Candidate >= size " << curCandidate << " Size: " << size << " stringset.size(): " << ss.size() << std::endl;
-                      std::abort();
-                    }
-                    const size_t curHash = HashPolicy::hash(
-                        ss.get_chars(curString, halfDepth), halfDepth, bloomFilterSize, hashValues[curCandidate]);
                     hashStringIndices.emplace_back(curHash, curCandidate);
                     hashValues[curCandidate] = curHash;
                 }
             }
         }
+        else {
+            for (const size_t curCandidate : candidates) {
+                String curString = ss[begin + curCandidate];
+                const size_t length = ss.get_length(curString);
+                if (depth > length) {
+                    eosCandidates.push_back(curCandidate);
+                }
+                else {
+                    const size_t halfDepth = depth / 2;
+                    //if (curCandidate >= size) {
+                    //    std::cout << "cur Candidate >= size " << curCandidate
+                    //              << " Size: " << size
+                    //              << " stringset.size(): " << ss.size()
+                    //              << std::endl;
+                    //    std::abort();
+                    //}
+                    const size_t curHash = HashPolicy::hash(
+                        ss.get_chars(curString, halfDepth), halfDepth,
+                        bloomFilterSize, hashValues[curCandidate]);
+                    hashStringIndices.emplace_back(curHash, curCandidate);
+                    hashValues[curCandidate] = curHash;
+                }
+            }
+        }
+
         return GeneratedHashStructuresEOSCandidates(
             std::move(hashStringIndices), std::move(eosCandidates));
     }
