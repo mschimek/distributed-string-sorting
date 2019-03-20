@@ -968,14 +968,14 @@ class BloomFilter {
     dsss::mpi::environment env;
 
     const size_t size;
-    size_t* hashValues;
+    std::vector<size_t> hashValues;
     const size_t startDepth;
     static constexpr bool hashValueOptimization = true;
 
 public:
     BloomFilter(const size_t size, const size_t startDepth)
-        : size(size), hashValues(new size_t[size]), startDepth(startDepth) {}
-    ~BloomFilter() { delete[] hashValues; }
+        : size(size), hashValues(size, 0), startDepth(startDepth) {}
+    //~BloomFilter() { delete[] hashValues; }
     const size_t bloomFilterSize = std::numeric_limits<uint32_t>::
         max(); // set to this size because distribution/load balancing was not
                // good enough TODO Discuss Multisequence Selection?
