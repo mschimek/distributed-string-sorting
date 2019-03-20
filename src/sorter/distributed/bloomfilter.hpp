@@ -967,13 +967,14 @@ class BloomFilter {
 
     dsss::mpi::environment env;
 
+    const size_t size;
     size_t* hashValues;
     const size_t startDepth;
     static constexpr bool hashValueOptimization = true;
 
 public:
-    BloomFilter(size_t size, const size_t startDepth)
-        : hashValues(new size_t[size]), startDepth(startDepth) {}
+    BloomFilter(const size_t size, const size_t startDepth)
+        : size(size), hashValues(new size_t[size]), startDepth(startDepth) {}
     ~BloomFilter() { delete[] hashValues; }
     const size_t bloomFilterSize = std::numeric_limits<uint32_t>::
         max(); // set to this size because distribution/load balancing was not
@@ -1011,10 +1012,12 @@ public:
                     hashValues[curCandidate] = curHash;
                 } else {
                     const size_t halfDepth = depth / 2;
+                    if (curCandidate >= size) {
+                      std::cout << "cur Candidate >= size " << curCandidate << " Size: " << size << " stringset.size(): " << ss.size() << std::endl;
+                      std::abort();
+                    }
                     const size_t curHash = HashPolicy::hash(
                         ss.get_chars(curString, halfDepth), halfDepth, bloomFilterSize, hashValues[curCandidate]);
-                    std::cout << curHash << std::endl;
-                    std::cout << "actual value: " << HashPolicy::hash(ss.get_chars(curString, 0), depth, bloomFilterSize) << std::endl;
                     hashStringIndices.emplace_back(curHash, curCandidate);
                     hashValues[curCandidate] = curHash;
                 }
