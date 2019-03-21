@@ -273,7 +273,7 @@ static inline ShiftCounts<DataType> get_shift_recv_counts(
 
 template <bool is_left_shift>
 static inline std::vector<unsigned char> shift_string(
-    unsigned char* send_data, environment env = environment()) {
+    unsigned char* send_data, bool isEmpty, environment env = environment()) {
 
     constexpr bool debug = false;
     std::size_t string_length = dss_schimek::string_length(send_data);
@@ -289,7 +289,7 @@ static inline std::vector<unsigned char> shift_string(
     }
 
     ShiftCounts result = get_shift_recv_counts<size_t, is_left_shift>(
-        string_length + 1, env, string_length == 0);
+        string_length + 1, env, isEmpty);
 
     if (result.all_PE_empty) return real_send_data;
 
@@ -303,6 +303,14 @@ static inline std::vector<unsigned char> shift_string(
     std::vector<unsigned char> receive_data(recv_length);
     data_type_mapper<unsigned char> dtm;
     std::vector<MPI_Request> requests(2);
+    if (isEmpty) {
+        MPI_Recv(receive_data.data(), recv_length, dtm.get_mpi_type(),
+            adress.source, MPI_ANY_TAG, env.communicator(),
+            MPI_STATUSES_IGNORE);
+        MPI_Send(receive_data.data(), recv_length, dtm.get_mpi_type(),
+                 adress.destination, 42, env.communicator());
+        return std::vector<unsigned char>();
+    }
 
     MPI_Isend(send_data, send_length, dtm.get_mpi_type(), adress.destination,
         42, env.communicator(), &requests.data()[0]);

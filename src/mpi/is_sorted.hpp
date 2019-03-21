@@ -36,18 +36,18 @@ bool is_sorted(const StringPtr& strptr,
         front = has_strings ? (*ss.begin()).string : ss.empty_string().string;
         back =
             has_strings ? (*(ss.end() - 1)).string : ss.empty_string().string;
-        greater_string =
-            dss_schimek::mpi::shift_string<is_left_shift>(front, env);
-        smaller_string =
-            dss_schimek::mpi::shift_string<!is_left_shift>(back, env);
+        greater_string = dss_schimek::mpi::shift_string<is_left_shift>(
+            front, has_strings, env);
+        smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
+            back, has_strings, env);
     }
     else {
         front = has_strings ? *ss.begin() : ss.empty_string();
         back = has_strings ? *(ss.end() - 1) : ss.empty_string();
-        greater_string =
-            dss_schimek::mpi::shift_string<is_left_shift>(front, env);
-        smaller_string =
-            dss_schimek::mpi::shift_string<!is_left_shift>(back, env);
+        greater_string = dss_schimek::mpi::shift_string<is_left_shift>(
+            front, has_strings, env);
+        smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
+            back, has_strings, env);
     }
 
     bool is_overall_sorted = is_locally_sorted;
