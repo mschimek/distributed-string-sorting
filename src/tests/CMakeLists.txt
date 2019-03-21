@@ -15,3 +15,6 @@ target_link_libraries(pipelinedGolombEncodingTests ${MPI_LIBRARIES} tlx)
 
 add_executable(readFilesTests readFilesTests.cpp ../mpi/environment.cpp)
 target_link_libraries(readFilesTests ${MPI_LIBRARIES} tlx)
+
+add_executable(distributedSorterTests distributedSorter_tests.cpp ../mpi/environment.cpp)
+target_link_libraries(distributedSorterTests ${MPI_LIBRARIES} tlx)

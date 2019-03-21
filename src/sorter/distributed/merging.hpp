@@ -12,6 +12,8 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         const std::vector<std::pair<size_t, size_t>>& ranges,
         const size_t num_recv_elems) {
 
+      if (recv_string_cont.size() == 0u)
+        return dss_schimek::StringLcpContainer<StringSet>();
 
       std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
       std::vector<size_t> sorted_lcp(recv_string_cont.size());

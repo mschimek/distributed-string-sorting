@@ -118,7 +118,7 @@ public:
 
     StringLcpContainer()
         : raw_strings_(std::make_unique<std::vector<Char>>()), strings_(),
-          lcps_() {}
+          lcps_(), savedLcps_() {}
 
     StringLcpContainer(std::vector<Char>&& raw_strings)
         : raw_strings_(
@@ -169,6 +169,9 @@ public:
         using String = typename StringSet::String;
         using Char = typename StringSet::Char;
         using CharIt = typename StringSet::CharIterator;
+
+        if (ss.size() == 0u)
+          return;
 
         const size_t L =
             std::accumulate(lcps.begin(), lcps.end(), static_cast<size_t>(0u));
