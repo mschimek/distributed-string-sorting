@@ -18,3 +18,6 @@ target_link_libraries(readFilesTests ${MPI_LIBRARIES} tlx)
 
 add_executable(distributedSorterTests distributedSorter_tests.cpp ../mpi/environment.cpp)
 target_link_libraries(distributedSorterTests ${MPI_LIBRARIES} tlx)
+
+add_executable(isSortedTests isSorted_tests.cpp ../mpi/environment.cpp)
+target_link_libraries(isSortedTests ${MPI_LIBRARIES} tlx)

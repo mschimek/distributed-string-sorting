@@ -276,6 +276,7 @@ static inline std::vector<unsigned char> shift_string(
     unsigned char* send_data, bool isEmpty, environment env = environment()) {
 
     constexpr bool debug = false;
+
     std::size_t string_length = dss_schimek::string_length(send_data);
     if (debug)
         std::cout << "rank: " << env.rank() << " isleftshift: " << is_left_shift
@@ -308,7 +309,7 @@ static inline std::vector<unsigned char> shift_string(
             adress.source, MPI_ANY_TAG, env.communicator(),
             MPI_STATUSES_IGNORE);
         MPI_Send(receive_data.data(), recv_length, dtm.get_mpi_type(),
-                 adress.destination, 42, env.communicator());
+            adress.destination, 42, env.communicator());
         return std::vector<unsigned char>();
     }
 

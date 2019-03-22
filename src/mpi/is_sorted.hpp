@@ -23,10 +23,10 @@ bool is_sorted(const StringPtr& strptr,
 
     if (number_PE_with_data <= 1) return is_locally_sorted;
 
-    int64_t own_min_number = has_strings ? env.rank() : env.size();
-    int64_t own_max_number = has_strings ? env.rank() : -1;
-    int64_t min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
-    int64_t max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
+    int32_t own_min_number = has_strings ? env.rank() : env.size();
+    int32_t own_max_number = has_strings ? env.rank() : -1;
+    int32_t min_PE_with_data = dsss::mpi::allreduce_min(own_min_number);
+    int32_t max_PE_with_data = dsss::mpi::allreduce_max(own_max_number);
     const bool is_left_shift = true;
     std::vector<unsigned char> greater_string;
     std::vector<unsigned char> smaller_string;
@@ -49,7 +49,14 @@ bool is_sorted(const StringPtr& strptr,
         smaller_string = dss_schimek::mpi::shift_string<!is_left_shift>(
             back, !has_strings, env);
     }
-
+    if (false) {
+        std::cout << "rank: " << env.rank() << " front: " << front
+                  << " back: " << back
+                  << " smaller_string: " << smaller_string.data()
+                  << " greater_string: " << greater_string.data()
+                  << " min_PE_with_data: " << min_PE_with_data
+                  << " max_PE_with_data: " << max_PE_with_data << std::endl;
+    }
     bool is_overall_sorted = is_locally_sorted;
     if (!has_strings) return dsss::mpi::allreduce_and(is_overall_sorted, env);
 
