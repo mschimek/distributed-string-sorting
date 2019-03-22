@@ -101,17 +101,17 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
 
     measuringTool.stop("sorting_overall");
 
-    dss_schimek::mpi::execute_in_order([&]() {
-        std::cout << "print sorted: rank: " << env.rank() << std::endl;
-        auto sorted = sorted_string_cont.make_string_set();
-        for (size_t i = 0; i < 15; ++i) {
-          
-          auto str = sorted[sorted.begin() + i];
-          std::cout <<sorted.get_chars(str, 0) << std::endl;
-        
-        }
-        sorted_string_cont.make_string_set().print();
-    });
+    //dss_schimek::mpi::execute_in_order([&]() {
+    //    std::cout << "print sorted: rank: " << env.rank() << std::endl;
+    //    auto sorted = sorted_string_cont.make_string_set();
+    //    for (size_t i = 0; i < 15; ++i) {
+    //      
+    //      auto str = sorted[sorted.begin() + i];
+    //      std::cout <<sorted.get_chars(str, 0) << std::endl;
+    //    
+    //    }
+    //    sorted_string_cont.make_string_set().print();
+    //});
 
     measuringTool.start("prefix_decompression");
     if (AllToAllPolicy::PrefixCompression && env.size() > 1)
