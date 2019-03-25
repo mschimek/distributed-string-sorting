@@ -169,22 +169,25 @@ public:
         using String = typename StringSet::String;
         using Char = typename StringSet::Char;
         using CharIt = typename StringSet::CharIterator;
+        const size_t initialPrefixLengthGuess = 10000u;
 
         if (ss.size() == 0u)
           return;
 
         const size_t L =
             std::accumulate(lcps.begin(), lcps.end(), static_cast<size_t>(0u));
-        std::vector<Char> extendedRawStrings(char_size() + L);
+        std::vector<Char> extendedRawStrings;
+        extendedRawStrings.reserve(char_size() + L);
         std::vector<Char> curPrefix;
+        curPrefix.reserve(initialPrefixLengthGuess);
         Char* curPos = extendedRawStrings.data();
 
         // first String is always complete in memory as its lcp == 0
         String curString = ss[ss.begin()];
         CharIt startCurString = ss.get_chars(curString, 0);
         size_t stringLength = ss.get_length(curString) + 1;
-        std::copy(startCurString, startCurString + stringLength, curPos);
-        curPos += stringLength;
+        std::copy_n(startCurString, stringLength, std::back_inserter(extendedRawStrings));
+        //curPos += stringLength;
         for (size_t i = 1; i < ss.size(); ++i) {
             int64_t lcp_diff = lcps[i] - lcps[i - 1];
             if (lcp_diff <= 0) {
@@ -198,14 +201,14 @@ public:
                      ++j) // lcp_diff > 0 see if-branch
                     curPrefix.push_back(*(commonPrefix + j));
             }
-            std::copy(curPrefix.begin(), curPrefix.end(), curPos);
-            curPos += curPrefix.size();
+            std::copy_n(curPrefix.begin(), curPrefix.size(), std::back_inserter(extendedRawStrings));
+            //curPos += curPrefix.size();
 
             String curString = ss[ss.begin() + i];
             CharIt startCurString = ss.get_chars(curString, 0);
             size_t stringLength = ss.get_length(curString) + 1;
-            std::copy(startCurString, startCurString + stringLength, curPos);
-            curPos += stringLength;
+            std::copy_n(startCurString, stringLength, std::back_inserter(extendedRawStrings));
+            //curPos += stringLength;
         }
         update(std::move(extendedRawStrings));
     }
