@@ -590,12 +590,18 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
             stringsWritten += sendCountsString[interval];
         }
 
+        send_data.deleteRawStrings();
+        send_data.deleteStrings();
+
         measuringTool.stop("all_to_all_strings_intern_copy");
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(
             send_data.lcps().data(), sendCountsString, env);
+
+        send_data.deleteAll();
+
         measuringTool.stop("all_to_all_strings_mpi");
         measuringTool.add(
             send_data.char_size() + send_data.size(), "bytes_sent");
