@@ -1,17 +1,16 @@
 #!/bin/bash
 module load mpi/openmpi/3.1
 
+path=DummyPath
 executable="../build/src/executables/distributed_sorter"
-numOfStrings=500000
-sampler=1
+numOfStrings=5000000
 numOfIterations=10
 byteEncoder=0
-generator=1
-stringLength=1000
+generator=2
+stringLength=2000
 MPIRoutine=2
-path="../upload/enwiki-20190301-pages-articles-multistream1.xml-p10p30302"
-
-for dToNRatio in 0.0 0.25 0.5 0.75 1.0
+dToNRatio=0.5
+for sampler in 1 0
 do
 	for byteEncoder in 1 5
 	do
@@ -19,7 +18,6 @@ do
 		mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --path $path --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
 	done
 done
-
 #mpirun -np 2 $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength
 #
 #dToNRatio=0.4
