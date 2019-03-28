@@ -90,11 +90,11 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
         AllToAllPolicy, GolombEncoding>
         prefixDoublingSorter;
     std::vector<StringIndexPEIndex> permutation =
-        prefixDoublingSorter.sort(rand_string_ptr);
+        prefixDoublingSorter.sort(std::move(generatedContainer), rand_string_ptr);
 
     measuringTool.stop("sorting_overall");
 
-    const bool check = true;
+    const bool check = false;
     if (check) {
         if (env.size() > 1) {
             auto CompleteStringsCont =

@@ -200,7 +200,7 @@ template <typename StringPtr, typename SampleSplittersPolicy,
 class DistributedPrefixDoublingSort : private SampleSplittersPolicy,
                                       private AllToAllStringPolicy {
 public:
-    std::vector<StringIndexPEIndex> sort(StringPtr& local_string_ptr,
+    std::vector<StringIndexPEIndex> sort(dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&& container, StringPtr& local_string_ptr,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
         // constexpr bool debug = false;
@@ -273,28 +273,33 @@ public:
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
         dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet>
-            recv_string_cont_tmp = AllToAllStringPolicy::alltoallv(
+            recv_string_cont = AllToAllStringPolicy::alltoallv(
                 local_string_ptr, interval_sizes, results);
+        container.deleteAll();
         measuringTool.stop("all_to_all_strings");
 
         measuringTool.setPhase("merging");
 
         measuringTool.add(
-            recv_string_cont_tmp.char_size() - recv_string_cont_tmp.size(),
+            recv_string_cont.char_size() - recv_string_cont.size(),
             "num_received_chars", false);
+        measuringTool.add(
+            recv_string_cont.size(),
+            "num_recv_strings", false);
         size_t num_recv_elems =
             std::accumulate(receiving_interval_sizes.begin(),
                 receiving_interval_sizes.end(), static_cast<size_t>(0u));
+        std::cout << "rank: " << env.rank() << " num_receiv chars: " << recv_string_cont.char_size() << std::endl;
 
         measuringTool.start("compute_ranges");
         std::vector<std::pair<size_t, size_t>> ranges =
             compute_ranges_and_set_lcp_at_start_of_range(
-                recv_string_cont_tmp, receiving_interval_sizes);
+                recv_string_cont, receiving_interval_sizes);
         measuringTool.stop("compute_ranges");
 
         measuringTool.start("merge_ranges");
         auto sorted_container = choose_merge<AllToAllStringPolicy>(
-            std::move(recv_string_cont_tmp), ranges, num_recv_elems);
+            std::move(recv_string_cont), ranges, num_recv_elems);
         measuringTool.stop("merge_ranges");
 
         measuringTool.start("writeback_permutation");
