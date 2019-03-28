@@ -227,22 +227,22 @@ public:
 
     void deleteRawStrings() {
         raw_strings_->clear();
-        *raw_strings_ = {};
+        raw_strings_->shrink_to_fit();
     }
 
     void deleteStrings() {
         strings_.clear();
-        strings_ = {};
+        strings_.shrink_to_fit();
     }
 
     void deleteLcps() {
         lcps_.clear();
-        lcps_ = {};
+        lcps_.shrink_to_fit();
     }
 
     void deleteSavedLcps() {
         savedLcps_.clear();
-        savedLcps_ = {};
+        savedLcps_.shrink_to_fit(); 
     }
 
     void deleteAll() {
@@ -291,12 +291,12 @@ public:
 
 public:
     size_t sumOfCapacities() {
-        return raw_strings_->capacity() + strings_.capacity() +
-               lcps_.capacity() + savedLcps_.capacity();
+        return raw_strings_->capacity() * sizeof(Char)+ strings_.capacity() * sizeof(String) +
+               lcps_.capacity() * sizeof(size_t)+ savedLcps_.capacity() * sizeof(size_t);
     }
     size_t sumOfSizes() {
-        return raw_strings_->size() + strings_.size() + lcps_.size() +
-               savedLcps_.size();
+        return raw_strings_->size() * sizeof(Char)+ strings_.size() * sizeof(String) +
+               lcps_.size() * sizeof(size_t)+ savedLcps_.size() * sizeof(size_t);
     }
 
 protected:
