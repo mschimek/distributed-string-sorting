@@ -49,17 +49,17 @@ public:
     std::vector<String> init_strings(std::vector<Char>& raw_strings) {
         std::vector<String> strings;
 
-	size_t stringNum = 0;
+        size_t stringNum = 0;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             while (raw_strings[i] != 0)
                 ++i;
-            ++stringNum; 
+            ++stringNum;
         }
 
-        //std::cout << " stringNum: " << stringNum
+        // std::cout << " stringNum: " << stringNum
         //          << std::endl;
         strings.reserve(stringNum);
-        //std::cout << "reserve in init" << std::endl;
+        // std::cout << "reserve in init" << std::endl;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             strings.emplace_back(raw_strings.data() + i, i);
             while (raw_strings[i] != 0)
@@ -67,7 +67,7 @@ public:
             strings.back().length = i - strings.back().length;
         }
 
-        //std::cout << "return in init" << std::endl;
+        // std::cout << "return in init" << std::endl;
         return strings;
     }
 };
@@ -171,8 +171,7 @@ public:
         using CharIt = typename StringSet::CharIterator;
         const size_t initialPrefixLengthGuess = 10000u;
 
-        if (ss.size() == 0u)
-          return;
+        if (ss.size() == 0u) return;
 
         const size_t L =
             std::accumulate(lcps.begin(), lcps.end(), static_cast<size_t>(0u));
@@ -184,7 +183,8 @@ public:
         String curString = ss[ss.begin()];
         CharIt startCurString = ss.get_chars(curString, 0);
         size_t stringLength = ss.get_length(curString) + 1;
-        std::copy_n(startCurString, stringLength, std::back_inserter(extendedRawStrings));
+        std::copy_n(startCurString, stringLength,
+            std::back_inserter(extendedRawStrings));
         for (size_t i = 1; i < ss.size(); ++i) {
             int64_t lcp_diff = lcps[i] - lcps[i - 1];
             if (lcp_diff <= 0) {
@@ -198,13 +198,15 @@ public:
                      ++j) // lcp_diff > 0 see if-branch
                     curPrefix.push_back(*(commonPrefix + j));
             }
-            std::copy_n(curPrefix.begin(), curPrefix.size(), std::back_inserter(extendedRawStrings));
+            std::copy_n(curPrefix.begin(), curPrefix.size(),
+                std::back_inserter(extendedRawStrings));
 
             String curString = ss[ss.begin() + i];
             CharIt startCurString = ss.get_chars(curString, 0);
             size_t stringLength = ss.get_length(curString) + 1;
-            std::copy_n(startCurString, stringLength, std::back_inserter(extendedRawStrings));
-            //curPos += stringLength;
+            std::copy_n(startCurString, stringLength,
+                std::back_inserter(extendedRawStrings));
+            // curPos += stringLength;
         }
         update(std::move(extendedRawStrings));
     }
@@ -223,13 +225,25 @@ public:
             make_string_set(), lcp_array());
     }
 
-    void deleteRawStrings() { raw_strings_->clear(); }
+    void deleteRawStrings() {
+        raw_strings_->clear();
+        *raw_strings_ = {};
+    }
 
-    void deleteStrings() { strings_.clear(); }
+    void deleteStrings() {
+        strings_.clear();
+        strings_ = {};
+    }
 
-    void deleteLcps() { lcps_.clear(); }
+    void deleteLcps() {
+        lcps_.clear();
+        lcps_ = {};
+    }
 
-    void deleteSavedLcps() { savedLcps_.clear(); }
+    void deleteSavedLcps() {
+        savedLcps_.clear();
+        savedLcps_ = {};
+    }
 
     void deleteAll() {
         deleteRawStrings();
@@ -273,6 +287,16 @@ public:
                 if (str == raw_strings_.data()) return true;
                 return *(str - 1) == 0;
             });
+    }
+
+public:
+    size_t sumOfCapacities() {
+        return raw_strings_->capacity() + strings_.capacity() +
+               lcps_.capacity() + savedLcps_.capacity();
+    }
+    size_t sumOfSizes() {
+        return raw_strings_->size() + strings_.size() + lcps_.size() +
+               savedLcps_.size();
     }
 
 protected:

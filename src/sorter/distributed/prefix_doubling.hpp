@@ -305,6 +305,9 @@ public:
         auto sorted_container = choose_merge<AllToAllStringPolicy>(
             std::move(recv_string_cont), ranges, num_recv_elems);
         measuringTool.stop("merge_ranges");
+        std::cout << "rank: " << env.rank() << " recv_string_cont: " << recv_string_cont.sumOfCapacities() << " " << recv_string_cont.sumOfSizes() << std::endl;
+        std::cout << "rank: " << env.rank() << " sorted_container: " << sorted_container.sumOfCapacities() << " " << sorted_container.sumOfSizes() << std::endl;
+        std::cout << "rank: " << env.rank() << " container: " << container.sumOfCapacities() << " " << container.sumOfSizes() << std::endl;
 
         measuringTool.start("writeback_permutation");
         auto sortedSet = sorted_container.make_string_set();
