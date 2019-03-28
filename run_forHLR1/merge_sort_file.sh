@@ -1,24 +1,23 @@
 #!/bin/bash
 module load mpi/openmpi/3.1
 
-executable="../build/src/executables/prefix_doubling"
+path=DummyPath
+executable="../build/src/executables/distributed_sorter"
 numOfStrings=5000000
 numOfIterations=10
-sampler=0
-byteEncoder=5
+byteEncoder=0
+generator=2
+stringLength=2000
 MPIRoutine=2
-generator=1
-stringLength=1000
-
-for dToNRatio in 0.0 0.25 0.5 0.75 1.0
+dToNRatio=0.5
+for sampler in 1 0
 do
-	for golombEncoding in 0 1 2
+	for byteEncoder in 1 5
 	do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
-		mpirun --bind-to core --map-by core $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --golombEncodingPolicy $golombEncoding --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
+		mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --path $path --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
 	done
 done
-
 #mpirun -np 2 $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength
 #
 #dToNRatio=0.4

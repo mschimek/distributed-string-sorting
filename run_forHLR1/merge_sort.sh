@@ -2,18 +2,20 @@
 module load mpi/openmpi/3.1
 
 executable="../build/src/executables/distributed_sorter"
-numOfStrings=1000000
+numOfStrings=5000000
+sampler=0
 numOfIterations=10
-byteEncoder=5
+byteEncoder=0
 generator=1
-stringLength=500
+stringLength=1000
+MPIRoutine=2
 
-for dToNRatio in 1.0 0.8 0.6 0.4 0.2 0.0
+for dToNRatio in 0.0 0.25 0.5 0.75 1.0
 do
-	for byteEncoder in 5
+	for byteEncoder in 1 5
 	do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
-		mpirun --bind-to core --map-by core $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
+		mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
 	done
 done
 
