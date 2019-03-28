@@ -75,7 +75,8 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
     std::cout << "filter_exact rank: " << env.rank() << std::endl;
     size_t curIteration = 0;
 
-    for (size_t i = startDepth; i < std::numeric_limits<size_t>::max(); i *= 2) {
+    for (size_t i = startDepth; i < std::numeric_limits<size_t>::max();
+         i *= 2) {
         env.barrier();
         if (env.rank() == 0)
             std::cout << "\t\t\t\t\t curIteration: " << i << std::endl;
@@ -200,7 +201,10 @@ template <typename StringPtr, typename SampleSplittersPolicy,
 class DistributedPrefixDoublingSort : private SampleSplittersPolicy,
                                       private AllToAllStringPolicy {
 public:
-    std::vector<StringIndexPEIndex> sort(dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&& container, StringPtr& local_string_ptr,
+    std::vector<StringIndexPEIndex> sort(
+        dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&&
+            container,
+        StringPtr& local_string_ptr,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
         // constexpr bool debug = false;
@@ -274,7 +278,7 @@ public:
         measuringTool.start("all_to_all_strings");
         dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet>
             recv_string_cont = AllToAllStringPolicy::alltoallv(
-                local_string_ptr, interval_sizes, results);
+                std::move(container), interval_sizes, results);
         container.deleteAll();
         measuringTool.stop("all_to_all_strings");
 
@@ -283,13 +287,13 @@ public:
         measuringTool.add(
             recv_string_cont.char_size() - recv_string_cont.size(),
             "num_received_chars", false);
-        measuringTool.add(
-            recv_string_cont.size(),
-            "num_recv_strings", false);
+        measuringTool.add(recv_string_cont.size(), "num_recv_strings", false);
         size_t num_recv_elems =
             std::accumulate(receiving_interval_sizes.begin(),
                 receiving_interval_sizes.end(), static_cast<size_t>(0u));
-        std::cout << "rank: " << env.rank() << " num_receiv chars: " << recv_string_cont.char_size() << std::endl;
+        std::cout << "rank: " << env.rank()
+                  << " num_receiv chars: " << recv_string_cont.char_size()
+                  << std::endl;
 
         measuringTool.start("compute_ranges");
         std::vector<std::pair<size_t, size_t>> ranges =

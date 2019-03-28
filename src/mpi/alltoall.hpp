@@ -791,22 +791,23 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
 template <typename StringLcpPtr, typename AllToAllPolicy>
 struct AllToAllStringImplPrefixDoubling {
 
+    using StringSet = typename StringLcpPtr::StringSet;
     using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
     static constexpr bool PrefixCompression = true;
 
     dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(
-        StringLcpPtr stringLcpPtr, const std::vector<size_t>& sendCountsString,
+        dss_schimek::StringLcpContainer<StringSet>&& send_data, const std::vector<size_t>& sendCountsString,
         const std::vector<size_t>& distinguishingPrefixValues,
         environment env = environment()) {
 
         using namespace dss_schimek;
         using namespace dss_schimek::measurement;
-        using StringSet = typename StringLcpPtr::StringSet;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("all_to_all_strings_intern_copy");
         const EmptyPrefixDoublingLcpByteEncoderMemCpy byteEncoder;
+        StringLcpPtr stringLcpPtr = send_data.make_string_lcp_ptr();
         const StringSet ss = stringLcpPtr.active();
 
         if (ss.size() == 0)
@@ -855,6 +856,8 @@ struct AllToAllStringImplPrefixDoubling {
             send_counts_char[interval] = numWrittenChars;
             stringsWritten += sendCountsString[interval];
         }
+        send_data.deleteRawStrings();
+        send_data.deleteStrings();
 
         measuringTool.stop("all_to_all_strings_intern_copy");
         measuringTool.start("all_to_all_strings_mpi");
@@ -862,6 +865,7 @@ struct AllToAllStringImplPrefixDoubling {
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
         receive_buffer_lcp = AllToAllPolicy::alltoallv(
             stringLcpPtr.get_lcp(), sendCountsString, env);
+        send_data.deleteAll();
         std::vector<size_t> recvNumberStrings =
             dsss::mpi::alltoall(sendCountsString);
         std::vector<size_t> offsets;
