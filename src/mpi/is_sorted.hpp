@@ -4,7 +4,7 @@
 #include "mpi/allreduce.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/shift.hpp"
-#include "strings/stringcontainer.hpp"
+#include "mpi/gather.hpp"
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
 
@@ -37,12 +37,19 @@ public:
     std::vector<unsigned char> getLocalInput() { return localInputRawStrings_; }
 
     bool check(StringPtr sortedStrings) {
+      dsss::mpi::environment env;
       auto contigousSortedStrings = makeContiguous(sortedStrings);
-      globalSortedRawStrings_ = dsss::mpi::allgatherv(contigousSortedStrings);
+      globalSortedRawStrings_ = dss_schimek::mpi::gatherv(contigousSortedStrings, 0);
       gatherInput();
+      if (env.rank() == 0u) {
       sortInputAndMakeContiguous();
-      //std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size(); 
-      return globalSortedRawStrings_ == globalInputRawStrings_;
+      bool res = globalSortedRawStrings_ == globalInputRawStrings_;
+      std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size(); 
+      return dsss::mpi::allreduce_and(res);
+      } else {
+        bool res = true;
+        return dsss::mpi::allreduce_and(res);
+      }
     }
 
 
@@ -52,7 +59,7 @@ private:
     std::vector<unsigned char> globalSortedRawStrings_;
 
     void gatherInput() {
-        globalInputRawStrings_ = dsss::mpi::allgatherv(localInputRawStrings_);
+        globalInputRawStrings_ = dss_schimek::mpi::gatherv(localInputRawStrings_, 0);
     }
 
     void sortInputAndMakeContiguous() {
