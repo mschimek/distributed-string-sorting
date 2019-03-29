@@ -36,7 +36,7 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
 template <typename StringSet, typename StringGenerator,
     typename SampleSplittersPolicy, typename MPIAllToAllRoutine,
     typename ByteEncoder, typename GolombEncoding>
-void execute_sorter(size_t numOfStrings, const bool checkInput,
+void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustiveCheck, 
     size_t iteration, const bool strongScaling,
     GeneratedStringsArgs genStringArgs,
     dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -63,11 +63,14 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.setPrefix(prefix);
 
+    CheckerWithCompleteExchange<StringLcpPtr> checker;
+
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
 
     // std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+    if (check || exhaustiveCheck) checker.storeLocalInput(generatedContainer.raw_strings());
     // std::cout << "rank: " << env.rank() <<  " generate strings completed" <<
     // std::endl;
     env.barrier();
@@ -89,17 +92,22 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
     DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy,
         AllToAllPolicy, GolombEncoding>
         prefixDoublingSorter;
-    std::vector<StringIndexPEIndex> permutation =
-        prefixDoublingSorter.sort(std::move(generatedContainer), rand_string_ptr);
+    std::vector<StringIndexPEIndex> permutation = prefixDoublingSorter.sort(
+        std::move(generatedContainer), rand_string_ptr);
 
     measuringTool.stop("sorting_overall");
 
-    const bool check = false;
-    if (check) {
+    if (check || exhaustiveCheck) {
         if (env.size() > 1) {
+
+            StringLcpContainer<StringSet> originalInput(
+                checker.getLocalInput());
+            auto originalInputStrPtr = originalInput.make_string_lcp_ptr();
+            tlx::sort_strings_detail::radixsort_CI3(originalInputStrPtr, 0, 0);
+
             auto CompleteStringsCont =
                 dsss::mpi::getStrings(permutation.begin(), permutation.end(),
-                    generatedContainer.make_string_set());
+                    originalInput.make_string_set());
 
             auto completeStringSet = CompleteStringsCont.make_string_set();
             reorder(completeStringSet, permutation.begin(), permutation.end());
@@ -113,6 +121,14 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
             if (!is_complete_and_sorted) {
                 std::cout << "not sorted" << std::endl;
                 std::abort();
+            }
+
+            if (exhaustiveCheck) {
+                const bool isSorted = checker.check(sorted_strptr);
+                if (!isSorted) {
+                    std::cout << "not complete sorted" << std::endl;
+                    std::abort();
+                }
             }
         }
     }
@@ -263,7 +279,8 @@ using namespace dss_schimek;
 
 struct SorterArgs {
     size_t size;
-    bool checkInput;
+    bool check;
+    bool exhaustiveCheck;
     size_t iteration;
     bool strongScaling;
     GeneratedStringsArgs generatorArgs;
@@ -281,7 +298,7 @@ void seventhArg(
     //               Timer>(args.size, args.checkInput, args.iteration,
     //               args.strongScaling, args.generatorArgs);
     execute_sorter<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-        ByteEncoder, GolombEncoding>(args.size, args.checkInput, args.iteration,
+        ByteEncoder, GolombEncoding>(args.size, args.check, args.exhaustiveCheck, args.iteration,
         args.strongScaling, args.generatorArgs);
 }
 template <typename StringSet, typename StringGenerator, typename SampleString,
@@ -432,7 +449,8 @@ int main(std::int32_t argc, char const* argv[]) {
     dsss::mpi::environment env;
     env.barrier();
 
-    bool check = true;
+    bool check = false;
+    bool exhaustiveCheck = false;
     unsigned int generator = 0;
     bool strongScaling = false;
     unsigned int sampleStringsPolicy =
@@ -468,7 +486,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll,
         "small = 0, directMessages = 1, combined = 2");
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
-    cp.add_flag('c', "checkSortedness", check, " ");
+    cp.add_flag('c', "check", check, " ");
+    cp.add_flag('c', "exhaustiveCheck", exhaustiveCheck, " ");
     cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
@@ -493,7 +512,7 @@ int main(std::int32_t argc, char const* argv[]) {
     generatorArgs.path = path;
     for (size_t i = 0; i < numberOfIterations; ++i) {
         SorterArgs args = {
-            numberOfStrings, check, i, strongScaling, generatorArgs};
+            numberOfStrings, check, exhaustiveCheck, i, strongScaling, generatorArgs};
         firstArg(key, args);
     }
     env.finalize();

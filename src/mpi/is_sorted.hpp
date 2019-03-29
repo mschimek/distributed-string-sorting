@@ -1,12 +1,70 @@
 #pragma once
 
+#include "mpi/allgather.hpp"
 #include "mpi/allreduce.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/shift.hpp"
+#include "strings/stringcontainer.hpp"
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
 
+#include <tlx/sort/strings/radix_sort.hpp>
+
 namespace dss_schimek {
+
+template <typename StringPtr>
+std::vector<unsigned char> makeContiguous(StringPtr data) {
+    std::vector<unsigned char> rawStrings;
+    auto ss = data.active();
+    for (auto str : ss) {
+        auto chars = ss.get_chars(str, 0);
+        auto length = ss.get_length(str);
+        std::copy_n(chars, length + 1, std::back_inserter(rawStrings));
+    }
+    return rawStrings;
+}
+
+template <typename StringPtr>
+class CheckerWithCompleteExchange {
+    using StringSet = typename StringPtr::StringSet;
+
+public:
+    void storeLocalInput(
+        const std::vector<unsigned char>& localInputRawStrings) {
+        localInputRawStrings_ = localInputRawStrings;
+    }
+
+    std::vector<unsigned char> getLocalInput() { return localInputRawStrings_; }
+
+    bool check(StringPtr sortedStrings) {
+      auto contigousSortedStrings = makeContiguous(sortedStrings);
+      globalSortedRawStrings_ = dsss::mpi::allgatherv(contigousSortedStrings);
+      gatherInput();
+      sortInputAndMakeContiguous();
+      //std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size(); 
+      return globalSortedRawStrings_ == globalInputRawStrings_;
+    }
+
+
+private:
+    std::vector<unsigned char> localInputRawStrings_;
+    std::vector<unsigned char> globalInputRawStrings_;
+    std::vector<unsigned char> globalSortedRawStrings_;
+
+    void gatherInput() {
+        globalInputRawStrings_ = dsss::mpi::allgatherv(localInputRawStrings_);
+    }
+
+    void sortInputAndMakeContiguous() {
+        dss_schimek::StringLcpContainer<StringSet> container(
+            std::move(globalInputRawStrings_));
+        auto stringPtr = container.make_string_lcp_ptr();
+        tlx::sort_strings_detail::radixsort_CI3(stringPtr, 0, 0);
+        globalInputRawStrings_ = makeContiguous(stringPtr);
+    }
+};
+
+
 
 template <typename StringPtr>
 bool is_sorted(const StringPtr& strptr,

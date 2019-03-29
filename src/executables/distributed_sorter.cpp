@@ -39,7 +39,7 @@ template <typename StringSet, typename StringGenerator,
     typename SampleSplittersPolicy, typename MPIAllToAllRoutine,
     typename ByteEncoder>
 
-void execute_sorter(size_t numOfStrings, const bool checkInput,
+void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustiveCheck,
     size_t iteration, const bool strongScaling,
     GeneratedStringsArgs genStringArgs,
     dsss::mpi::environment env = dsss::mpi::environment()) {
@@ -66,17 +66,21 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
     measuringTool.setPrefix(prefix);
     measuringTool.setVerbose(false);
 
+    CheckerWithCompleteExchange<StringLcpPtr> checker;
+
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
 
     // std::cout << " string generation start " << std::endl;
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+    if (check || exhaustiveCheck) checker.storeLocalInput(generatedContainer.raw_strings());
+
     // std::cout << "container: " << generatedContainer.size() << std::endl;
     StringLcpPtr rand_string_ptr = generatedContainer.make_string_lcp_ptr();
     const size_t numGeneratedChars = generatedContainer.char_size();
     const size_t numGeneratedStrings = generatedContainer.size();
 
-    //dss_schimek::mpi::execute_in_order([&]() {
+    // dss_schimek::mpi::execute_in_order([&]() {
     //    std::cout << "print: rank: " << env.rank() << std::endl;
     //    rand_string_ptr.active().print();
     //});
@@ -101,14 +105,14 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
 
     measuringTool.stop("sorting_overall");
 
-    //dss_schimek::mpi::execute_in_order([&]() {
+    // dss_schimek::mpi::execute_in_order([&]() {
     //    std::cout << "print sorted: rank: " << env.rank() << std::endl;
     //    auto sorted = sorted_string_cont.make_string_set();
     //    for (size_t i = 0; i < 15; ++i) {
-    //      
+    //
     //      auto str = sorted[sorted.begin() + i];
     //      std::cout <<sorted.get_chars(str, 0) << std::endl;
-    //    
+    //
     //    }
     //    sorted_string_cont.make_string_set().print();
     //});
@@ -118,15 +122,26 @@ void execute_sorter(size_t numOfStrings, const bool checkInput,
         sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(),
             sorted_string_cont.savedLcps());
     measuringTool.stop("prefix_decompression");
-    const StringLcpPtr sorted_strptr = sorted_string_cont.make_string_lcp_ptr();
-    const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(
-        sorted_strptr, numGeneratedChars, sorted_string_cont.char_size(),
-        numGeneratedStrings, sorted_string_cont.size());
 
-    if (!is_complete_and_sorted) {
-        std::cout << "not sorted" << std::endl;
-        std::abort();
+    if (check || exhaustiveCheck) {
+        const StringLcpPtr sorted_strptr =
+            sorted_string_cont.make_string_lcp_ptr();
+        const bool is_complete_and_sorted = dss_schimek::is_complete_and_sorted(
+            sorted_strptr, numGeneratedChars, sorted_string_cont.char_size(),
+            numGeneratedStrings, sorted_string_cont.size());
+        if (!is_complete_and_sorted) {
+            std::cout << "not sorted" << std::endl;
+            std::abort();
+        }
+        if (exhaustiveCheck) {
+            const bool isSorted = checker.check(sorted_strptr);
+            if (!isSorted) {
+                std::cout << "not complete sorted" << std::endl;
+                std::abort();
+            }
+        }
     }
+
     std::stringstream buffer;
     measuringTool.writeToStream(buffer);
     if (env.rank() == 0) {
@@ -254,6 +269,7 @@ using namespace dss_schimek;
 struct SorterArgs {
     size_t size;
     bool checkInput;
+    bool exhaustiveCheckInput;
     size_t iteration;
     bool strongScaling;
     GeneratedStringsArgs generatorArgs;
@@ -270,7 +286,7 @@ void sixthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     //               Timer>(args.size, args.checkInput, args.iteration,
     //               args.strongScaling, args.generatorArgs);
     execute_sorter<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-        ByteEncoder>(args.size, args.checkInput, args.iteration,
+        ByteEncoder>(args.size, args.checkInput, args.exhaustiveCheckInput, args.iteration,
         args.strongScaling, args.generatorArgs);
 }
 
@@ -397,7 +413,8 @@ int main(std::int32_t argc, char const* argv[]) {
     dsss::mpi::environment env;
     env.barrier();
 
-    bool check = true;
+    bool check = false;
+    bool exhaustiveCheck = false;
     unsigned int generator = 0;
     bool strongScaling = false;
     unsigned int sampleStringsPolicy =
@@ -428,7 +445,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_unsigned('m', "MPIRoutineAllToAll", mpiRoutineAllToAll,
         "small = 0, directMessages = 1, combined = 2");
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
-    cp.add_flag('c', "checkSortedness", check, " ");
+    cp.add_flag('c', "check", check, " ");
+    cp.add_flag('w', "exhaustiveCheck", exhaustiveCheck, " ");
     cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
@@ -452,7 +470,7 @@ int main(std::int32_t argc, char const* argv[]) {
     generatorArgs.path = path;
     for (size_t i = 0; i < numberOfIterations; ++i) {
         SorterArgs args = {
-            numberOfStrings, check, i, strongScaling, generatorArgs};
+            numberOfStrings, check, exhaustiveCheck, i, strongScaling, generatorArgs};
         firstArg(key, args);
     }
     env.finalize();
