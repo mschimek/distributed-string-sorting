@@ -54,12 +54,25 @@ StringLcpContainer<StringSet> choose_splitters(const StringSet& ss,
         std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
     const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
 
-    std::vector<Char> raw_chosen_splitters;
+
+    size_t splitterSize = 0u;
     for (std::size_t i = 1; i <= nr_splitters; ++i) {
         const auto begin = all_splitters_set.begin();
         const String splitter = all_splitters_set[begin + i * splitter_dist];
-        std::copy_n(ss.get_chars(splitter, 0), ss.get_length(splitter) + 1,
-            std::back_inserter(raw_chosen_splitters));
+        splitterSize  += all_splitters_set.get_length(splitter) + 1;
+    }
+
+    std::vector<Char> raw_chosen_splitters(splitterSize);
+    size_t curPos = 0u;
+
+    for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const auto begin = all_splitters_set.begin();
+        const String splitter = all_splitters_set[begin + i * splitter_dist];
+        auto chars = ss.get_chars(splitter, 0);
+        const size_t splitterLength = ss.get_length(splitter) + 1;
+        std::copy(chars, chars + splitterLength,
+            raw_chosen_splitters.begin() + curPos);
+        curPos += splitterLength;
     }
     return StringLcpContainer<StringSet>(std::move(raw_chosen_splitters));
 }
