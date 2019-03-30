@@ -6,14 +6,35 @@
 #include "merge/bingmann-lcp_losertree.hpp"
 #include "mpi/environment.hpp"
 
+
+inline size_t pow2roundup(size_t x) {
+  if (x == 0u)
+    return 1u;
+  --x;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  x |= x >> 32;
+  return x + 1;
+}
+
 template<typename AllToAllStringPolicy, size_t K, typename StringSet>
     static inline dss_schimek::StringLcpContainer<StringSet> merge(
         dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
-        const std::vector<std::pair<size_t, size_t>>& ranges,
+        std::vector<std::pair<size_t, size_t>>& ranges,
         const size_t num_recv_elems) {
+      
+      dsss::mpi::environment env;
 
       if (recv_string_cont.size() == 0u)
         return dss_schimek::StringLcpContainer<StringSet>();
+
+      const size_t nextPow2 = pow2roundup(env.size());
+      for (size_t i = env.size(); i < nextPow2; ++i)
+        ranges.emplace_back(0u, 0u);
+      
 
       std::vector<typename StringSet::String> sorted_string(recv_string_cont.size());
       std::vector<size_t> sorted_lcp(recv_string_cont.size());
@@ -48,7 +69,9 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         size_t num_recv_elems,
         dsss::mpi::environment env = dsss::mpi::environment()) {
 
-      switch (env.size()) {
+      const size_t nextPow2 = pow2roundup(env.size());
+      std::cout << "nextPow2: " << nextPow2 << std::endl; 
+      switch (nextPow2) {
         case 1 :  return merge<AllToAllStringPolicy,1>(std::move(recv_string_cont),
                       ranges,
                       num_recv_elems);
