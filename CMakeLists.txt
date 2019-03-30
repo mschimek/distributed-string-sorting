@@ -28,6 +28,7 @@ option(DSSS_OVERSUBSCRIBE
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif(NOT CMAKE_BUILD_TYPE)
+enable_testing()
 
 # TODO: Look for a "modern" (target based) working way
 find_package(MPI REQUIRED)

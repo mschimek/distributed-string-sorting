@@ -84,7 +84,7 @@ namespace dss_schimek {
 
 int main() {
   using namespace dss_schimek::tests;
-  const std::vector<size_t> sizes = {1000, 10000, 100000, 1000000};
+  const std::vector<size_t> sizes = {1000, 10000, 100000};
   const std::vector<size_t> stringLengths = {100,250, 500};
   const double epsilon = 0.01;
   const double relaxedEpsilon = 0.075; // TODO calculate exact bounds

@@ -9,7 +9,7 @@
 namespace dss_schimek {
 namespace mpi {
 template <typename DataType>
-inline std::vector<DataType> gather(const DataType& send_data, int32_t root,
+inline std::vector<DataType> gather(const DataType& send_data, size_t root,
     dsss::mpi::environment env = dsss::mpi::environment()) {
     using namespace dsss::mpi;
 
@@ -22,16 +22,15 @@ inline std::vector<DataType> gather(const DataType& send_data, int32_t root,
     std::vector<DataType> receive_data;
     if (env.rank() == root) receive_data.resize(env.size());
     MPI_Gather(&send_data, 1, dtm.get_mpi_type(), receive_data.data(), 1,
-        dtm.get_mpi_type(), root, env.communicator());
+        dtm.get_mpi_type(), static_cast<int32_t>(root), env.communicator());
     return receive_data;
 }
 
 template <typename DataType>
 inline std::vector<DataType> gatherv(std::vector<DataType>& send_data,
-    int32_t root, dsss::mpi::environment env = dsss::mpi::environment()) {
+    size_t root, dsss::mpi::environment env = dsss::mpi::environment()) {
     using namespace dsss::mpi;
     using namespace dss_schimek;
-
     using dss_schimek::measurement::MeasuringTool;
 
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -50,14 +49,18 @@ inline std::vector<DataType> gatherv(std::vector<DataType>& send_data,
         receive_data.resize(offsets.back());
         std::copy(send_data.begin(), send_data.end(),
             receive_data.begin() + offsets[root]);
-        for (int32_t i = root + 1; i < root + env.size(); ++i) {
-            int32_t partner = i % env.size();
+        for (size_t i = root + 1; i < root + env.size(); ++i) {
+            int32_t partner = static_cast<int32_t>(i % env.size());
+            auto receiveType =
+                dsss::mpi::get_big_type<DataType>(receiveCounts[partner]);
             MPI_Recv(receive_data.data() + offsets[partner],
-                receiveCounts[partner], dtm.get_mpi_type(), partner, 42,
+                1, receiveType, partner, 42,
                 env.communicator(), MPI_STATUSES_IGNORE);
         }
     } else {
-      MPI_Send(send_data.data(), send_data.size(), dtm.get_mpi_type(), root, 42, env.communicator());
+            auto sendType =
+                dsss::mpi::get_big_type<DataType>(send_data.size());
+      MPI_Send(send_data.data(), 1, sendType, root, 42, env.communicator());
     }
     return receive_data;
 }

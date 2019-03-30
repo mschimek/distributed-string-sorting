@@ -135,7 +135,6 @@ namespace dss_schimek {
       dsss::mpi::environment env;
 
       auto setupData = commonSetup<StringSet>();
-      StringLcpPtr localStringPtr = setupData.container.make_string_lcp_ptr();
 
       // all PEs get same amount of strings
       // distinguishing prefix size is reduced by 1 if one wants to simulate that all locally generated strings are equal
@@ -143,7 +142,7 @@ namespace dss_schimek {
       std::vector<size_t> distinguishingPrefix(setupData.size, distinguishingPrefixLength);
 
       // exchange strings
-      auto recvContainer = sender.alltoallv(localStringPtr, setupData.sendCounts, distinguishingPrefix);
+      auto recvContainer = sender.alltoallv(std::move(setupData.container), setupData.sendCounts, distinguishingPrefix);
 
       
       const auto& recvLcps = recvContainer.lcps();
