@@ -44,7 +44,7 @@ public:
       if (env.rank() == 0u) {
       sortInputAndMakeContiguous();
       bool res = globalSortedRawStrings_ == globalInputRawStrings_;
-      std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size(); 
+      std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size() << std::endl;
       return dsss::mpi::allreduce_and(res);
       } else {
         bool res = true;
