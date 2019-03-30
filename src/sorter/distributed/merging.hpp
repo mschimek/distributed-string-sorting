@@ -96,7 +96,7 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         case 128 : return merge<AllToAllStringPolicy,128>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        case 264 : return merge<AllToAllStringPolicy,264>(std::move(recv_string_cont),
+        case 256 : return merge<AllToAllStringPolicy,256>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
         case 512 : return merge<AllToAllStringPolicy,512>(std::move(recv_string_cont),
