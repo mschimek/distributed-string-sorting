@@ -64,3 +64,6 @@ add_test(gatherTests2 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${CMAKE_CURRENT_BINAR
 add_test(gatherTests4 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 4 ${CMAKE_CURRENT_BINARY_DIR}/gatherTests)
 add_test(gatherTests8 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 8 ${CMAKE_CURRENT_BINARY_DIR}/gatherTests)
 endif()
+add_executable(integerCompressionTests integerCompression_tests.cpp ../mpi/environment.cpp)
+target_link_libraries(integerCompressionTests ${MPI_LIBRARIES} tlx)
+add_test(integerCompressionTests1 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${CMAKE_CURRENT_BINARY_DIR}/integerCompressionTests)
