@@ -134,7 +134,7 @@ void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustive
             std::abort();
         }
         if (exhaustiveCheck) {
-            const bool isSorted = checker.check(sorted_strptr);
+            const bool isSorted = checker.check(sorted_strptr, true);
             if (!isSorted) {
                 std::cout << "not complete sorted" << std::endl;
                 std::abort();

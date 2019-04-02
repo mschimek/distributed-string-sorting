@@ -3,8 +3,8 @@
 #include "mpi/allgather.hpp"
 #include "mpi/allreduce.hpp"
 #include "mpi/environment.hpp"
-#include "mpi/shift.hpp"
 #include "mpi/gather.hpp"
+#include "mpi/shift.hpp"
 #include "strings/stringptr.hpp"
 #include "strings/stringset.hpp"
 
@@ -36,30 +36,59 @@ public:
 
     std::vector<unsigned char> getLocalInput() { return localInputRawStrings_; }
 
-    bool check(StringPtr sortedStrings) {
-      dsss::mpi::environment env;
-      auto contigousSortedStrings = makeContiguous(sortedStrings);
-      globalSortedRawStrings_ = dss_schimek::mpi::gatherv(contigousSortedStrings, 0);
-      gatherInput();
-      if (env.rank() == 0u) {
-      sortInputAndMakeContiguous();
-      bool res = globalSortedRawStrings_ == globalInputRawStrings_;
-      std::cout << globalSortedRawStrings_.size() << " " << globalInputRawStrings_.size() << std::endl;
-      return dsss::mpi::allreduce_and(res);
-      } else {
-        bool res = true;
-        return dsss::mpi::allreduce_and(res);
-      }
+    bool checkLcp() {
+        dsss::mpi::environment env;
+
+        bool correctSize = globalSortedLcps_.size() == globalInputLcps_.size();
+        uint64_t counter = 0u;
+        for (size_t i = 0; i < globalInputLcps_.size(); ++i) {
+            if (globalInputLcps_[i] == globalSortedLcps_[i]) counter++;
+        }
+        std::cout << " checked lcp: " << std::endl;
+        return correctSize && counter + env.size() >= globalSortedLcps_.size();
     }
 
+    bool check(StringPtr sortedStrings, bool checkLcp_) {
+        dsss::mpi::environment env;
+        auto contigousSortedStrings = makeContiguous(sortedStrings);
+        globalSortedRawStrings_ =
+            dss_schimek::mpi::gatherv(contigousSortedStrings, 0);
+        if (checkLcp_) {
+            std::vector<uint64_t> localInput(sortedStrings.size());
+            std::copy(sortedStrings.get_lcp(),
+                sortedStrings.get_lcp() + sortedStrings.size(),
+                localInput.begin());
+            globalSortedLcps_ = dss_schimek::mpi::gatherv(localInput, 0);
+        }
+        gatherInput();
+        if (env.rank() == 0u) {
+            sortInputAndMakeContiguous();
+            bool lcpsCorrect = true; 
+            if (checkLcp_)
+              lcpsCorrect = checkLcp();
+            const bool sortedCorrectly =
+                globalSortedRawStrings_ == globalInputRawStrings_;
+            std::cout << globalSortedRawStrings_.size() << " "
+                      << globalInputRawStrings_.size() << std::endl;
+            bool overallCorrect = lcpsCorrect && sortedCorrectly;
+            return dsss::mpi::allreduce_and(overallCorrect);
+        }
+        else {
+            bool res = true;
+            return dsss::mpi::allreduce_and(res);
+        }
+    }
 
 private:
     std::vector<unsigned char> localInputRawStrings_;
     std::vector<unsigned char> globalInputRawStrings_;
+    std::vector<uint64_t> globalInputLcps_;
     std::vector<unsigned char> globalSortedRawStrings_;
+    std::vector<uint64_t> globalSortedLcps_;
 
     void gatherInput() {
-        globalInputRawStrings_ = dss_schimek::mpi::gatherv(localInputRawStrings_, 0);
+        globalInputRawStrings_ =
+            dss_schimek::mpi::gatherv(localInputRawStrings_, 0);
     }
 
     void sortInputAndMakeContiguous() {
@@ -68,10 +97,9 @@ private:
         auto stringPtr = container.make_string_lcp_ptr();
         tlx::sort_strings_detail::radixsort_CI3(stringPtr, 0, 0);
         globalInputRawStrings_ = makeContiguous(stringPtr);
+        globalInputLcps_ = std::move(container.lcps());
     }
 };
-
-
 
 template <typename StringPtr>
 bool is_sorted(const StringPtr& strptr,
