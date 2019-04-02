@@ -161,12 +161,13 @@ public:
     }
 };
 
-class Writer : public ItemWriterToolsBase<Writer> {
-    unsigned char* data;
+template <typename OutputIterator>
+class Writer : public ItemWriterToolsBase<Writer<OutputIterator>> {
+    OutputIterator data;
     size_t offset;
 
 public:
-    Writer(unsigned char* data) : data(data), offset(0) {}
+    Writer(OutputIterator data) : data(data), offset(0) {}
     void PutByte(uint8_t byte) {
         *(data + offset) = byte;
         ++offset;
@@ -257,6 +258,9 @@ public:
             *it = ItemReaderToolsBase<
                 Reader<InputIterator, OutputIterator>>::GetVarint();
         }
+    }
+    uint64_t getNumReadBytes() {
+      return offset;
     }
 };
 } // namespace dss_schimek

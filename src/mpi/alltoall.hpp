@@ -435,13 +435,13 @@ struct AllToAllStringImpl {
             sendCountsTotal.end(), static_cast<size_t>(0u));
 
         auto stringLcpPtr = container.make_string_lcp_ptr();
-        //for (size_t interval = 0, stringsWritten = 0;
+        // for (size_t interval = 0, stringsWritten = 0;
         //     interval < sendCountsString.size(); ++interval) {
         //    *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
         //    stringsWritten += sendCountsString[interval];
         //}
-        setLcpAtStartOfInterval(
-            stringLcpPtr.get_lcp(), sendCountsString.begin(), sendCountsString.end());
+        setLcpAtStartOfInterval(stringLcpPtr.get_lcp(),
+            sendCountsString.begin(), sendCountsString.end());
 
         std::vector<unsigned char> buffer(totalNumberSendBytes);
         unsigned char* curPos = buffer.data();
@@ -499,7 +499,7 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
 
         auto stringLcpPtr = send_data.make_string_lcp_ptr();
 
-        //for (size_t interval = 0, stringsWritten = 0;
+        // for (size_t interval = 0, stringsWritten = 0;
         //     interval < send_counts.size(); ++interval) {
         //    *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
         //    stringsWritten += send_counts[interval];
@@ -567,13 +567,13 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         std::vector<size_t> send_counts_char(sendCountsString.size());
 
         auto stringLcpPtr = send_data.make_string_lcp_ptr();
-        //for (size_t interval = 0, stringsWritten = 0;
+        // for (size_t interval = 0, stringsWritten = 0;
         //     interval < sendCountsString.size(); ++interval) {
         //    *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
         //    stringsWritten += sendCountsString[interval];
         //}
-        setLcpAtStartOfInterval(
-            stringLcpPtr.get_lcp(), sendCountsString.begin(), sendCountsString.end());
+        setLcpAtStartOfInterval(stringLcpPtr.get_lcp(),
+            sendCountsString.begin(), sendCountsString.end());
 
         std::vector<unsigned char> buffer(send_data.char_size());
         unsigned char* curPos = buffer.data();
@@ -733,13 +733,13 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
 
         auto stringLcpPtr = container.make_string_lcp_ptr();
 
-        //for (size_t interval = 0, stringsWritten = 0;
+        // for (size_t interval = 0, stringsWritten = 0;
         //     interval < sendCountsString.size(); ++interval) {
         //    *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
         //    stringsWritten += sendCountsString[interval];
         //}
-        setLcpAtStartOfInterval(
-            stringLcpPtr.get_lcp(), sendCountsString.begin(), sendCountsString.end());
+        setLcpAtStartOfInterval(stringLcpPtr.get_lcp(),
+            sendCountsString.begin(), sendCountsString.end());
 
         for (size_t interval = 0, offset = 0;
              interval < sendCountsString.size(); ++interval) {
@@ -796,7 +796,8 @@ struct AllToAllStringImplPrefixDoubling {
     static constexpr bool PrefixCompression = true;
 
     dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(
-        dss_schimek::StringLcpContainer<StringSet>&& send_data, const std::vector<size_t>& sendCountsString,
+        dss_schimek::StringLcpContainer<StringSet>&& send_data,
+        const std::vector<size_t>& sendCountsString,
         const std::vector<size_t>& distinguishingPrefixValues,
         environment env = environment()) {
 
@@ -818,13 +819,13 @@ struct AllToAllStringImplPrefixDoubling {
         std::vector<size_t> send_counts_lcp(sendCountsString);
         std::vector<size_t> send_counts_char(sendCountsString.size());
 
-        //for (size_t interval = 0, stringsWritten = 0;
+        // for (size_t interval = 0, stringsWritten = 0;
         //     interval < sendCountsString.size(); ++interval) {
         //    *(stringLcpPtr.get_lcp() + stringsWritten) = 0;
         //    stringsWritten += sendCountsString[interval];
         //}
-        setLcpAtStartOfInterval(
-            stringLcpPtr.get_lcp(), sendCountsString.begin(), sendCountsString.end());
+        setLcpAtStartOfInterval(stringLcpPtr.get_lcp(),
+            sendCountsString.begin(), sendCountsString.end());
 
         const size_t L = std::accumulate(stringLcpPtr.get_lcp(),
             stringLcpPtr.get_lcp() + stringLcpPtr.size(),
@@ -863,11 +864,21 @@ struct AllToAllStringImplPrefixDoubling {
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(
-            stringLcpPtr.get_lcp(), sendCountsString, env);
+        // TODO compress lcp values
+
+        auto compressedData = IntegerCompression::writeRanges(sendCountsString.begin(),
+            sendCountsString.end(), stringLcpPtr.get_lcp());
+
+        std::vector<uint8_t> recvCompressedLcps = AllToAllPolicy::alltoallv(
+            compressedData.compressedIntegers.data(), compressedData.counts, env);
         send_data.deleteAll();
         std::vector<size_t> recvNumberStrings =
             dsss::mpi::alltoall(sendCountsString);
+
+        // decode Lcp Compression:
+        std::vector<size_t> decodedLcpValues =
+            IntegerCompression::readRanges(recvNumberStrings.begin(),
+                recvNumberStrings.end(), recvCompressedLcps.data());
         std::vector<size_t> offsets;
         offsets.reserve(env.size());
         offsets.push_back(0);
@@ -883,7 +894,7 @@ struct AllToAllStringImplPrefixDoubling {
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp),
+            std::move(receive_buffer_char), std::move(decodedLcpValues),
             recvNumberStrings, recvOffsets);
     }
 };
