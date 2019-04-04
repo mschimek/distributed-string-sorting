@@ -40,7 +40,7 @@ template <typename StringSet, typename Iterator>
 void reorder(StringSet ss, Iterator begin, Iterator end) {
   using String = typename StringSet::String;
 
-  dsss::mpi::environment env;
+  dss_schimek::mpi::environment env;
   std::vector<String> reorderedStrings;
   std::vector<size_t> numberInStringSet(env.size(), 0);
   std::vector<size_t> startIndexInStringSet;
@@ -57,7 +57,7 @@ void reorder(StringSet ss, Iterator begin, Iterator end) {
   std::partial_sum(numberInStringSet.begin(), numberInStringSet.end() - 1, std::back_inserter(startIndexInStringSet));
 
   //dss_schimek::mpi::execute_in_order([&]() {
-  //    std::cout << "rank " << dsss::mpi::environment().rank() << std::endl;
+  //    std::cout << "rank " << dss_schimek::mpi::environment().rank() << std::endl;
   //    for(Iterator curIt = begin; curIt != end; ++curIt) {
   //    const auto& indices = *curIt;
   //    const size_t stringOffset = startIndexInStringSet[indices.PEIndex];

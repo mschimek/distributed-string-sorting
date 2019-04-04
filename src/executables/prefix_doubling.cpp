@@ -39,7 +39,7 @@ template <typename StringSet, typename StringGenerator,
 void execute_sorter(size_t numOfStrings, const bool check,
     const bool exhaustiveCheck, size_t iteration, const bool strongScaling,
     GeneratedStringsArgs genStringArgs,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
     using namespace dss_schimek;
@@ -107,7 +107,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
             tlx::sort_strings_detail::radixsort_CI3(originalInputStrPtr, 0, 0);
 
             auto CompleteStringsCont =
-                dsss::mpi::getStrings(permutation.begin(), permutation.end(),
+                dss_schimek::mpi::getStrings(permutation.begin(), permutation.end(),
                     originalInput.make_string_set());
 
             auto completeStringSet = CompleteStringsCont.make_string_set();
@@ -468,7 +468,7 @@ int main(std::int32_t argc, char const* argv[]) {
     using namespace dss_schimek;
     std::cout << "start program" << std::endl;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     env.barrier();
 
     bool check = false;

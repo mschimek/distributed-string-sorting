@@ -15,7 +15,7 @@
 namespace dss_schimek {
   namespace tests {
     std::vector<unsigned char> generateRawStrings(const size_t sizePerPE, size_t commonPrefixLength, size_t differentSuffixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
 
       std::vector<unsigned char> rawStrings;
 
@@ -33,7 +33,7 @@ namespace dss_schimek {
     }
 
     std::vector<unsigned char> getExpectedRawStringsForPrefixCompression(size_t sizePerPE, size_t commonPrefixLength, size_t differentSuffixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
           std::fill_n(std::back_inserter(expectedRawStrings), commonPrefixLength, peIndex + 1);
@@ -47,7 +47,7 @@ namespace dss_schimek {
     }
     
     std::vector<unsigned char> getExpectedRawStrings(size_t sizePerPE, size_t commonPrefixLength, size_t differentSuffixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
         for (size_t i = 0; i < sizePerPE; ++i) {
@@ -61,7 +61,7 @@ namespace dss_schimek {
     }
 
     std::vector<unsigned char> getExpectedRawStringsForPrefixDoubling(size_t sizePerPE, size_t commonPrefixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
         std::fill_n(std::back_inserter(expectedRawStrings), commonPrefixLength, peIndex + 1);
@@ -74,7 +74,7 @@ namespace dss_schimek {
     }
     
     std::vector<unsigned char> getExpectedRawStrings_DuplicatesForPrefixDoubling(size_t sizePerPE, size_t commonPrefixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::vector<unsigned char> expectedRawStrings;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
         std::fill_n(std::back_inserter(expectedRawStrings), commonPrefixLength, peIndex + 1);
@@ -84,7 +84,7 @@ namespace dss_schimek {
     }
 
     std::vector<size_t> getExpectedLcpValues(size_t sizePerPE, size_t commonPrefixLength) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::vector<size_t> expectedLcps;
       for (size_t peIndex = 0; peIndex < env.size(); ++peIndex) {
         expectedLcps.push_back(0);
@@ -105,9 +105,9 @@ namespace dss_schimek {
 
     template <typename StringSet>
       SetupData<StringSet> commonSetup() {
-        using namespace dsss::mpi;
+        using namespace dss_schimek::mpi;
         using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
 
         const size_t commonPrefixLength = 10;
         const size_t differentSuffixLength = 20;
@@ -129,10 +129,10 @@ namespace dss_schimek {
     void AllToAllStringImplPrefixDoubling_test(bool simulateDuplicates) {
       using StringSet = UCharLengthStringSet;
       using StringLcpPtr = typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
-      using AllToAllv = dsss::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr, dsss::mpi::AllToAllvSmall>;
+      using AllToAllv = dss_schimek::mpi::AllToAllStringImplPrefixDoubling<true, StringLcpPtr, dss_schimek::mpi::AllToAllvSmall>;
       AllToAllv sender;
 
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
 
       auto setupData = commonSetup<StringSet>();
 
@@ -165,7 +165,7 @@ namespace dss_schimek {
     template <typename ByteEncoder>
       void AllToAllStringsNonPrefixDoubling_test() {
         using StringSet = UCharLengthStringSet;
-        using AllToAllv = dsss::mpi::AllToAllStringImpl<StringSet, dsss::mpi::AllToAllvSmall, ByteEncoder>;
+        using AllToAllv = dss_schimek::mpi::AllToAllStringImpl<true, StringSet, dss_schimek::mpi::AllToAllvSmall, ByteEncoder>;
         AllToAllv sender;
 
 
@@ -200,7 +200,7 @@ int main() {
   using namespace dss_schimek;
   MeasuringTool& measuringTool = MeasuringTool::measuringTool();
   measuringTool.disable();
-  dsss::mpi::environment env;
+  dss_schimek::mpi::environment env;
 
   std::cout << "test: AllToAllStringImplPrefixDoubling" << std::endl;
   bool simulateDuplicates = false;

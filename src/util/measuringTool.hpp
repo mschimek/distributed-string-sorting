@@ -115,7 +115,7 @@ class MeasuringTool {
     using TimerValue = CounterPerPhaseTypeRawCommunicationSumUpValue;
     // TimerValue must contain functions setType() and setPseudoKeyCounter
     //
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     struct OutputFormat {
         std::string prefix;

@@ -6,7 +6,7 @@
 namespace dss_schimek {
   namespace mpi {
     size_t randomDataAllToAllExchange(size_t sizeInBytesPerPE) {
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
       std::random_device rd;
       std::mt19937 randGenerator(rd());
       std::uniform_int_distribution<unsigned char> dist(65, 90);
@@ -18,7 +18,7 @@ namespace dss_schimek {
       for (size_t i = 0; i < sizeInBytesPerPE * env.size(); ++i)
         randDataToSend.emplace_back(dist(randGenerator)); 
 
-      std::vector<unsigned char> recvData = dsss::mpi::alltoallv_small(randDataToSend, sendCounts);
+      std::vector<unsigned char> recvData = dss_schimek::mpi::alltoallv_small(randDataToSend, sendCounts);
       volatile size_t sum = std::accumulate(recvData.begin(), recvData.end(), 0);
       return sum;
     }

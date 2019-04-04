@@ -5,7 +5,7 @@
 namespace dss_schimek::mpi {
   template <typename Functor>
     void execute_in_order(const Functor& functor, 
-        dsss::mpi::environment env = dsss::mpi::environment()){
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()){
       for (size_t i = 0; i < env.size(); ++i) {
         env.barrier();
         if (env.rank() == i)

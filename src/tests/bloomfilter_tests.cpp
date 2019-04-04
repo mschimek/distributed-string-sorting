@@ -37,7 +37,7 @@ public:
         const std::vector<size_t>& candidates, const size_t depth) {
         HashesEOSHashes hashContainer = generateHashes(ss, candidates, depth);
         std::vector<size_t> globalHashes =
-            dsss::mpi::allgatherv(hashContainer.hashes);
+            dss_schimek::mpi::allgatherv(hashContainer.hashes);
         DuplicateUniqueHashes result = getDuplicateUniqueHashes(globalHashes);
         std::copy_n(hashContainer.eosHashes.begin(),
             hashContainer.eosHashes.size(), std::back_inserter(result.uniques));
@@ -265,7 +265,7 @@ void bloomfilter_test(
             hashesUniqueElems);
 
         bool noMoreCandidates = duplicates.empty();
-        const bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+        const bool allEmpty = dss_schimek::mpi::allreduce_and(noMoreCandidates);
         if (allEmpty) break;
     }
 }
@@ -279,22 +279,23 @@ int main() {
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.disable();
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     const size_t size = 10;
     const size_t stringLength = 50;
-    std::vector<double> dToNRatios{0.2};//, 0.2, 0.4, 0.6, 0.8, 1.0};
+    std::vector<double> dToNRatios{0.2}; //, 0.2, 0.4, 0.6, 0.8, 1.0};
 
     for (const double dToNRatio : dToNRatios) {
         std::cout << "test with dToNRatio: " << dToNRatio << std::endl;
 
-        //std::cout << "test with " << AllToAllHashesNaive::getName()
+        // std::cout << "test with " << AllToAllHashesNaive::getName()
         //          << std::endl;
-        //bloomfilter_test<AllToAllHashesNaive>(size, stringLength, dToNRatio);
-        //std::cout << "test with " << AllToAllHashesGolomb::getName()
+        // bloomfilter_test<AllToAllHashesNaive>(size, stringLength, dToNRatio);
+        // std::cout << "test with " << AllToAllHashesGolomb::getName()
         //          << std::endl;
-        //bloomfilter_test<AllToAllHashesGolomb>(size, stringLength, dToNRatio);
-        //std::cout << "test with " << AllToAllHashValuesPipeline::getName()
+        // bloomfilter_test<AllToAllHashesGolomb>(size, stringLength,
+        // dToNRatio); std::cout << "test with " <<
+        // AllToAllHashValuesPipeline::getName()
         //          << std::endl;
         bloomfilter_test<AllToAllHashValuesPipeline>(
             size, stringLength, dToNRatio);

@@ -35,7 +35,7 @@ namespace dss_schimek {
 template <typename StringPtr>
 std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
     using StringSet = typename StringPtr::StringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     StringSet ss = local_string_ptr.active();
     size_t sum = 0;
@@ -46,7 +46,7 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
             sum += *chars;
     }
 
-    std::vector<size_t> total_sum = dsss::mpi::allgather(sum);
+    std::vector<size_t> total_sum = dss_schimek::mpi::allgather(sum);
     std::cout << "TotalSum: "
               << std::accumulate(total_sum.begin(), total_sum.end(),
                      static_cast<size_t>(0u))
@@ -121,7 +121,7 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
         std::cout << i << " rank: " << env.rank() << " candiates "
                   << candidates.size()
                   << " noMoreCandiates: " << noMoreCandidates << std::endl;
-        bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+        bool allEmpty = dss_schimek::mpi::allreduce_and(noMoreCandidates);
         std::cout << "allEmpty?: " << allEmpty << std::endl;
         if (allEmpty) break;
         ++curIteration;
@@ -162,7 +162,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
 
     startDepth = 8;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
     measuringTool.start(std::string("bloomfilter_init"));
@@ -184,7 +184,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
             std::string("bloomfilter_numberCandidates"), false);
         measuringTool.start(std::string("bloomfilter_allreduce"));
         bool noMoreCandidates = candidates.empty();
-        bool allEmpty = dsss::mpi::allreduce_and(noMoreCandidates);
+        bool allEmpty = dss_schimek::mpi::allreduce_and(noMoreCandidates);
         measuringTool.stop(std::string("bloomfilter_allreduce"));
         if (allEmpty) break;
 
@@ -205,7 +205,7 @@ public:
         dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&&
             container,
         StringPtr& local_string_ptr,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         // constexpr bool debug = false;
         using dss_schimek::measurement::MeasuringTool;
@@ -271,7 +271,7 @@ public:
         std::vector<std::size_t> interval_sizes =
             compute_interval_binary(ss, chosen_splitters_set);
         std::vector<std::size_t> receiving_interval_sizes =
-            dsss::mpi::alltoall(interval_sizes);
+            dss_schimek::mpi::alltoall(interval_sizes);
         measuringTool.stop("compute_interval_sizes");
 
         measuringTool.setPhase("string_exchange");
@@ -291,7 +291,7 @@ public:
         size_t num_recv_elems =
             std::accumulate(receiving_interval_sizes.begin(),
                 receiving_interval_sizes.end(), static_cast<size_t>(0u));
-        //std::cout << "rank: " << env.rank()
+        // std::cout << "rank: " << env.rank()
         //          << " num_receiv chars: " << recv_string_cont.char_size()
         //          << std::endl;
 
@@ -305,9 +305,14 @@ public:
         auto sorted_container = choose_merge<AllToAllStringPolicy>(
             std::move(recv_string_cont), ranges, num_recv_elems);
         measuringTool.stop("merge_ranges");
-        //std::cout << "rank: " << env.rank() << " recv_string_cont: " << recv_string_cont.sumOfCapacities() << " " << recv_string_cont.sumOfSizes() << std::endl;
-        //std::cout << "rank: " << env.rank() << " sorted_container: " << sorted_container.sumOfCapacities() << " " << sorted_container.sumOfSizes() << std::endl;
-        //std::cout << "rank: " << env.rank() << " container: " << container.sumOfCapacities() << " " << container.sumOfSizes() << std::endl;
+        // std::cout << "rank: " << env.rank() << " recv_string_cont: " <<
+        // recv_string_cont.sumOfCapacities() << " " <<
+        // recv_string_cont.sumOfSizes() << std::endl; std::cout << "rank: " <<
+        // env.rank() << " sorted_container: " <<
+        // sorted_container.sumOfCapacities() << " " <<
+        // sorted_container.sumOfSizes() << std::endl; std::cout << "rank: " <<
+        // env.rank() << " container: " << container.sumOfCapacities() << " " <<
+        // container.sumOfSizes() << std::endl;
 
         measuringTool.start("writeback_permutation");
         auto sortedSet = sorted_container.make_string_set();

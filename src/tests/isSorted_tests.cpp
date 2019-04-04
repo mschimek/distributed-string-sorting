@@ -12,7 +12,7 @@ namespace tests {
 void test_AllPEHaveSortedData() {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     unsigned char firstChar = env.rank() + 1;
     std::vector<unsigned char> myData{firstChar, 'a', 'a', 0};
     StringLcpContainer<StringSet> container(std::move(myData));
@@ -25,7 +25,7 @@ void test_AllPEHaveSortedData() {
 void test_AllButOnePEHaveSortedData_1() {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     unsigned char firstChar = env.rank() + 65;
     std::vector<unsigned char> myData{
         firstChar, 'a', 'a', 0, firstChar, 'b', 'b', 0};
@@ -40,7 +40,7 @@ void test_AllButOnePEHaveSortedData_1() {
 void test_AllButOnePEHaveSortedData_2() {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     unsigned char firstChar = env.rank() + 65;
     std::vector<unsigned char> myData{
         firstChar, 'a', 'a', 0, firstChar, 'b', 'b', 0};
@@ -55,7 +55,7 @@ void test_AllButOnePEHaveSortedData_2() {
 void test_AllButOnePEHaveSortedData_3() {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     unsigned char firstChar = env.rank() + 65;
     std::vector<unsigned char> myData{
         firstChar, 'a', 'a', 0, firstChar, 'b', 'b', 0};
@@ -70,7 +70,7 @@ void test_AllButOnePEHaveSortedData_3() {
 void test_AllButnPEHaveSortedData(size_t n) {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     std::vector<size_t> peIndices(env.size());
     std::iota(peIndices.begin(), peIndices.end(), 0);
@@ -97,7 +97,7 @@ void test_AllButnPEHaveSortedData(size_t n) {
 void test_onePELocallyUnsorted() {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     unsigned char firstChar = env.rank() + 65;
     std::vector<unsigned char> myData{
@@ -116,7 +116,7 @@ void test_onePELocallyUnsorted() {
 void test_nPEGloballyUnsorted(size_t n) {
     using namespace dss_schimek;
     using StringSet = UCharLengthStringSet;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     std::vector<size_t> peIndices(env.size());
     std::iota(peIndices.begin(), peIndices.end(), 0);
@@ -146,7 +146,7 @@ void test_nPEGloballyUnsorted(size_t n) {
 int main() {
     using namespace dss_schimek;
     using namespace tests;
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     if (env.rank() == 0)
     std::cout << "start isSorted tests" << std::endl;

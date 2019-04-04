@@ -20,11 +20,9 @@
 #include "mpi/big_type.hpp"
 #include "mpi/byte_encoder.hpp"
 #include "mpi/environment.hpp"
-#include "mpi/scan.hpp"
 #include "mpi/synchron.hpp"
 #include "mpi/type_mapper.hpp"
 
-#include "util/indexed_string_set.hpp"
 #include "util/measuringTool.hpp"
 #include "util/string.hpp"
 #include "util/string_set.hpp"
@@ -34,7 +32,7 @@
 #include "strings/stringptr.hpp"
 #include "strings/stringtools.hpp"
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 static constexpr bool debug_alltoall = false;
 
@@ -551,7 +549,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         receive_buffer_char = AllToAllPolicy::alltoallv(
             send_buffer.data(), send_counts_char, env);
 
-        auto recvNumberStrings = dsss::mpi::alltoall(send_counts);
+        auto recvNumberStrings = dss_schimek::mpi::alltoall(send_counts);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
             send_data.lcps(), send_counts, recvNumberStrings);
@@ -626,7 +624,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
 
-        auto recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+        auto recvNumberStrings = dss_schimek::mpi::alltoall(sendCountsString);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
             send_data.lcps(), sendCountsString, recvNumberStrings);
@@ -705,7 +703,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
 
-        auto recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+        auto recvNumberStrings = dss_schimek::mpi::alltoall(sendCountsString);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
             send_data.lcps(), sendCountsString, recvNumberStrings);
@@ -899,7 +897,7 @@ struct AllToAllStringImplPrefixDoubling {
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
 
         std::vector<size_t> recvNumberStrings =
-            dsss::mpi::alltoall(sendCountsString);
+            dss_schimek::mpi::alltoall(sendCountsString);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
             send_data.lcps(), sendCountsString, recvNumberStrings);
@@ -912,7 +910,7 @@ struct AllToAllStringImplPrefixDoubling {
         std::partial_sum(sendCountsString.begin(), sendCountsString.end() - 1,
             std::back_inserter(offsets));
 
-        std::vector<size_t> recvOffsets = dsss::mpi::alltoall(offsets);
+        std::vector<size_t> recvOffsets = dss_schimek::mpi::alltoall(offsets);
         measuringTool.stop("all_to_all_strings_mpi");
         measuringTool.add(numCharsToSend + stringLcpPtr.size() * sizeof(size_t),
             "string_exchange_bytes_sent");
@@ -931,11 +929,12 @@ struct AllToAllStringImplPrefixDoubling {
 template <typename StringSet, typename Iterator>
 dss_schimek::StringLcpContainer<StringSet> getStrings(Iterator requestBegin,
     Iterator requestEnd, StringSet localSS,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
     using String = typename StringSet::String;
     using CharIt = typename StringSet::CharIterator;
-    using MPIRoutine = dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+    using MPIRoutine =
+        dss_schimek::mpi::AllToAllvCombined<dss_schimek::mpi::AllToAllvSmall>;
 
     std::vector<size_t> requests(requestEnd - requestBegin);
     std::vector<size_t> requestSizes(env.size(), 0);
@@ -958,7 +957,8 @@ dss_schimek::StringLcpContainer<StringSet> getStrings(Iterator requestBegin,
     };
 
     // exchange request
-    std::vector<size_t> recvRequestSizes = dsss::mpi::alltoall(requestSizes);
+    std::vector<size_t> recvRequestSizes =
+        dss_schimek::mpi::alltoall(requestSizes);
     std::vector<size_t> recvRequests =
         MPIRoutine::alltoallv(requests.data(), requestSizes);
 
@@ -990,5 +990,5 @@ dss_schimek::StringLcpContainer<StringSet> getStrings(Iterator requestBegin,
 
     return container;
 }
-} // namespace dsss::mpi
+} // namespace dss_schimek::mpi
 /******************************************************************************/

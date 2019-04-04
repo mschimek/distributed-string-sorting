@@ -16,7 +16,7 @@ public:
 protected:
     std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
         const size_t maxLength,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
@@ -49,7 +49,7 @@ public:
 protected:
     std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
         const size_t maxLength,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;

@@ -17,7 +17,7 @@
 
 #include "mpi/type_mapper.hpp"
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 template <typename DataType>
 MPI_Datatype get_big_type(const size_t size) {

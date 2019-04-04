@@ -143,7 +143,7 @@ struct AllToAllHashesNaive {
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes) {
         using AllToAllv =
-            dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+            dss_schimek::mpi::AllToAllvCombined<dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -164,10 +164,10 @@ struct AllToAllHashesGolomb {
         const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize,
         const size_t b = 1048576) {
         using AllToAllv =
-            dsss::mpi::AllToAllvCombined<dsss::mpi::AllToAllvSmall>;
+            dss_schimek::mpi::AllToAllvCombined<dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         measuringTool.start("bloomfilter_golombEncoding");
         std::vector<size_t> encodedValuesSizes;
         std::vector<size_t> encodedValues;
@@ -197,7 +197,7 @@ struct AllToAllHashesGolomb {
         measuringTool.add(encodedValues.size() * sizeof(size_t),
             "bloomfilter_sentEncodedValues");
         std::vector<size_t> recvEncodedValuesSizes =
-            dsss::mpi::alltoall(encodedValuesSizes);
+            dss_schimek::mpi::alltoall(encodedValuesSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
@@ -242,7 +242,7 @@ private:
     static inline void pointToPoint(const InputIterator begin,
         const InputIterator end, const size_t partnerId, const size_t b,
         size_t* encoding, size_t* outputBuffer, MPI_Request* mpi_request) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         using dss_schimek::measurement::MeasuringTool;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -255,7 +255,7 @@ private:
             std::abort();
         }
         int32_t sendSize = *encoding + 1;
-        dsss::mpi::data_type_mapper<size_t> dtm;
+        dss_schimek::mpi::data_type_mapper<size_t> dtm;
         measuringTool.addRawCommunication(
             (*encoding + 1) * sizeof(size_t), "1factor");
         MPI_Isend(encoding, sendSize, dtm.get_mpi_type(), partnerId, 42,
@@ -268,13 +268,13 @@ public:
     static inline std::vector<std::vector<size_t>> alltoallv(
         std::vector<size_t>& sendData, std::vector<size_t>& intervalSizes,
         const size_t b = 1048576) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
 
         using namespace dss_schimek::measurement;
 
         //
         //      const std::vector<size_t> recvSizesRef =
-        //      dsss::mpi::alltoall(intervalSizes);
+        //      dss_schimek::mpi::alltoall(intervalSizes);
         // dss_schimek::mpi::execute_in_order([&](){
         //	std::cout << "rank: " << env.rank() << " recvSizes";
         //	for (size_t i = 0; i < recvSizesRef.size(); ++i)
@@ -283,7 +283,7 @@ public:
         //});
         // env.barrier();
         //      const std::vector<size_t> recvValuesRef =
-        //      dsss::mpi::alltoallv_small(sendData, intervalSizes);
+        //      dss_schimek::mpi::alltoallv_small(sendData, intervalSizes);
         //
         const size_t maxRecvSize = 1000000000u;
         std::vector<size_t*> recvBuffers(env.size(), nullptr);
@@ -292,7 +292,7 @@ public:
         }
         //
         //      std::vector<size_t> recvIntervalSizes =
-        //      dsss::mpi::alltoall(intervalSizes); std::vector<size_t>
+        //      dss_schimek::mpi::alltoall(intervalSizes); std::vector<size_t>
         //      recvStartIndices; recvStartIndices.reserve(env.size());
         //      recvStartIndices.push_back(0);
         //      std::partial_sum(recvIntervalSizes.begin(),
@@ -435,7 +435,7 @@ public:
 
 std::vector<size_t> computeIntervalSizes(const std::vector<size_t>& hashes,
     const size_t bloomFilterSize,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     std::vector<size_t> indices;
 
     indices.reserve(env.size());
@@ -468,7 +468,7 @@ struct SendOnlyHashesToFilter : private SendPolicy {
 
     static inline std::vector<SendType> extractSendValues(
         const std::vector<HashStringIndex>& hashStringIndices) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         std::vector<size_t> hashValues;
         hashValues.reserve(hashStringIndices.size());
         for (const auto& hashStringIndex : hashStringIndices) {
@@ -488,7 +488,7 @@ struct SendOnlyHashesToFilter : private SendPolicy {
     static inline RecvData sendToFilter(
         const std::vector<HashStringIndex>& hashes, size_t bloomfilterSize) {
         using namespace dss_schimek::measurement;
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("bloomfilter_sendToFilterSetup");
@@ -511,10 +511,10 @@ struct SendOnlyHashesToFilter : private SendPolicy {
         offsets.push_back(0);
         std::partial_sum(intervalSizes.begin(), intervalSizes.end() - 1,
             std::back_inserter(offsets));
-        offsets = dsss::mpi::alltoall(offsets);
+        offsets = dss_schimek::mpi::alltoall(offsets);
 
         std::vector<size_t> recvIntervalSizes =
-            dsss::mpi::alltoall(intervalSizes);
+            dss_schimek::mpi::alltoall(intervalSizes);
         measuringTool.stop("bloomfilter_sendToFilterSetup");
         if constexpr (std::is_same<SendPolicy,
                           dss_schimek::AllToAllHashValuesPipeline>::value) {
@@ -572,7 +572,7 @@ struct FindDuplicates {
         using namespace dss_schimek::measurement;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
 
         measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues");
         env.barrier();
@@ -653,10 +653,10 @@ struct FindDuplicates {
         measuringTool.start("bloomfilter_findDuplicatesSendDups");
         int mpiSmallTypes = 0;
         if (totalNumSendDuplicates > 0) mpiSmallTypes = 1;
-        bool dupsToSend = (0 != dsss::mpi::allreduce_max(mpiSmallTypes));
+        bool dupsToSend = (0 != dss_schimek::mpi::allreduce_max(mpiSmallTypes));
         std::vector<size_t> duplicates;
         if (dupsToSend)
-            duplicates = dsss::mpi::AllToAllvSmall::alltoallv(
+            duplicates = dss_schimek::mpi::AllToAllvSmall::alltoallv(
                 sendBuffer.data(), sendCounts_);
         measuringTool.stop("bloomfilter_findDuplicatesSendDups");
         measuringTool.stop("bloomfilter_findDuplicatesOverallIntern");
@@ -670,7 +670,7 @@ struct FindDuplicates {
         std::vector<size_t>& remoteDuplicates,
         const std::vector<HashStringIndex>& originalMapping) {
         std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         // indicesOfAllDuplicates.reserve(localDuplicates.size() +
         // remoteDuplicates.size());
         for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
@@ -702,11 +702,11 @@ class ExcatDistinguishingPrefix {
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples,
         std::vector<size_t>& distinguishingPrefixLength) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         if (stringTriples.empty()) return;
 
         std::stable_sort(stringTriples.begin(), stringTriples.end());
@@ -793,10 +793,10 @@ class ExcatDistinguishingPrefix {
         }
         size_t numStrings = candidates.size();
 
-        std::vector<size_t> recvCounts = dsss::mpi::allgather(numStrings);
-        std::vector<size_t> stringIndices = dsss::mpi::allgatherv(candidates);
+        std::vector<size_t> recvCounts = dss_schimek::mpi::allgather(numStrings);
+        std::vector<size_t> stringIndices = dss_schimek::mpi::allgatherv(candidates);
         std::vector<unsigned char> recvBuffer =
-            dsss::mpi::allgatherv(send_buffer);
+            dss_schimek::mpi::allgatherv(send_buffer);
         return ContainerSizesIndices(std::move(recvBuffer),
             std::move(recvCounts), std::move(stringIndices));
     }
@@ -820,11 +820,11 @@ class BloomfilterTest {
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     void computeExactDistPrefixLengths(std::vector<StringTriple>& stringTriples,
         std::vector<size_t>& distinguishingPrefixLength) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         if (stringTriples.empty()) return;
 
         std::stable_sort(stringTriples.begin(), stringTriples.end());
@@ -911,10 +911,10 @@ class BloomfilterTest {
         }
         size_t numStrings = candidates.size();
 
-        std::vector<size_t> recvCounts = dsss::mpi::allgather(numStrings);
-        std::vector<size_t> stringIndices = dsss::mpi::allgatherv(candidates);
+        std::vector<size_t> recvCounts = dss_schimek::mpi::allgather(numStrings);
+        std::vector<size_t> stringIndices = dss_schimek::mpi::allgatherv(candidates);
         std::vector<unsigned char> recvBuffer =
-            dsss::mpi::allgatherv(send_buffer);
+            dss_schimek::mpi::allgatherv(send_buffer);
         return ContainerSizesIndices(std::move(recvBuffer),
             std::move(recvCounts), std::move(stringIndices));
     }
@@ -967,7 +967,7 @@ class BloomFilter {
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
 
     const size_t size;
     std::vector<size_t> hashValues;
@@ -1137,7 +1137,7 @@ public:
     // candidates
     std::vector<size_t> filter(
         StringLcpPtr strptr, const size_t depth, std::vector<size_t>& results) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         using namespace dss_schimek::measurement;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -1206,7 +1206,7 @@ public:
 
     std::vector<size_t> filter(StringLcpPtr strptr, const size_t depth,
         const std::vector<size_t>& candidates, std::vector<size_t>& results) {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         using namespace dss_schimek::measurement;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();

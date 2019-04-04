@@ -10,7 +10,7 @@
 #include "mpi/environment.hpp"
 #include "util/macros.hpp"
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 environment::environment() : environment(MPI_COMM_WORLD) { }
 

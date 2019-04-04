@@ -5,7 +5,7 @@
 namespace dss_schimek {
 namespace tests {
 void gatherTest() {
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     size_t root = 0;
     size_t data = env.rank();
     auto res = dss_schimek::mpi::gather(data, root);
@@ -22,7 +22,7 @@ void gatherTest() {
 }
 
 void gathervTest() {
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     size_t root = 0;
     size_t numberElems = 10000000ull;
     std::vector<size_t> data(numberElems, env.rank());
@@ -49,7 +49,7 @@ int main() {
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.disable();
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     std::cout << "start tests " << std::endl;
     gatherTest();
     gathervTest();

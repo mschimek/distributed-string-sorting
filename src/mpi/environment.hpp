@@ -12,7 +12,7 @@
 #include <limits>
 #include <mpi.h>
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 /// \brief Provides an interface for MPI stats (e.g. communicator size/rank).
 class environment{

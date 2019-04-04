@@ -118,7 +118,7 @@ public:
 private:
     Container container;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     size_t depth;
     const size_t filterSize;
     std::vector<StringSet> stringSets;
@@ -185,7 +185,7 @@ private:
     }
 
     void detectDuplicates() {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
 
         if (allHashTriples.empty()) return;
 
@@ -220,7 +220,7 @@ private:
     }
 
     void generateHashTriples() {
-        dsss::mpi::environment env;
+        dss_schimek::mpi::environment env;
         for (size_t curRank = 0; curRank < env.size(); ++curRank) {
             StringSet curSet = stringSets[curRank];
             for (size_t i = 0; i < candidatesPerPE[curRank].size(); ++i) {
@@ -287,24 +287,28 @@ private:
         }
 
         size_t numStrings = ss.size();
-        std::vector<size_t> recvCounts = dsss::mpi::allgather(numStrings);
+        std::vector<size_t> recvCounts =
+            dss_schimek::mpi::allgather(numStrings);
         std::vector<unsigned char> recvBuffer =
-            dsss::mpi::allgatherv(send_buffer);
+            dss_schimek::mpi::allgatherv(send_buffer);
         container.update(std::move(recvBuffer));
         splitContainer(recvCounts);
     }
 
     void allgatherCandidates(std::vector<size_t>& candidates) {
         size_t candidatesSize = candidates.size();
-        std::vector<size_t> recvCounts = dsss::mpi::allgather(candidatesSize);
-        std::vector<size_t> recvCandidates = dsss::mpi::allgatherv(candidates);
+        std::vector<size_t> recvCounts =
+            dss_schimek::mpi::allgather(candidatesSize);
+        std::vector<size_t> recvCandidates =
+            dss_schimek::mpi::allgatherv(candidates);
         splitCandidates(recvCounts, recvCandidates);
     }
 
     void allgatherResults(std::vector<size_t>& results) {
         size_t resultsSize = results.size();
-        std::vector<size_t> recvCounts = dsss::mpi::allgather(resultsSize);
-        std::vector<size_t> recvResults = dsss::mpi::allgatherv(results);
+        std::vector<size_t> recvCounts =
+            dss_schimek::mpi::allgather(resultsSize);
+        std::vector<size_t> recvResults = dss_schimek::mpi::allgatherv(results);
         splitResults(recvCounts, recvResults);
     }
 };

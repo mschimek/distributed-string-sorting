@@ -26,7 +26,7 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         std::vector<std::pair<size_t, size_t>>& ranges,
         const size_t num_recv_elems) {
       
-      dsss::mpi::environment env;
+      dss_schimek::mpi::environment env;
 
       if (recv_string_cont.size() == 0u)
         return dss_schimek::StringLcpContainer<StringSet>();
@@ -67,7 +67,7 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
     static inline StringLcpContainer choose_merge(StringLcpContainer&& recv_string_cont,
         std::vector<std::pair<size_t, size_t>> ranges,
         size_t num_recv_elems,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
       const size_t nextPow2 = pow2roundup(env.size());
       std::cout << "nextPow2: " << nextPow2 << std::endl; 

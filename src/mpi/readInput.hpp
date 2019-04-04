@@ -50,10 +50,10 @@ dss_schimek::RawStringsLines readFile(const std::string& path) {
 }
 
 std::vector<unsigned char> readFileAndDistribute(const std::string& path) {
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     std::vector<unsigned char> rawStrings;
     size_t recvCount = 0;
-    dsss::mpi::data_type_mapper<size_t> dtm;
+    dss_schimek::mpi::data_type_mapper<size_t> dtm;
     std::vector<size_t> sendCounts;
     if (env.rank() == 0) {
         dss_schimek::RawStringsLines data = readFile(path);
@@ -95,13 +95,13 @@ std::vector<unsigned char> readFileAndDistribute(const std::string& path) {
             localRawStrings.begin());
         for (int32_t i = 1; i < static_cast<int32_t>(env.size()); ++i) {
             auto receive_type =
-                dsss::mpi::get_big_type<unsigned char>(sendCounts[i]);
+                dss_schimek::mpi::get_big_type<unsigned char>(sendCounts[i]);
             MPI_Send(rawStrings.data() + offsets[i], 1, receive_type, i, 42,
                 env.communicator());
         }
     }
     else {
-        auto receive_type = dsss::mpi::get_big_type<unsigned char>(recvCount);
+        auto receive_type = dss_schimek::mpi::get_big_type<unsigned char>(recvCount);
         MPI_Recv(localRawStrings.data(), 1, receive_type, 0, 42,
             env.communicator(), MPI_STATUSES_IGNORE);
     }

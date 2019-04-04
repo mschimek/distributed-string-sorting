@@ -7,12 +7,12 @@ void test() {
     using MPIAllToAllRoutine = mpi::AllToAllvSmall;
     using ByteEncoder = EmptyLcpByteEncoderMemCpy;
     using SampleSplittersPolicy = SampleSplittersNumStringsPolicy<StringSet>;
-    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<StringSet,
+    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<true, StringSet,
         MPIAllToAllRoutine, ByteEncoder>;
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.setVerbose(false);
 
@@ -24,17 +24,17 @@ void test() {
         sorter;
     StringLcpContainer<StringSet> sorted_string_cont =
         sorter.sort(stringPtr, std::move(container));
-    std::cout << "rank: " << env.rank() << " " << sorted_string_cont.make_string_set().size() << std::endl;
+    std::cout << "rank: " << env.rank() << " "
+              << sorted_string_cont.make_string_set().size() << std::endl;
 
     std::cout << sorted_string_cont.savedLcps().size() << std::endl;
     if (AllToAllPolicy::PrefixCompression && env.size() > 1)
         sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(),
             sorted_string_cont.savedLcps());
- 
 }
 
 int main() {
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     test();
     env.finalize();
 }

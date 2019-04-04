@@ -10,8 +10,8 @@ namespace dss_schimek {
 namespace mpi {
 template <typename DataType>
 inline std::vector<DataType> gather(const DataType& send_data, size_t root,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
-    using namespace dsss::mpi;
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+    using namespace dss_schimek::mpi;
 
     using dss_schimek::measurement::MeasuringTool;
 
@@ -28,8 +28,8 @@ inline std::vector<DataType> gather(const DataType& send_data, size_t root,
 
 template <typename DataType>
 inline std::vector<DataType> gatherv(std::vector<DataType>& send_data,
-    size_t root, dsss::mpi::environment env = dsss::mpi::environment()) {
-    using namespace dsss::mpi;
+    size_t root, dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+    using namespace dss_schimek::mpi;
     using namespace dss_schimek;
     using dss_schimek::measurement::MeasuringTool;
 
@@ -52,14 +52,14 @@ inline std::vector<DataType> gatherv(std::vector<DataType>& send_data,
         for (size_t i = root + 1; i < root + env.size(); ++i) {
             int32_t partner = static_cast<int32_t>(i % env.size());
             auto receiveType =
-                dsss::mpi::get_big_type<DataType>(receiveCounts[partner]);
+                dss_schimek::mpi::get_big_type<DataType>(receiveCounts[partner]);
             MPI_Recv(receive_data.data() + offsets[partner],
                 1, receiveType, partner, 42,
                 env.communicator(), MPI_STATUSES_IGNORE);
         }
     } else {
             auto sendType =
-                dsss::mpi::get_big_type<DataType>(send_data.size());
+                dss_schimek::mpi::get_big_type<DataType>(send_data.size());
       MPI_Send(send_data.data(), 1, sendType, root, 42, env.communicator());
     }
     return receive_data;

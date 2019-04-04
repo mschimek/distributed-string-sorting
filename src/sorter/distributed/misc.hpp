@@ -26,7 +26,7 @@ size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
     LcpSumNumStrings lcpSumNumStrings{localL, stringLcpPtr.active().size()};
 
     std::vector<LcpSumNumStrings> lcpSumsNumStrings =
-        dsss::mpi::allgather(lcpSumNumStrings);
+        dss_schimek::mpi::allgather(lcpSumNumStrings);
     size_t totalL = 0;
     size_t totalNumString = 0;
     for (const auto& elem : lcpSumsNumStrings) {
@@ -39,7 +39,7 @@ size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
 template <typename StringSet>
 StringLcpContainer<StringSet> choose_splitters(const StringSet& ss,
     std::vector<typename StringSet::Char>& all_splitters,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     using Char = typename StringSet::Char;
     using String = typename StringSet::String;
 
@@ -80,7 +80,7 @@ StringLcpContainer<StringSet> choose_splitters(const StringSet& ss,
 template <typename StringSet>
 inline std::vector<size_t> compute_interval_sizes(const StringSet& ss,
     const StringSet& splitters,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     std::vector<size_t> interval_sizes;
     interval_sizes.reserve(splitters.size());
 
@@ -140,7 +140,7 @@ inline static int binarySearch(
 template <typename StringSet>
 inline std::vector<size_t> compute_interval_binary(const StringSet& ss,
     const StringSet& splitters,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     using CharIt = typename StringSet::CharIterator;
     std::vector<size_t> interval_sizes;
     interval_sizes.reserve(splitters.size());
@@ -161,7 +161,7 @@ inline std::vector<size_t> compute_interval_binary(const StringSet& ss,
 static inline void print_interval_sizes(
     const std::vector<size_t>& sent_interval_sizes,
     const std::vector<size_t>& recv_interval_sizes,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     constexpr bool print_interval_details = true;
     if constexpr (print_interval_details) {
         for (std::uint32_t rank = 0; rank < env.size(); ++rank) {
@@ -201,7 +201,7 @@ static inline std::vector<std::pair<size_t, size_t>>
 compute_ranges_and_set_lcp_at_start_of_range(
     StringLcpContainer& recv_string_cont,
     std::vector<size_t>& recv_interval_sizes,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     std::vector<std::pair<size_t, size_t>> ranges;
     for (size_t i = 0, offset = 0; i < env.size(); ++i) {
         if (recv_interval_sizes[i] == 0) {

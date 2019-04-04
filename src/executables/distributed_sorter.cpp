@@ -42,7 +42,7 @@ template <typename StringSet, typename StringGenerator,
 void execute_sorter(size_t numOfStrings, const bool check,
     const bool exhaustiveCheck, size_t iteration, const bool strongScaling,
     GeneratedStringsArgs genStringArgs,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     using StringLcpPtr =
         typename tlx::sort_strings_detail::StringLcpPtr<StringSet, size_t>;
     using namespace dss_schimek;
@@ -51,7 +51,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     std::string prefix =
         std::string("RESULT") +
         " numberProcessors=" + std::to_string(env.size()) +
-        " compressLcps=" + std::to_string(compressLcps) + 
+        " compressLcps=" + std::to_string(compressLcps) +
         " samplePolicy=" + SampleSplittersPolicy::getName() +
         " StringGenerator=" + StringGenerator::getName() +
         " dToNRatio=" + std::to_string(genStringArgs.dToNRatio) +
@@ -98,8 +98,8 @@ void execute_sorter(size_t numOfStrings, const bool check,
     env.barrier();
 
     measuringTool.start("sorting_overall");
-    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps, StringSet,
-        MPIAllToAllRoutine, ByteEncoder>;
+    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps,
+        StringSet, MPIAllToAllRoutine, ByteEncoder>;
     DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy>
         sorter;
     StringLcpContainer<StringSet> sorted_string_cont =
@@ -428,7 +428,7 @@ int main(std::int32_t argc, char const* argv[]) {
     using namespace dss_schimek;
     std::cout << "start program" << std::endl;
 
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     env.barrier();
 
     bool check = false;
@@ -468,7 +468,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_flag('w', "exhaustiveCheck", exhaustiveCheck, " ");
     cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
-    cp.add_flag('v', "compressLcps", compressLcps, " compress lcp values in alltoall string exchange ");
+    cp.add_flag('v', "compressLcps", compressLcps,
+        " compress lcp values in alltoall string exchange ");
     cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
 
     if (!cp.process(argc, argv)) {

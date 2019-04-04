@@ -15,7 +15,7 @@
 
 #include "util/are_same.hpp"
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 template <typename CXXType>
 struct type_mapper {

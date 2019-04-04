@@ -10,9 +10,9 @@
 
 template <typename DataType>
 inline std::vector<DataType> allgather_(DataType& send_data,
-    dsss::mpi::environment env = dsss::mpi::environment()) {
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
-    dsss::mpi::data_type_mapper<DataType> dtm;
+    dss_schimek::mpi::data_type_mapper<DataType> dtm;
     std::vector<DataType> receive_data(env.size());
     MPI_Allgather(&send_data, 1, dtm.get_mpi_type(), receive_data.data(), 1,
         dtm.get_mpi_type(), env.communicator());
@@ -42,7 +42,7 @@ public:
     }
 
 private:
-    dsss::mpi::environment env;
+    dss_schimek::mpi::environment env;
     std::vector<Record> records;
     std::map<PseudoKey, size_t> pseudoKeyToCounter;
 

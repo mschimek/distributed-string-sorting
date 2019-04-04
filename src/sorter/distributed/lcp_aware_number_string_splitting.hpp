@@ -38,7 +38,7 @@ static constexpr bool debug = false;
 //    std::vector<size_t> sorted_lcp(recv_string_cont.size());
 //    StringSet ss = recv_string_cont.make_string_set();
 //    // dss_schimek::mpi::execute_in_order([&] () {
-//    //    dsss::mpi::environment env;
+//    //    dss_schimek::mpi::environment env;
 //    //    env.barrier();
 //    //    std::cout << "before merge: \n rank: " << env.rank() << std::endl;
 //    //    ss.print();
@@ -53,7 +53,7 @@ static constexpr bool debug = false;
 //        sorted_string.data(), sorted_string.data() + sorted_string.size());
 //    dss_schimek::StringLcpPtrMergeAdapter out_(sortedSet, sorted_lcp.data());
 //    // dss_schimek::mpi::execute_in_order([&] () {
-//    //    dsss::mpi::environment env;
+//    //    dss_schimek::mpi::environment env;
 //    //    env.barrier();
 //
 //    //    std::cout << "merge  rank: " << env.rank() << std::endl;
@@ -81,7 +81,7 @@ static constexpr bool debug = false;
 //static inline StringLcpContainer choose_merge(
 //    StringLcpContainer&& recv_string_cont,
 //    std::vector<std::pair<size_t, size_t>> ranges, size_t num_recv_elems,
-//    dsss::mpi::environment env = dsss::mpi::environment()) {
+//    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 //
 //    switch (env.size()) {
 //    case 1:
@@ -131,7 +131,7 @@ public:
         StringPtr& local_string_ptr,
         dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&&
             local_string_container,
-        dsss::mpi::environment env = dsss::mpi::environment()) {
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         // constexpr bool debug = false;
         using namespace dss_schimek;
@@ -193,7 +193,7 @@ public:
         std::vector<std::size_t> interval_sizes =
             compute_interval_binary(ss, chosen_splitters_set);
         std::vector<std::size_t> receiving_interval_sizes =
-            dsss::mpi::alltoall(interval_sizes);
+            dss_schimek::mpi::alltoall(interval_sizes);
         measuringTool.stop("compute_interval_sizes");
 
         measuringTool.setPhase("string_exchange");

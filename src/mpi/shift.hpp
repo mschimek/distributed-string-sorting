@@ -18,7 +18,7 @@
 #include "strings/stringtools.hpp"
 #include "util/string.hpp"
 
-namespace dsss::mpi {
+namespace dss_schimek::mpi {
 
 template <typename DataType>
 static inline DataType shift_left(
@@ -120,10 +120,10 @@ static inline std::vector<DataType> shift_right(
     return receive_data;
 }
 
-static inline std::vector<dsss::char_type> shift_string_left(
-    dsss::string send_data, environment env = environment()) {
+static inline std::vector<dss_schimek::char_type> shift_string_left(
+    dss_schimek::string send_data, environment env = environment()) {
 
-    std::size_t send_length = dsss::string_length(send_data) + 1;
+    std::size_t send_length = dss_schimek::string_length(send_data) + 1;
     std::vector<char_type> real_send_data;
     std::copy_n(send_data, send_length, std::back_inserter(real_send_data));
 
@@ -142,8 +142,8 @@ static inline std::vector<dsss::char_type> shift_string_left(
         source = env.rank() + 1;
     }
 
-    std::vector<dsss::char_type> receive_data(receive_length);
-    data_type_mapper<dsss::char_type> dtm;
+    std::vector<dss_schimek::char_type> receive_data(receive_length);
+    data_type_mapper<dss_schimek::char_type> dtm;
     MPI_Sendrecv(real_send_data.data(), send_length, dtm.get_mpi_type(),
         destination,
         0, // chose arbitrary tag
@@ -152,10 +152,10 @@ static inline std::vector<dsss::char_type> shift_string_left(
     return receive_data;
 }
 
-static inline std::vector<dsss::char_type> shift_string_right(
-    dsss::string send_data, environment env = environment()) {
+static inline std::vector<dss_schimek::char_type> shift_string_right(
+    dss_schimek::string send_data, environment env = environment()) {
 
-    std::size_t send_length = dsss::string_length(send_data) + 1;
+    std::size_t send_length = dss_schimek::string_length(send_data) + 1;
     std::vector<char_type> real_send_data;
     std::copy_n(send_data, send_length, std::back_inserter(real_send_data));
 
@@ -174,8 +174,8 @@ static inline std::vector<dsss::char_type> shift_string_right(
         source = env.rank() - 1;
     }
 
-    std::vector<dsss::char_type> receive_data(receive_length);
-    data_type_mapper<dsss::char_type> dtm;
+    std::vector<dss_schimek::char_type> receive_data(receive_length);
+    data_type_mapper<dss_schimek::char_type> dtm;
     MPI_Sendrecv(real_send_data.data(), send_length, dtm.get_mpi_type(),
         destination,
         0, // chose arbitrary tag
@@ -184,10 +184,10 @@ static inline std::vector<dsss::char_type> shift_string_right(
     return receive_data;
 }
 
-} // namespace dsss::mpi
+} // namespace dss_schimek::mpi
 
 namespace dss_schimek::mpi {
-using namespace dsss::mpi;
+using namespace dss_schimek::mpi;
 
 struct ShiftAdress {
     size_t source;
@@ -235,7 +235,7 @@ static inline ShiftCounts<DataType> get_shift_recv_counts(
 
     if (env.size() == 1) return {send_data, is_empty};
 
-    const bool is_overall_empty = dsss::mpi::allreduce_and(is_empty, env);
+    const bool is_overall_empty = dss_schimek::mpi::allreduce_and(is_empty, env);
     if (is_overall_empty) return {send_data, true};
 
     data_type_mapper<DataType> dtm;
