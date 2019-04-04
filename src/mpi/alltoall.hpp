@@ -529,8 +529,8 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         setLcpAtStartOfInterval(
             stringLcpPtr.get_lcp(), send_counts.begin(), send_counts.end());
 
-        std::vector<unsigned char> send_buffer;
-        send_buffer.reserve(send_data.char_size());
+        std::vector<unsigned char> send_buffer(send_data.char_size());
+        uint64_t curPos = 0;
         for (size_t interval = 0, offset = 0; interval < send_counts.size();
              ++interval) {
             for (size_t j = offset; j < send_counts[interval] + offset; ++j) {
@@ -538,8 +538,10 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
                 size_t string_length = ss.get_length(str) + 1;
 
                 send_counts_char[interval] += string_length;
-                std::copy_n(ss.get_chars(str, 0), string_length,
-                    std::back_inserter(send_buffer));
+                std::copy(ss.get_chars(str, 0),
+                    ss.get_chars(str, 0) + string_length,
+                    send_buffer.begin() + curPos);
+                curPos += string_length;
             }
             offset += send_counts[interval];
         }
@@ -548,7 +550,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(
             send_buffer.data(), send_counts_char, env);
-        
+
         auto recvNumberStrings = dsss::mpi::alltoall(send_counts);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
@@ -623,7 +625,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        
+
         auto recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
 
         auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
