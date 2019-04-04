@@ -3,21 +3,21 @@
 #include "encoding/integer_compression.hpp"
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
-#include <iostream>
 
 namespace dss_schimek {
 class IntegerCompression {
     struct CompressedIntegersCounts {
-        std::vector<uint8_t> compressedIntegers;
+        std::vector<uint8_t> integers;
         std::vector<uint64_t> counts;
     };
 
 public:
     // return number bytes written
-    template<typename InputIterator, typename OutputIterator>
+    template <typename InputIterator, typename OutputIterator>
     static size_t write(
         InputIterator input, OutputIterator output, size_t numElemsToWrite) {
         dss_schimek::Writer writer(output);
@@ -34,17 +34,17 @@ public:
         const uint64_t sumOfLcpsToEncode =
             std::accumulate(beginCounts, endCounts, 0ull);
         CompressedIntegersCounts returnData;
-        returnData.compressedIntegers.resize(
-            sumOfLcpsToEncode * sizeof(uint64_t)); // just a guess that is far too conservative in
-                                // most cases
+        returnData.integers.resize(
+            sumOfLcpsToEncode *
+            sizeof(uint64_t)); // just a guess that is far too conservative in
+                               // most cases
         returnData.counts.reserve(endCounts - beginCounts);
 
         uint64_t curNumEncodedLcps = 0u;
         uint64_t curNumWrittenBytes = 0u;
         for (CountIterator it = beginCounts; it != endCounts; ++it) {
             const uint64_t usedBytes = write(dataInputBegin + curNumEncodedLcps,
-                returnData.compressedIntegers.begin() + curNumWrittenBytes,
-                *it);
+                returnData.integers.begin() + curNumWrittenBytes, *it);
             returnData.counts.push_back(usedBytes);
             curNumWrittenBytes += usedBytes;
             curNumEncodedLcps += *it;

@@ -408,7 +408,29 @@ inline void setLcpAtStartOfInterval(LcpIterator lcpIt,
     }
 }
 
-template <typename StringSet, typename AllToAllPolicy,
+template <bool useCompression, typename AllToAllPolicy>
+inline std::vector<uint64_t> sendLcps(std::vector<uint64_t>& lcps,
+    const std::vector<uint64_t>& sendCounts,
+    const std::vector<uint64_t>& recvCounts) {
+    using namespace dss_schimek;
+    if constexpr (useCompression) {
+        auto compressedData = IntegerCompression::writeRanges(
+            sendCounts.begin(), sendCounts.end(), lcps.data());
+
+        std::cout << "do lcp compression " << std::endl;
+        std::vector<uint8_t> recvCompressedLcps = AllToAllPolicy::alltoallv(
+            compressedData.integers.data(), compressedData.counts);
+
+        // decode Lcp Compression:
+        return IntegerCompression::readRanges(
+            recvCounts.begin(), recvCounts.end(), recvCompressedLcps.data());
+    }
+    else {
+        return AllToAllPolicy::alltoallv(lcps.data(), sendCounts);
+    }
+}
+
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy,
     typename ByteEncoderPolicy>
 struct AllToAllStringImpl {
     static constexpr bool PrefixCompression = false;
@@ -470,8 +492,8 @@ struct AllToAllStringImpl {
     }
 };
 
-template <typename StringSet, typename AllToAllPolicy>
-struct AllToAllStringImpl<StringSet, AllToAllPolicy,
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
+struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyByteEncoderCopy> {
     static constexpr bool PrefixCompression = false;
 
@@ -526,8 +548,12 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char = AllToAllPolicy::alltoallv(
             send_buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(
-            send_data.lcps().data(), send_counts, env);
+        
+        auto recvNumberStrings = dsss::mpi::alltoall(send_counts);
+
+        auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
+            send_data.lcps(), send_counts, recvNumberStrings);
+
         measuringTool.stop("all_to_all_strings_mpi");
         measuringTool.add(
             send_data.char_size() + send_data.size(), "bytes_sent");
@@ -536,12 +562,12 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<StringSet>(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+            std::move(receive_buffer_char), std::move(recvLcpValues));
     }
 };
 
-template <typename StringSet, typename AllToAllPolicy>
-struct AllToAllStringImpl<StringSet, AllToAllPolicy,
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
+struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyByteEncoderMemCpy> {
     static constexpr bool PrefixCompression = false;
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -597,8 +623,11 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(
-            send_data.lcps().data(), sendCountsString, env);
+        
+        auto recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+
+        auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
+            send_data.lcps(), sendCountsString, recvNumberStrings);
 
         send_data.deleteAll();
 
@@ -610,12 +639,12 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<StringSet>(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+            std::move(receive_buffer_char), std::move(recvLcpValues));
     }
 };
 
-template <typename StringSet, typename AllToAllPolicy>
-struct AllToAllStringImpl<StringSet, AllToAllPolicy,
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
+struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyLcpByteEncoderMemCpy> {
     static constexpr bool PrefixCompression = true;
 
@@ -674,8 +703,10 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
 
-        receive_buffer_lcp = AllToAllPolicy::alltoallv(
-            send_data.lcps().data(), sendCountsString, env);
+        auto recvNumberStrings = dsss::mpi::alltoall(sendCountsString);
+
+        auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
+            send_data.lcps(), sendCountsString, recvNumberStrings);
         send_data.deleteAll();
         measuringTool.stop("all_to_all_strings_mpi");
         measuringTool.add(
@@ -687,7 +718,7 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
 
         measuringTool.start("container_construction");
         dss_schimek::StringLcpContainer<StringSet> recvContainer(
-            std::move(receive_buffer_char), std::move(receive_buffer_lcp));
+            std::move(receive_buffer_char), std::move(recvLcpValues));
         measuringTool.stop("container_construction");
         return recvContainer;
     }
@@ -705,8 +736,8 @@ struct RecvDataAllToAll {
 
 // Function for All-To-All exchange of all strings in the
 // distributed-merge-sort-algorithm, using the sequentialDelayedByteEncoder
-template <typename StringSet, typename AllToAllPolicy>
-struct AllToAllStringImpl<StringSet, AllToAllPolicy,
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
+struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::SequentialDelayedByteEncoder> {
     static constexpr bool PrefixCompression = false;
 
@@ -788,7 +819,7 @@ struct AllToAllStringImpl<StringSet, AllToAllPolicy,
 
 // Method for the All-To-All exchange of the reduced strings, i.e. only
 // distinguishing prefix - common prefix, in the prefix-doubling-algorithm
-template <typename StringLcpPtr, typename AllToAllPolicy>
+template <bool compressLcps, typename StringLcpPtr, typename AllToAllPolicy>
 struct AllToAllStringImplPrefixDoubling {
 
     using StringSet = typename StringLcpPtr::StringSet;
@@ -864,21 +895,15 @@ struct AllToAllStringImplPrefixDoubling {
         measuringTool.start("all_to_all_strings_mpi");
         receive_buffer_char =
             AllToAllPolicy::alltoallv(buffer.data(), send_counts_char, env);
-        // TODO compress lcp values
 
-        auto compressedData = IntegerCompression::writeRanges(sendCountsString.begin(),
-            sendCountsString.end(), stringLcpPtr.get_lcp());
-
-        std::vector<uint8_t> recvCompressedLcps = AllToAllPolicy::alltoallv(
-            compressedData.compressedIntegers.data(), compressedData.counts, env);
-        send_data.deleteAll();
         std::vector<size_t> recvNumberStrings =
             dsss::mpi::alltoall(sendCountsString);
 
+        auto recvLcpValues = sendLcps<compressLcps, AllToAllPolicy>(
+            send_data.lcps(), sendCountsString, recvNumberStrings);
+        send_data.deleteAll();
+
         // decode Lcp Compression:
-        std::vector<size_t> decodedLcpValues =
-            IntegerCompression::readRanges(recvNumberStrings.begin(),
-                recvNumberStrings.end(), recvCompressedLcps.data());
         std::vector<size_t> offsets;
         offsets.reserve(env.size());
         offsets.push_back(0);
@@ -894,7 +919,7 @@ struct AllToAllStringImplPrefixDoubling {
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
         return dss_schimek::StringLcpContainer<ReturnStringSet>(
-            std::move(receive_buffer_char), std::move(decodedLcpValues),
+            std::move(receive_buffer_char), std::move(recvLcpValues),
             recvNumberStrings, recvOffsets);
     }
 };

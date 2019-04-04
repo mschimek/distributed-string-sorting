@@ -291,9 +291,9 @@ public:
         size_t num_recv_elems =
             std::accumulate(receiving_interval_sizes.begin(),
                 receiving_interval_sizes.end(), static_cast<size_t>(0u));
-        std::cout << "rank: " << env.rank()
-                  << " num_receiv chars: " << recv_string_cont.char_size()
-                  << std::endl;
+        //std::cout << "rank: " << env.rank()
+        //          << " num_receiv chars: " << recv_string_cont.char_size()
+        //          << std::endl;
 
         measuringTool.start("compute_ranges");
         std::vector<std::pair<size_t, size_t>> ranges =
@@ -305,9 +305,9 @@ public:
         auto sorted_container = choose_merge<AllToAllStringPolicy>(
             std::move(recv_string_cont), ranges, num_recv_elems);
         measuringTool.stop("merge_ranges");
-        std::cout << "rank: " << env.rank() << " recv_string_cont: " << recv_string_cont.sumOfCapacities() << " " << recv_string_cont.sumOfSizes() << std::endl;
-        std::cout << "rank: " << env.rank() << " sorted_container: " << sorted_container.sumOfCapacities() << " " << sorted_container.sumOfSizes() << std::endl;
-        std::cout << "rank: " << env.rank() << " container: " << container.sumOfCapacities() << " " << container.sumOfSizes() << std::endl;
+        //std::cout << "rank: " << env.rank() << " recv_string_cont: " << recv_string_cont.sumOfCapacities() << " " << recv_string_cont.sumOfSizes() << std::endl;
+        //std::cout << "rank: " << env.rank() << " sorted_container: " << sorted_container.sumOfCapacities() << " " << sorted_container.sumOfSizes() << std::endl;
+        //std::cout << "rank: " << env.rank() << " container: " << container.sumOfCapacities() << " " << container.sumOfSizes() << std::endl;
 
         measuringTool.start("writeback_permutation");
         auto sortedSet = sorted_container.make_string_set();

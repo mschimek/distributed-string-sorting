@@ -63,9 +63,8 @@ public:
         gatherInput();
         if (env.rank() == 0u) {
             sortInputAndMakeContiguous();
-            bool lcpsCorrect = true; 
-            if (checkLcp_)
-              lcpsCorrect = checkLcp();
+            bool lcpsCorrect = true;
+            if (checkLcp_) lcpsCorrect = checkLcp();
             const bool sortedCorrectly =
                 globalSortedRawStrings_ == globalInputRawStrings_;
             std::cout << globalSortedRawStrings_.size() << " "

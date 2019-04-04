@@ -35,9 +35,9 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
 
 template <typename StringSet, typename StringGenerator,
     typename SampleSplittersPolicy, typename MPIAllToAllRoutine,
-    typename ByteEncoder, typename GolombEncoding>
-void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustiveCheck, 
-    size_t iteration, const bool strongScaling,
+    typename ByteEncoder, typename GolombEncoding, bool compressLcps>
+void execute_sorter(size_t numOfStrings, const bool check,
+    const bool exhaustiveCheck, size_t iteration, const bool strongScaling,
     GeneratedStringsArgs genStringArgs,
     dsss::mpi::environment env = dsss::mpi::environment()) {
     using StringLcpPtr =
@@ -70,7 +70,8 @@ void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustive
     // std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
-    if (check || exhaustiveCheck) checker.storeLocalInput(generatedContainer.raw_strings());
+    if (check || exhaustiveCheck)
+        checker.storeLocalInput(generatedContainer.raw_strings());
     // std::cout << "rank: " << env.rank() <<  " generate strings completed" <<
     // std::endl;
     env.barrier();
@@ -86,7 +87,7 @@ void execute_sorter(size_t numOfStrings, const bool check, const bool exhaustive
 
     measuringTool.start("sorting_overall");
     using AllToAllPolicy =
-        dss_schimek::mpi::AllToAllStringImplPrefixDoubling<StringLcpPtr,
+        dss_schimek::mpi::AllToAllStringImplPrefixDoubling<compressLcps, StringLcpPtr,
             MPIAllToAllRoutine>;
 
     DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy,
@@ -245,11 +246,13 @@ namespace PolicyEnums {
 struct CombinationKey {
     CombinationKey(StringSet stringSet, GolombEncoding golombEncoding,
         StringGenerator stringGenerator, SampleString sampleStringPolicy,
-        MPIRoutineAllToAll mpiAllToAllRoutine, ByteEncoder byteEncoder)
+        MPIRoutineAllToAll mpiAllToAllRoutine, ByteEncoder byteEncoder,
+        bool compressLcps)
         : stringSet_(stringSet), golombEncoding_(golombEncoding),
           stringGenerator_(stringGenerator),
           sampleStringPolicy_(sampleStringPolicy),
-          mpiRoutineAllToAll_(mpiAllToAllRoutine), byteEncoder_(byteEncoder) {}
+          mpiRoutineAllToAll_(mpiAllToAllRoutine), byteEncoder_(byteEncoder),
+          compressLcps_(compressLcps) {}
 
     StringSet stringSet_;
     GolombEncoding golombEncoding_;
@@ -257,6 +260,7 @@ struct CombinationKey {
     SampleString sampleStringPolicy_;
     MPIRoutineAllToAll mpiRoutineAllToAll_;
     ByteEncoder byteEncoder_;
+    bool compressLcps_;
 
     bool operator==(const CombinationKey& other) {
         return stringSet_ == other.stringSet_ &&
@@ -287,9 +291,9 @@ struct SorterArgs {
 };
 
 template <typename StringSet, typename StringGenerator, typename SampleString,
-    typename MPIRoutineAllToAll, typename ByteEncoder, typename GolombEncoding>
-void seventhArg(
-    const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
+    typename MPIRoutineAllToAll, typename ByteEncoder, typename GolombEncoding,
+    bool compressLcps>
+void eighthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     // execute_sorter<StringSet,
     //               StringGenerator,
     //               SampleString,
@@ -298,8 +302,26 @@ void seventhArg(
     //               Timer>(args.size, args.checkInput, args.iteration,
     //               args.strongScaling, args.generatorArgs);
     execute_sorter<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-        ByteEncoder, GolombEncoding>(args.size, args.check, args.exhaustiveCheck, args.iteration,
-        args.strongScaling, args.generatorArgs);
+        ByteEncoder, GolombEncoding, compressLcps>(args.size, args.check,
+        args.exhaustiveCheck, args.iteration, args.strongScaling,
+        args.generatorArgs);
+}
+
+template <typename StringSet, typename StringGenerator, typename SampleString,
+    typename MPIRoutineAllToAll, typename ByteEncoder, typename GolombEncoding>
+void seventhArg(
+    const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
+    switch (key.compressLcps_) {
+    case true:
+        eighthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+            ByteEncoder, GolombEncoding, true>(key, args);
+        break;
+
+    case false:
+        eighthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+            ByteEncoder, GolombEncoding, false>(key, args);
+        break;
+    }
 }
 template <typename StringSet, typename StringGenerator, typename SampleString,
     typename MPIRoutineAllToAll, typename ByteEncoder>
@@ -451,6 +473,7 @@ int main(std::int32_t argc, char const* argv[]) {
 
     bool check = false;
     bool exhaustiveCheck = false;
+    bool compressLcps = false;
     unsigned int generator = 0;
     bool strongScaling = false;
     unsigned int sampleStringsPolicy =
@@ -490,6 +513,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_flag('c', "exhaustiveCheck", exhaustiveCheck, " ");
     cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
+    cp.add_flag('v', "compressLcps", compressLcps,
+        " compress Lcp values in alltoall-exchange");
     cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
 
     if (!cp.process(argc, argv)) {
@@ -502,7 +527,7 @@ int main(std::int32_t argc, char const* argv[]) {
         PolicyEnums::getStringGenerator(generator),
         PolicyEnums::getSampleString(sampleStringsPolicy),
         PolicyEnums::getMPIRoutineAllToAll(mpiRoutineAllToAll),
-        PolicyEnums::getByteEncoder(byteEncoder));
+        PolicyEnums::getByteEncoder(byteEncoder), compressLcps);
     GeneratedStringsArgs generatorArgs;
     generatorArgs.numOfStrings = numberOfStrings;
     generatorArgs.stringLength = stringLength;
@@ -511,8 +536,8 @@ int main(std::int32_t argc, char const* argv[]) {
     generatorArgs.dToNRatio = dToNRatio;
     generatorArgs.path = path;
     for (size_t i = 0; i < numberOfIterations; ++i) {
-        SorterArgs args = {
-            numberOfStrings, check, exhaustiveCheck, i, strongScaling, generatorArgs};
+        SorterArgs args = {numberOfStrings, check, exhaustiveCheck, i,
+            strongScaling, generatorArgs};
         firstArg(key, args);
     }
     env.finalize();
