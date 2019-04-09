@@ -415,7 +415,6 @@ inline std::vector<uint64_t> sendLcps(std::vector<uint64_t>& lcps,
         auto compressedData = IntegerCompression::writeRanges(
             sendCounts.begin(), sendCounts.end(), lcps.data());
 
-        std::cout << "do lcp compression " << std::endl;
         std::vector<uint8_t> recvCompressedLcps = AllToAllPolicy::alltoallv(
             compressedData.integers.data(), compressedData.counts);
 
