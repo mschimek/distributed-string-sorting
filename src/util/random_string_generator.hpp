@@ -96,7 +96,7 @@ public:
         const size_t stringLength = std::max(desiredStringLength, k);
         std::vector<unsigned char>
             rawStrings; //(numStrings * (stringLength + 1), minInternChar);
-        rawStrings.reserve(numStrings * (stringLength + 1));
+        rawStrings.reserve(numStrings * (stringLength + 1) / env.size());
 
         const size_t globalSeed = getSameSeedGlobally();
         std::mt19937 randGen(globalSeed);
