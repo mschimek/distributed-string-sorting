@@ -102,7 +102,22 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         case 512 : return merge<AllToAllStringPolicy,512>(std::move(recv_string_cont),
                        ranges,
                        num_recv_elems);
-        default : std::cout << "Error in merge: K is not 2^i for i in {0,...,9} " << std::endl; 
+        case 1024 : return merge<AllToAllStringPolicy,1024>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 2048: return merge<AllToAllStringPolicy,2048>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 4096 : return merge<AllToAllStringPolicy,4096>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 8192 : return merge<AllToAllStringPolicy,8192>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        case 16384 : return merge<AllToAllStringPolicy,16384>(std::move(recv_string_cont),
+                       ranges,
+                       num_recv_elems);
+        default : std::cout << "Error in merge: K is not 2^i for i in {0,...,14} " << std::endl; 
                   std::abort();
       }
       return StringLcpContainer();
