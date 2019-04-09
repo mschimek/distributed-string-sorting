@@ -466,7 +466,6 @@ void firstArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
 
 int main(std::int32_t argc, char const* argv[]) {
     using namespace dss_schimek;
-    std::cout << "start program" << std::endl;
 
     dss_schimek::mpi::environment env;
     env.barrier();
