@@ -70,7 +70,6 @@ template<typename AllToAllStringPolicy, size_t K, typename StringSet>
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
       const size_t nextPow2 = pow2roundup(env.size());
-      std::cout << "nextPow2: " << nextPow2 << std::endl; 
       switch (nextPow2) {
         case 1 :  return merge<AllToAllStringPolicy,1>(std::move(recv_string_cont),
                       ranges,
