@@ -673,11 +673,6 @@ struct FindDuplicates {
         std::vector<size_t> sortedIndicesOfRemoteDuplicates;
         sortedIndicesOfRemoteDuplicates.reserve(remoteDuplicates.size());
         dss_schimek::mpi::environment env;
-        std::cout << "rank: " << env.rank()
-                  << " localHashDuplicates: " << localHashDuplicates.size()
-                  << " localDuplicates: " << localDuplicates.size()
-                  << " remoteDuplicates: " << remoteDuplicates.size()
-                  << " mapping: " << originalMapping.size() << std::endl;
 
         // Assumption localHashDuplicates and localDuplicates are sorted
 
