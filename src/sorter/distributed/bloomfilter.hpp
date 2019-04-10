@@ -142,8 +142,8 @@ struct AllToAllHashesNaive {
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes) {
-        using AllToAllv =
-            dss_schimek::mpi::AllToAllvCombined<dss_schimek::mpi::AllToAllvSmall>;
+        using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
+            dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -163,8 +163,8 @@ struct AllToAllHashesGolomb {
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize,
         const size_t b = 1048576) {
-        using AllToAllv =
-            dss_schimek::mpi::AllToAllvCombined<dss_schimek::mpi::AllToAllvSmall>;
+        using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
+            dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         dss_schimek::mpi::environment env;
@@ -664,7 +664,56 @@ struct FindDuplicates {
         return duplicates;
     }
 
-    // TODO add && reference for localDuplicates
+    static std::vector<size_t> getSortedIndicesOfDuplicates(const size_t size,
+        std::vector<size_t>& localHashDuplicates,
+        std::vector<size_t>& localDuplicates,
+        std::vector<size_t>& remoteDuplicates,
+        const std::vector<HashStringIndex>& originalMapping) {
+        std::vector<size_t> indicesOfAllDuplicates(localDuplicates);
+        std::vector<size_t> sortedIndicesOfRemoteDuplicates;
+        sortedIndicesOfRemoteDuplicates.reserve(remoteDuplicates.size());
+        dss_schimek::mpi::environment env;
+        std::cout << "rank: " << env.rank()
+                  << " localHashDuplicates: " << localHashDuplicates.size()
+                  << " localDuplicates: " << localDuplicates.size()
+                  << " remoteDuplicates: " << remoteDuplicates.size()
+                  << " mapping: " << originalMapping.size() << std::endl;
+
+        // Assumption localHashDuplicates and localDuplicates are sorted
+
+        // indicesOfAllDuplicates.reserve(localDuplicates.size() +
+        // remoteDuplicates.size());
+        for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
+            const size_t curIndex = remoteDuplicates[i];
+
+            bool isAlsoLocalDuplicate =
+                originalMapping[curIndex].isLocalDuplicateButSendAnyway;
+            if (!isAlsoLocalDuplicate) {
+                const size_t stringIndex =
+                    originalMapping[curIndex].stringIndex;
+                sortedIndicesOfRemoteDuplicates.push_back(stringIndex);
+            }
+        }
+
+        ips4o::sort(sortedIndicesOfRemoteDuplicates.begin(),
+            sortedIndicesOfRemoteDuplicates.end());
+        using Iterator = std::vector<size_t>::iterator;
+        std::vector<std::pair<Iterator, Iterator>> iteratorPairs;
+        iteratorPairs.emplace_back(
+            localHashDuplicates.begin(), localHashDuplicates.end());
+        iteratorPairs.emplace_back(
+            localDuplicates.begin(), localDuplicates.end());
+        iteratorPairs.emplace_back(sortedIndicesOfRemoteDuplicates.begin(),
+            sortedIndicesOfRemoteDuplicates.end());
+        const size_t elementsToMerge = localHashDuplicates.size() +
+                                       localDuplicates.size() +
+                                       sortedIndicesOfRemoteDuplicates.size();
+        std::vector<size_t> mergedElements(elementsToMerge);
+        tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(),
+            mergedElements.begin(), elementsToMerge);
+
+        return mergedElements;
+    }
     static std::vector<size_t> getIndicesOfDuplicates(const size_t size,
         std::vector<size_t>& localDuplicates,
         std::vector<size_t>& remoteDuplicates,
@@ -793,8 +842,10 @@ class ExcatDistinguishingPrefix {
         }
         size_t numStrings = candidates.size();
 
-        std::vector<size_t> recvCounts = dss_schimek::mpi::allgather(numStrings);
-        std::vector<size_t> stringIndices = dss_schimek::mpi::allgatherv(candidates);
+        std::vector<size_t> recvCounts =
+            dss_schimek::mpi::allgather(numStrings);
+        std::vector<size_t> stringIndices =
+            dss_schimek::mpi::allgatherv(candidates);
         std::vector<unsigned char> recvBuffer =
             dss_schimek::mpi::allgatherv(send_buffer);
         return ContainerSizesIndices(std::move(recvBuffer),
@@ -911,8 +962,10 @@ class BloomfilterTest {
         }
         size_t numStrings = candidates.size();
 
-        std::vector<size_t> recvCounts = dss_schimek::mpi::allgather(numStrings);
-        std::vector<size_t> stringIndices = dss_schimek::mpi::allgatherv(candidates);
+        std::vector<size_t> recvCounts =
+            dss_schimek::mpi::allgather(numStrings);
+        std::vector<size_t> stringIndices =
+            dss_schimek::mpi::allgatherv(candidates);
         std::vector<unsigned char> recvBuffer =
             dss_schimek::mpi::allgatherv(send_buffer);
         return ContainerSizesIndices(std::move(recvBuffer),
@@ -987,10 +1040,82 @@ public:
         std::vector<T> data;
         std::vector<size_t> eosCandidates;
         GeneratedHashStructuresEOSCandidates(
+
             std::vector<T>&& data, std::vector<size_t>&& eosCandidates)
             : data(std::move(data)), eosCandidates(std::move(eosCandidates)) {}
     };
 
+    template <typename T>
+    struct GeneratedHashesLocalDupsEOSCandidates {
+        std::vector<T> data;
+        std::vector<size_t> localDups;
+        std::vector<size_t> eosCandidates;
+        GeneratedHashesLocalDupsEOSCandidates(
+
+            std::vector<T>&& data, std::vector<size_t>&& eosCandidates,
+            std::vector<size_t>&& localDups)
+            : data(std::move(data)), localDups(std::move(localDups)),
+              eosCandidates(std::move(eosCandidates)) {}
+    };
+
+    template <typename LcpIterator>
+    GeneratedHashesLocalDupsEOSCandidates<HashStringIndex>
+    generateHashStringIndices(StringSet ss,
+        const std::vector<size_t>& candidates, const size_t depth,
+        LcpIterator lcps) {
+        std::vector<HashStringIndex> hashStringIndices;
+        std::vector<size_t> eosCandidates;
+        std::vector<size_t> localDups;
+        if (candidates.size() == 0) {
+            return GeneratedHashesLocalDupsEOSCandidates(
+                std::move(hashStringIndices), std::move(localDups),
+                std::move(eosCandidates));
+        }
+        eosCandidates.reserve(candidates.size());
+        hashStringIndices.reserve(candidates.size());
+        localDups.reserve(candidates.size());
+        const Iterator begin = ss.begin();
+
+        // special case for first element
+        {
+            size_t curCandidate = candidates.front();
+            String curString = ss[begin + curCandidate];
+            const size_t length = ss.get_length(curString);
+            if (depth > length) {
+                eosCandidates.push_back(curCandidate);
+            }
+            else {
+                const size_t curHash = HashPolicy::hash(
+                    ss.get_chars(curString, 0), depth, bloomFilterSize);
+                hashStringIndices.emplace_back(curHash, curCandidate);
+                hashValues[curCandidate] = curHash;
+            }
+        }
+
+        for (size_t i = 1; i < candidates.size(); ++i) {
+            size_t curCandidate = candidates[i];
+            size_t prevCandidate = candidates[i - 1];
+
+            String curString = ss[begin + curCandidate];
+            const size_t length = ss.get_length(curString);
+            if (depth > length) {
+                eosCandidates.push_back(curCandidate);
+            }
+            else if (prevCandidate + 1 == curCandidate &&
+                     lcps[curCandidate] >= depth) {
+                localDups.push_back(curCandidate);
+            }
+            else {
+                const size_t curHash = HashPolicy::hash(
+                    ss.get_chars(curString, 0), depth, bloomFilterSize);
+                hashStringIndices.emplace_back(curHash, curCandidate);
+                hashValues[curCandidate] = curHash;
+            }
+        }
+        return GeneratedHashesLocalDupsEOSCandidates(
+            std::move(hashStringIndices), std::move(localDups),
+            std::move(eosCandidates));
+    }
     GeneratedHashStructuresEOSCandidates<HashStringIndex>
     generateHashStringIndices(StringSet ss,
         const std::vector<size_t>& candidates, const size_t depth) {
@@ -1023,13 +1148,6 @@ public:
                 }
                 else {
                     const size_t halfDepth = depth / 2;
-                    //if (curCandidate >= size) {
-                    //    std::cout << "cur Candidate >= size " << curCandidate
-                    //              << " Size: " << size
-                    //              << " stringset.size(): " << ss.size()
-                    //              << std::endl;
-                    //    std::abort();
-                    //}
                     const size_t curHash = HashPolicy::hash(
                         ss.get_chars(curString, halfDepth), halfDepth,
                         bloomFilterSize, hashValues[curCandidate]);
@@ -1043,27 +1161,61 @@ public:
             std::move(hashStringIndices), std::move(eosCandidates));
     }
 
-    GeneratedHashStructuresEOSCandidates<HashStringIndex>
-    generateHashStringIndices(StringSet ss, const size_t depth) {
+    template <typename LcpIterator>
+    GeneratedHashesLocalDupsEOSCandidates<HashStringIndex>
+    generateHashStringIndices(
+        StringSet ss, const size_t depth, LcpIterator lcps) {
         std::vector<HashStringIndex> hashStringIndices;
         std::vector<size_t> eosCandidates;
         hashStringIndices.reserve(ss.size());
         const Iterator begin = ss.begin();
 
-        for (size_t candidate = 0; candidate < ss.size(); ++candidate) {
-            String curString = ss[begin + candidate];
+        std::vector<size_t> localDups;
+        if (ss.size() == 0) {
+            return GeneratedHashesLocalDupsEOSCandidates(
+                std::move(hashStringIndices), std::move(localDups),
+                std::move(eosCandidates));
+        }
+        eosCandidates.reserve(ss.size());
+        hashStringIndices.reserve(ss.size());
+        localDups.reserve(ss.size());
+
+        // special case for first element
+        {
+            size_t curCandidate = 0;
+            String curString = ss[begin + curCandidate];
             const size_t length = ss.get_length(curString);
             if (depth > length) {
-                eosCandidates.push_back(candidate);
+                eosCandidates.push_back(curCandidate);
             }
             else {
                 const size_t curHash = HashPolicy::hash(
                     ss.get_chars(curString, 0), depth, bloomFilterSize);
-                hashStringIndices.emplace_back(curHash, candidate);
+                hashStringIndices.emplace_back(curHash, curCandidate);
+                hashValues[curCandidate] = curHash;
             }
         }
-        return GeneratedHashStructuresEOSCandidates(
-            std::move(hashStringIndices), std::move(eosCandidates));
+
+        for (size_t curCandidate = 1; curCandidate < ss.size();
+             ++curCandidate) {
+            String curString = ss[begin + curCandidate];
+            const size_t length = ss.get_length(curString);
+            if (depth > length) {
+                eosCandidates.push_back(curCandidate);
+            }
+            else if (lcps[curCandidate] >= depth) {
+                localDups.push_back(curCandidate);
+            }
+            else {
+                const size_t curHash = HashPolicy::hash(
+                    ss.get_chars(curString, 0), depth, bloomFilterSize);
+                hashStringIndices.emplace_back(curHash, curCandidate);
+                hashValues[curCandidate] = curHash;
+            }
+        }
+        return GeneratedHashesLocalDupsEOSCandidates(
+            std::move(hashStringIndices), std::move(localDups),
+            std::move(eosCandidates));
     }
 
     std::vector<size_t> getIndicesOfLocalDuplicates(
@@ -1143,10 +1295,15 @@ public:
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("bloomfilter_generateHashStringIndices");
-        GeneratedHashStructuresEOSCandidates<HashStringIndex>
-            hashStringIndicesEOSCandidates =
-                generateHashStringIndices(strptr.active(), depth);
+        // GeneratedHashStructuresEOSCandidates<HashStringIndex>
+        //    hashStringIndicesEOSCandidates =
+        //        generateHashStringIndices(strptr.active(), depth);
+        GeneratedHashesLocalDupsEOSCandidates<HashStringIndex>
+            hashStringIndicesEOSCandidates = generateHashStringIndices(
+                strptr.active(), depth, strptr.get_lcp());
 
+        std::vector<size_t>& localLcpDuplicates =
+            hashStringIndicesEOSCandidates.localDups;
         std::vector<HashStringIndex>& hashStringIndices =
             hashStringIndicesEOSCandidates.data;
         const std::vector<size_t>& eosCandidates =
@@ -1155,7 +1312,7 @@ public:
 
         measuringTool.start("bloomfilter_sortHashStringIndices");
         ips4o::sort(hashStringIndices.begin(), hashStringIndices.end());
-        //std::sort(hashStringIndices.begin(), hashStringIndices.end());
+        // std::sort(hashStringIndices.begin(), hashStringIndices.end());
         measuringTool.stop("bloomfilter_sortHashStringIndices");
 
         measuringTool.start("bloomfilter_indicesOfLocalDuplicates");
@@ -1191,9 +1348,11 @@ public:
         // curIteration);
 
         measuringTool.start("bloomfilter_getIndices");
+
         std::vector<size_t> indicesOfAllDuplicates =
-            FindDuplicatesPolicy::getIndicesOfDuplicates(strptr.active().size(),
-                indicesOfLocalDuplicates, indicesOfRemoteDuplicates,
+            FindDuplicatesPolicy::getSortedIndicesOfDuplicates(
+                strptr.active().size(), indicesOfLocalDuplicates,
+                localLcpDuplicates, indicesOfRemoteDuplicates,
                 reducedHashStringIndices);
         measuringTool.stop("bloomfilter_getIndices");
 
@@ -1212,10 +1371,12 @@ public:
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         measuringTool.start("bloomfilter_generateHashStringIndices");
-        GeneratedHashStructuresEOSCandidates<HashStringIndex>
-            hashStringIndicesEOSCandidates =
-                generateHashStringIndices(strptr.active(), candidates, depth);
+        GeneratedHashesLocalDupsEOSCandidates<HashStringIndex>
+            hashStringIndicesEOSCandidates = generateHashStringIndices(
+                strptr.active(), candidates, depth, strptr.get_lcp());
 
+        std::vector<size_t>& localLcpDuplicates =
+            hashStringIndicesEOSCandidates.localDups;
         std::vector<HashStringIndex>& hashStringIndices =
             hashStringIndicesEOSCandidates.data;
         const std::vector<size_t>& eosCandidates =
@@ -1223,7 +1384,7 @@ public:
         measuringTool.stop("bloomfilter_generateHashStringIndices");
 
         measuringTool.start("bloomfilter_sortHashStringIndices");
-        std::sort(hashStringIndices.begin(), hashStringIndices.end());
+        ips4o::sort(hashStringIndices.begin(), hashStringIndices.end());
         measuringTool.stop("bloomfilter_sortHashStringIndices");
 
         measuringTool.start("bloomfilter_indicesOfLocalDuplicates");
@@ -1256,8 +1417,9 @@ public:
 
         measuringTool.start("bloomfilter_getIndices");
         std::vector<size_t> indicesOfAllDuplicates =
-            FindDuplicatesPolicy::getIndicesOfDuplicates(strptr.active().size(),
-                indicesOfLocalDuplicates, indicesOfRemoteDuplicates,
+            FindDuplicatesPolicy::getSortedIndicesOfDuplicates(
+                strptr.active().size(), indicesOfLocalDuplicates,
+                localLcpDuplicates, indicesOfRemoteDuplicates,
                 reducedHashStringIndices);
         measuringTool.stop("bloomfilter_getIndices");
 
