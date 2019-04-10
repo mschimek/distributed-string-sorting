@@ -673,7 +673,6 @@ struct FindDuplicates {
         std::vector<size_t> sortedIndicesOfRemoteDuplicates;
         sortedIndicesOfRemoteDuplicates.reserve(remoteDuplicates.size());
         dss_schimek::mpi::environment env;
-
         // Assumption localHashDuplicates and localDuplicates are sorted
 
         // indicesOfAllDuplicates.reserve(localDuplicates.size() +
@@ -1047,8 +1046,8 @@ public:
         std::vector<size_t> eosCandidates;
         GeneratedHashesLocalDupsEOSCandidates(
 
-            std::vector<T>&& data, std::vector<size_t>&& eosCandidates,
-            std::vector<size_t>&& localDups)
+            std::vector<T>&& data, std::vector<size_t>&& localDups, std::vector<size_t>&& eosCandidates
+            )
             : data(std::move(data)), localDups(std::move(localDups)),
               eosCandidates(std::move(eosCandidates)) {}
     };
