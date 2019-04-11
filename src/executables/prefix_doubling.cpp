@@ -23,9 +23,13 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
         return StringGenerator(
             args.numOfStrings, args.stringLength, args.dToNRatio);
     }
-    if constexpr (std::is_same_v<StringGenerator,
+    else if constexpr (std::is_same_v<StringGenerator,
                       dss_schimek::FileDistributer<StringSet>>) {
         return dss_schimek::FileDistributer<StringSet>(args.path);
+    }
+    else if constexpr (std::is_same_v<StringGenerator,
+                      dss_schimek::SuffixGenerator<StringSet>>) {
+        return dss_schimek::SuffixGenerator<StringSet>(args.path);
     }
     else {
         return StringGenerator(
@@ -87,8 +91,8 @@ void execute_sorter(size_t numOfStrings, const bool check,
 
     measuringTool.start("sorting_overall");
     using AllToAllPolicy =
-        dss_schimek::mpi::AllToAllStringImplPrefixDoubling<compressLcps, StringLcpPtr,
-            MPIAllToAllRoutine>;
+        dss_schimek::mpi::AllToAllStringImplPrefixDoubling<compressLcps,
+            StringLcpPtr, MPIAllToAllRoutine>;
 
     DistributedPrefixDoublingSort<StringLcpPtr, SampleSplittersPolicy,
         AllToAllPolicy, GolombEncoding>
@@ -107,8 +111,8 @@ void execute_sorter(size_t numOfStrings, const bool check,
             tlx::sort_strings_detail::radixsort_CI3(originalInputStrPtr, 0, 0);
 
             auto CompleteStringsCont =
-                dss_schimek::mpi::getStrings(permutation.begin(), permutation.end(),
-                    originalInput.make_string_set());
+                dss_schimek::mpi::getStrings(permutation.begin(),
+                    permutation.end(), originalInput.make_string_set());
 
             auto completeStringSet = CompleteStringsCont.make_string_set();
             reorder(completeStringSet, permutation.begin(), permutation.end());
@@ -175,7 +179,8 @@ StringSet getStringSet(size_t i) {
 enum class StringGenerator {
     skewedRandomStringLcpContainer = 0,
     DNRatioGenerator = 1,
-    File = 2
+    File = 2,
+    Suffix = 3
 };
 StringGenerator getStringGenerator(size_t i) {
     switch (i) {
@@ -185,6 +190,8 @@ StringGenerator getStringGenerator(size_t i) {
         return StringGenerator::DNRatioGenerator;
     case 2:
         return StringGenerator::File;
+    case 3:
+        return StringGenerator::Suffix;
     default:
         std::abort();
     }
@@ -450,6 +457,11 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
+    case PolicyEnums::StringGenerator::Suffix: {
+        using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+        thirdArg<StringSet, StringGenerator>(key, args);
+        break;
+    }
     };
 }
 
@@ -510,7 +522,7 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
     cp.add_flag('c', "check", check, " ");
     cp.add_flag('c', "exhaustiveCheck", exhaustiveCheck, " ");
-    cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen ");
+    cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen , 2 = file, 3 = suffix");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_flag('v', "compressLcps", compressLcps,
         " compress Lcp values in alltoall-exchange");

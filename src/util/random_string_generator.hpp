@@ -62,6 +62,73 @@ public:
 };
 
 template <typename StringSet>
+class SuffixGenerator : public StringLcpContainer<StringSet> {
+    using String = typename StringSet::String;
+
+private:
+    std::vector<unsigned char> readFile(const std::string& path) {
+        using dss_schimek::RawStringsLines;
+        RawStringsLines data;
+        const size_t fileSize = getFileSize(path);
+        std::ifstream in(path);
+        std::vector<unsigned char>& rawStrings = data.rawStrings;
+        rawStrings.reserve(1.5 * fileSize);
+
+        std::string line;
+        data.lines = 0u;
+        while (std::getline(in, line)) {
+            ++data.lines;
+            for (unsigned char curChar : line)
+                rawStrings.push_back(curChar);
+        }
+        rawStrings.push_back(0);
+        in.close();
+        return rawStrings;
+    }
+
+    auto distributeSuffixes(const std::vector<unsigned char>& text) {
+        dss_schimek::mpi::environment env;
+
+        const size_t textSize = text.size();
+        const size_t estimatedCharCount =
+            textSize * (textSize + 1) / 2 + textSize;
+        const size_t globalSeed = 0;
+        std::mt19937 randGen(globalSeed);
+        std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
+        std::vector<unsigned char> rawStrings;
+        rawStrings.reserve(estimatedCharCount);
+
+        size_t numGenStrings = 0;
+        for (size_t i = 0; i < textSize; ++i) {
+            size_t PEIndex = dist(randGen);
+            if (PEIndex == env.rank()) {
+                // only create your own strings
+                ++numGenStrings;
+                std::copy(text.begin() + i, text.end(),
+                    std::back_inserter(rawStrings));
+                // Assume that text is zero terminated
+            }
+        }
+        rawStrings.shrink_to_fit();
+        return std::make_pair(std::move(rawStrings), numGenStrings);
+    }
+
+public:
+    SuffixGenerator(const std::string& path) {
+        std::vector<unsigned char> text = readFile(path);
+        auto [rawStrings, genStrings] = distributeSuffixes(text);
+        this->update(std::move(rawStrings));
+        String* begin = this->strings();
+        std::random_device randSeedGenerator;
+        std::mt19937 rand_gen(randSeedGenerator());
+        auto rand = [&](size_t n) { return rand_gen() % n; };
+        std::random_shuffle(begin, begin + genStrings, rand);
+    }
+
+    static std::string getName() { return "SuffixGenerator"; }
+};
+
+template <typename StringSet>
 class DNRatioGenerator : public StringLcpContainer<StringSet> {
     using Char = typename StringSet::Char;
     using String = typename StringSet::String;

@@ -25,9 +25,13 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
         return StringGenerator(
             args.numOfStrings, args.stringLength, args.dToNRatio);
     }
-    if constexpr (std::is_same_v<StringGenerator,
+    else if constexpr (std::is_same_v<StringGenerator,
                       dss_schimek::FileDistributer<StringSet>>) {
         return dss_schimek::FileDistributer<StringSet>(args.path);
+    }
+    else if constexpr (std::is_same_v<StringGenerator,
+                      dss_schimek::SuffixGenerator<StringSet>>) {
+        return dss_schimek::SuffixGenerator<StringSet>(args.path);
     }
     else {
         return StringGenerator(
@@ -167,7 +171,8 @@ StringSet getStringSet(size_t i) {
 enum class StringGenerator {
     skewedRandomStringLcpContainer = 0,
     DNRatioGenerator = 1,
-    File = 2
+    File = 2,
+    Suffix = 3
 };
 StringGenerator getStringGenerator(size_t i) {
     switch (i) {
@@ -177,6 +182,8 @@ StringGenerator getStringGenerator(size_t i) {
         return StringGenerator::DNRatioGenerator;
     case 2:
         return StringGenerator::File;
+    case 3:
+        return StringGenerator::Suffix;
     default:
         std::abort();
     }
@@ -407,6 +414,11 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::StringGenerator::File: {
         using StringGenerator = dss_schimek::FileDistributer<StringSet>;
+        thirdArg<StringSet, StringGenerator>(key, args);
+        break;
+    }
+    case PolicyEnums::StringGenerator::Suffix: {
+        using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
