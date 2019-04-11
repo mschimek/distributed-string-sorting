@@ -96,6 +96,7 @@ struct HashStringIndex {
     size_t stringIndex;
     bool isLocalDuplicate = false;
     bool isLocalDuplicateButSendAnyway = false;
+    bool isLcpLocalRoot = false;
     HashStringIndex(const size_t hashValue, const size_t stringIndex,
         bool isLocalDuplicate, bool isLocalDuplicateButSendAnyway)
         : hashValue(hashValue), stringIndex(stringIndex),
@@ -673,12 +674,15 @@ struct FindDuplicates {
         std::vector<size_t> sortedIndicesOfRemoteDuplicates;
         sortedIndicesOfRemoteDuplicates.reserve(remoteDuplicates.size());
         dss_schimek::mpi::environment env;
+	
+	//std::cout << "rank: " << env.rank() << " localhashDuplicates: " << localHashDuplicates.size() << " localDuplicates: " << localDuplicates.size() << " remoteDuplicates: " << remoteDuplicates.size() << " originalMapping: " << originalMapping.size() << std::endl;
         // Assumption localHashDuplicates and localDuplicates are sorted
 
         // indicesOfAllDuplicates.reserve(localDuplicates.size() +
         // remoteDuplicates.size());
         for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
             const size_t curIndex = remoteDuplicates[i];
+
 
             bool isAlsoLocalDuplicate =
                 originalMapping[curIndex].isLocalDuplicateButSendAnyway;
@@ -691,6 +695,8 @@ struct FindDuplicates {
 
         ips4o::sort(sortedIndicesOfRemoteDuplicates.begin(),
             sortedIndicesOfRemoteDuplicates.end());
+        ips4o::sort(localHashDuplicates.begin(),
+            localHashDuplicates.end());
         using Iterator = std::vector<size_t>::iterator;
         std::vector<std::pair<Iterator, Iterator>> iteratorPairs;
         iteratorPairs.emplace_back(
@@ -705,7 +711,7 @@ struct FindDuplicates {
         std::vector<size_t> mergedElements(elementsToMerge);
         tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(),
             mergedElements.begin(), elementsToMerge);
-
+	
         return mergedElements;
     }
     static std::vector<size_t> getIndicesOfDuplicates(const size_t size,
@@ -1098,6 +1104,12 @@ public:
             else if (prevCandidate + 1 == curCandidate &&
                      lcps[curCandidate] >= depth) {
                 localDups.push_back(curCandidate);
+		if (hashStringIndices.back().stringIndex + 1 == curCandidate) {
+			hashStringIndices.back().isLcpLocalRoot = true;
+			if (env.rank() == 25 && curCandidate == 197869) {
+				std::cout << "generation: " << hashStringIndices.back().stringIndex << std::endl;
+			}
+		}
             }
             else {
                 const size_t curHash = HashPolicy::hash(
@@ -1199,6 +1211,8 @@ public:
             }
             else if (lcps[curCandidate] >= depth) {
                 localDups.push_back(curCandidate);
+		if (hashStringIndices.back().stringIndex + 1 == curCandidate) 
+			hashStringIndices.back().isLcpLocalRoot = true;
             }
             else {
                 const size_t curHash = HashPolicy::hash(
@@ -1207,6 +1221,7 @@ public:
                 hashValues[curCandidate] = curHash;
             }
         }
+
         return GeneratedHashesLocalDupsEOSCandidates(
             std::move(hashStringIndices), std::move(localDups),
             std::move(eosCandidates));
@@ -1223,14 +1238,14 @@ public:
             HashStringIndex& curHashStringIndex = hashStringIndices[j];
             if (curHashStringIndex.hashValue ==
                 pivotHashStringIndex.hashValue) {
+                pivotHashStringIndex.isLocalDuplicate = true;
+                pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
+                curHashStringIndex.isLocalDuplicate = true;
                 indicesOfLocalDuplicates.push_back(
                     pivotHashStringIndex.stringIndex);
                 indicesOfLocalDuplicates.push_back(
                     curHashStringIndex.stringIndex);
 
-                pivotHashStringIndex.isLocalDuplicate = true;
-                pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
-                curHashStringIndex.isLocalDuplicate = true;
                 ++j;
                 while (j < hashStringIndices.size() &&
                        hashStringIndices[j].hashValue ==
@@ -1240,9 +1255,21 @@ public:
                         hashStringIndices[j].stringIndex);
                     ++j;
                 }
-            }
+            } else if (pivotHashStringIndex.isLcpLocalRoot) {
+                pivotHashStringIndex.isLocalDuplicate = true;
+                pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
+                indicesOfLocalDuplicates.push_back(
+                    pivotHashStringIndex.stringIndex);
+	    }
             i = j;
         }
+	if (hashStringIndices.back().isLcpLocalRoot) {
+		auto& pivotHashStringIndex = hashStringIndices.back();
+                pivotHashStringIndex.isLocalDuplicate = true;
+                pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
+                indicesOfLocalDuplicates.push_back(
+                    pivotHashStringIndex.stringIndex);
+	}
         return indicesOfLocalDuplicates;
     }
 
