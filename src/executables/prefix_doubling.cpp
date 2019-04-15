@@ -78,7 +78,6 @@ void execute_sorter(size_t numOfStrings, const bool check,
         checker.storeLocalInput(generatedContainer.raw_strings());
     // std::cout << "rank: " << env.rank() <<  " generate strings completed" <<
     // std::endl;
-    env.barrier();
     StringLcpPtr rand_string_ptr = generatedContainer.make_string_lcp_ptr();
     // dss_schimek::mpi::execute_in_order([&]() {
     //    env.barrier();
@@ -87,11 +86,10 @@ void execute_sorter(size_t numOfStrings, const bool check,
     //    rand_container.make_string_set().print();
     //    });
     const size_t numGeneratedChars = generatedContainer.char_size();
+    env.barrier();
+    if (env.rank() == 0)
+      std::cout << "string generation completed " << std::endl;
     const size_t numGeneratedStrings = generatedContainer.size();
-
-    measuringTool.add(numGeneratedChars - numGeneratedStrings,
-        "InputChars", false);
-    measuringTool.add(numGeneratedStrings, "InputStrings", false);
 
     measuringTool.start("sorting_overall");
     using AllToAllPolicy =

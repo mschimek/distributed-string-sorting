@@ -83,6 +83,9 @@ void execute_sorter(size_t numOfStrings, const bool check,
         checker.storeLocalInput(generatedContainer.raw_strings());
 
     // std::cout << "container: " << generatedContainer.size() << std::endl;
+    env.barrier();
+    if (env.rank() == 0)
+      std::cout << "string generation completed " << std::endl;
     StringLcpPtr rand_string_ptr = generatedContainer.make_string_lcp_ptr();
     const size_t numGeneratedChars = generatedContainer.char_size();
     const size_t numGeneratedStrings = generatedContainer.size();
