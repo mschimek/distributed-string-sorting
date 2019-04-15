@@ -110,7 +110,6 @@ std::vector<unsigned char> readFileInParallel(const std::string& path) {
     }
 
     const uint64_t fileSize = getFileSize(path);
-    std::cout << "fileSize: " << fileSize << std::endl;
     uint64_t localSliceSize = fileSize / env.size();
     uint64_t largerSlices = fileSize % env.size();
     uint64_t localOffset = localSliceSize * env.rank();
@@ -150,17 +149,9 @@ std::vector<unsigned char> readFileInParallel(const std::string& path) {
         }
     }
 
-    std::cout << "rank : " << env.rank() << " startOffset: " << startOffset
-              << std::endl;
     while (slice.back() != '\n' && localOffset + slice.size() < fileSize)
         slice.push_back(in.get());
 
-    dss_schimek::mpi::execute_in_order([&]() {
-        std::cout << "rank: " << env.rank() << std::endl;
-        for (auto cur : slice)
-            std::cout << " " << cur;
-        std::cout << std::endl;
-    });
     std::vector<unsigned char> rawStrings;
     rawStrings.reserve(slice.size() - startOffset);
     for (size_t i = startOffset; i < slice.size(); ++i) {
@@ -168,13 +159,6 @@ std::vector<unsigned char> readFileInParallel(const std::string& path) {
         if (rawStrings.back() == '\n') rawStrings.back() = 0u;
     }
     if (rawStrings.back() != 0u) rawStrings.push_back(0u);
-    dss_schimek::mpi::execute_in_order([&]() {
-        std::cout << "rank: " << env.rank() << std::endl;
-        for (auto cur : rawStrings)
-            std::cout << " " << cur;
-        std::cout << std::endl;
-    });
-
     return rawStrings;
 }
 
