@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <fstream>
 #include <iostream>
@@ -6,6 +6,7 @@
 #include <numeric>
 #include <vector>
 
+#include "mpi/allgather.hpp"
 #include "mpi/big_type.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/type_mapper.hpp"
@@ -27,6 +28,64 @@ struct RawStringsLines {
     std::vector<unsigned char> rawStrings;
     size_t lines;
 };
+
+template <typename InputIterator>
+bool containsDuplicate(InputIterator begin, InputIterator end) {
+    auto newEnd = std::unique(begin, end);
+    return newEnd != end;
+}
+
+std::vector<unsigned char> readFileInParallel(const std::string& path) {
+    dss_schimek::mpi::environment env;
+
+    std::ifstream in(path);
+    if (!in.good()) {
+        std::cout << "file not good on rank: " << env.rank() << std::endl;
+        std::abort();
+    }
+
+    const uint64_t fileSize = getFileSize(path);
+    uint64_t localSliceSize = fileSize / env.size();
+    uint64_t largerSlices = fileSize % env.size();
+    uint64_t localOffset = localSliceSize * env.rank();
+    if (env.rank() < largerSlices) {
+        ++localSliceSize;
+        localOffset = localSliceSize * env.rank();
+    }
+    else {
+        localOffset = largerSlices * (localSliceSize + 1);
+        localOffset += (env.rank() - largerSlices) * localSliceSize;
+    }
+
+    uint64_t reduceSliceBy = 0;
+    if (localOffset > 0u) {
+        in.seekg(localOffset - 1);
+        std::string dummy;
+        std::getline(in, dummy);
+        reduceSliceBy = dummy.size();
+    }
+    else {
+        in.seekg(localOffset);
+    }
+    uint64_t actualOffset = in.tellg();
+    auto allOffsets = dss_schimek::mpi::allgather(actualOffset);
+    if (containsDuplicate(allOffsets.begin(), allOffsets.end())) {
+      std::cout << "Error in string distribution, at least 2 PE in same line" << std::endl;
+      std::abort();
+    }   
+
+    std::vector<unsigned char> rawStrings;
+    rawStrings.reserve(localSliceSize);
+    std::string nextLine;
+    uint64_t readChars = 0u;
+    while (std::getline(in, nextLine) && readChars + reduceSliceBy < localSliceSize) {
+        for (unsigned char curChar : nextLine)
+            rawStrings.push_back(curChar);
+        rawStrings.push_back(0);
+        readChars += nextLine.size();
+    }
+    return rawStrings;
+}
 
 dss_schimek::RawStringsLines readFile(const std::string& path) {
     using dss_schimek::RawStringsLines;
@@ -101,7 +160,8 @@ std::vector<unsigned char> readFileAndDistribute(const std::string& path) {
         }
     }
     else {
-        auto receive_type = dss_schimek::mpi::get_big_type<unsigned char>(recvCount);
+        auto receive_type =
+            dss_schimek::mpi::get_big_type<unsigned char>(recvCount);
         MPI_Recv(localRawStrings.data(), 1, receive_type, 0, 42,
             env.communicator(), MPI_STATUSES_IGNORE);
     }

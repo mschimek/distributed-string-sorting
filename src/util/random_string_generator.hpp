@@ -54,7 +54,7 @@ class FileDistributer : public StringLcpContainer<StringSet> {
 public:
     FileDistributer(const std::string& path) {
         std::vector<Char> raw_string_data =
-            dss_schimek::readFileAndDistribute(path);
+            dss_schimek::readFileInParallel(path);
         this->update(std::move(raw_string_data));
     }
 
@@ -90,8 +90,9 @@ private:
         dss_schimek::mpi::environment env;
 
         const size_t textSize = text.size();
-        const size_t estimatedCharCount =
+        const size_t estimatedTotalCharCount =
             textSize * (textSize + 1) / 2 + textSize;
+        const size_t estimatedCharCount = estimatedTotalCharCount / env.size();
         const size_t globalSeed = 0;
         std::mt19937 randGen(globalSeed);
         std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
