@@ -70,6 +70,9 @@ void execute_sorter(size_t numOfStrings, const bool check,
     CheckerWithCompleteExchange<StringLcpPtr> checker;
 
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
+    if (env.rank() == 0)
+      std::cout << "string generation started " << std::endl;
+    env.barrier();
 
     // std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
     StringGenerator generatedContainer =

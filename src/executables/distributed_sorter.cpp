@@ -76,6 +76,9 @@ void execute_sorter(size_t numOfStrings, const bool check,
 
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
 
+    if (env.rank() == 0)
+      std::cout << "string generation started " << std::endl;
+    env.barrier();
     // std::cout << " string generation start " << std::endl;
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
