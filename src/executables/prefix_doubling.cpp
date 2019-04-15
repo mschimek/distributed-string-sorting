@@ -89,6 +89,10 @@ void execute_sorter(size_t numOfStrings, const bool check,
     const size_t numGeneratedChars = generatedContainer.char_size();
     const size_t numGeneratedStrings = generatedContainer.size();
 
+    measuringTool.add(numGeneratedChars - numGeneratedStrings,
+        "InputChars", false);
+    measuringTool.add(numGeneratedStrings, "InputStrings", false);
+
     measuringTool.start("sorting_overall");
     using AllToAllPolicy =
         dss_schimek::mpi::AllToAllStringImplPrefixDoubling<compressLcps,

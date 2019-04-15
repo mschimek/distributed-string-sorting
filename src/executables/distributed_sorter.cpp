@@ -26,11 +26,11 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
             args.numOfStrings, args.stringLength, args.dToNRatio);
     }
     else if constexpr (std::is_same_v<StringGenerator,
-                      dss_schimek::FileDistributer<StringSet>>) {
+                           dss_schimek::FileDistributer<StringSet>>) {
         return dss_schimek::FileDistributer<StringSet>(args.path);
     }
     else if constexpr (std::is_same_v<StringGenerator,
-                      dss_schimek::SuffixGenerator<StringSet>>) {
+                           dss_schimek::SuffixGenerator<StringSet>>) {
         return dss_schimek::SuffixGenerator<StringSet>(args.path);
     }
     else {
@@ -71,6 +71,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     measuringTool.setPrefix(prefix);
     measuringTool.setVerbose(false);
 
+
     CheckerWithCompleteExchange<StringLcpPtr> checker;
 
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
@@ -85,6 +86,10 @@ void execute_sorter(size_t numOfStrings, const bool check,
     StringLcpPtr rand_string_ptr = generatedContainer.make_string_lcp_ptr();
     const size_t numGeneratedChars = generatedContainer.char_size();
     const size_t numGeneratedStrings = generatedContainer.size();
+
+    measuringTool.add(numGeneratedChars - numGeneratedStrings,
+        "InputChars", false);
+    measuringTool.add(numGeneratedStrings, "InputStrings", false);
 
     // dss_schimek::mpi::execute_in_order([&]() {
     //    std::cout << "print: rank: " << env.rank() << std::endl;
