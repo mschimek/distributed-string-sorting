@@ -9,6 +9,8 @@
 #include "mpi/allgather.hpp"
 #include "mpi/big_type.hpp"
 #include "mpi/environment.hpp"
+#include "mpi/shift.hpp"
+#include "mpi/synchron.hpp"
 #include "mpi/type_mapper.hpp"
 
 namespace dss_schimek {
@@ -35,16 +37,80 @@ bool containsDuplicate(InputIterator begin, InputIterator end) {
     return newEnd != end;
 }
 
+std::vector<unsigned char> distribute_strings(const std::string& input_path,
+    size_t max_size = 0,
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+
+    MPI_File mpi_file;
+
+    MPI_File_open(env.communicator(),
+        (char*)input_path.c_str(), // ugly cast to use old C interface
+        MPI_MODE_RDONLY, MPI_INFO_NULL, &mpi_file);
+
+    MPI_Offset global_file_size = 0;
+    MPI_File_get_size(mpi_file, &global_file_size);
+    if (max_size > 0) {
+        global_file_size =
+            std::min(max_size, static_cast<size_t>(global_file_size));
+    }
+
+    size_t local_slice_size = global_file_size / env.size();
+    int64_t larger_slices = global_file_size % env.size();
+
+    size_t offset;
+    if (env.rank() < larger_slices) {
+        ++local_slice_size;
+        offset = local_slice_size * env.rank();
+    }
+    else {
+        offset = larger_slices * (local_slice_size + 1);
+        offset += (env.rank() - larger_slices) * local_slice_size;
+    }
+
+    MPI_File_seek(mpi_file, offset, MPI_SEEK_SET);
+
+    std::vector<unsigned char> result(local_slice_size);
+
+    MPI_File_read(mpi_file, result.data(), local_slice_size,
+        mpi::type_mapper<unsigned char>::type(), MPI_STATUS_IGNORE);
+
+    size_t first_end = 0;
+    while (first_end < result.size() && result[first_end] != 0) {
+        ++first_end;
+    }
+
+    std::vector<unsigned char> end_of_last_string =
+        dss_schimek::mpi::shift_left(result.data(), first_end + 1);
+    // We copy this string, even if it's not the end of the last one on the
+    // previous PE, but a new string. This way, we can delete it on the sending
+    // PE without checking if it was the end.
+    if (env.rank() + 1 < env.size()) {
+        std::copy_n(end_of_last_string.begin(), end_of_last_string.size(),
+            std::back_inserter(result));
+    }
+    else {
+        if (result.back() != 0) {
+            result.emplace_back(0);
+        } // Make last string end
+    }
+    if (env.rank() > 0) { // Delete the sent string
+        result.erase(result.begin(), result.begin() + first_end + 1);
+    }
+
+    return result;
+}
+
 std::vector<unsigned char> readFileInParallel(const std::string& path) {
     dss_schimek::mpi::environment env;
 
-    std::ifstream in(path);
+    std::ifstream in(path, std::ifstream::binary);
     if (!in.good()) {
         std::cout << "file not good on rank: " << env.rank() << std::endl;
         std::abort();
     }
 
     const uint64_t fileSize = getFileSize(path);
+    std::cout << "fileSize: " << fileSize << std::endl;
     uint64_t localSliceSize = fileSize / env.size();
     uint64_t largerSlices = fileSize % env.size();
     uint64_t localOffset = localSliceSize * env.rank();
@@ -56,34 +122,59 @@ std::vector<unsigned char> readFileInParallel(const std::string& path) {
         localOffset = largerSlices * (localSliceSize + 1);
         localOffset += (env.rank() - largerSlices) * localSliceSize;
     }
+    if (localOffset > 0u) in.seekg(localOffset - 1);
 
-    uint64_t reduceSliceBy = 0;
+    std::vector<unsigned char> slice;
+    slice.reserve(localSliceSize + 1);
+    uint64_t startOffset = 0u;
     if (localOffset > 0u) {
-        in.seekg(localOffset - 1);
-        std::string dummy;
-        std::getline(in, dummy);
-        reduceSliceBy = dummy.size();
+        for (size_t i = 0; i < localSliceSize + 1u; ++i) {
+            unsigned char curChar = in.get();
+            slice.push_back(curChar);
+        }
+        auto it = slice.begin();
+        for (; it < slice.end() && *it != '\n'; ++it)
+            ;
+        if (it == slice.end()) {
+            std::cout << "rank: " << env.rank()
+                      << " reached end of slice without a starting string"
+                      << std::endl;
+            std::abort();
+        }
+        startOffset = it - slice.begin() + 1u;
     }
     else {
-        in.seekg(localOffset);
+        for (size_t i = 0; i < localSliceSize; ++i) {
+            unsigned char curChar = in.get();
+            slice.push_back(curChar);
+        }
     }
-    uint64_t actualOffset = in.tellg();
-    auto allOffsets = dss_schimek::mpi::allgather(actualOffset);
-    if (containsDuplicate(allOffsets.begin(), allOffsets.end())) {
-      std::cout << "Error in string distribution, at least 2 PE in same line" << std::endl;
-      std::abort();
-    }   
 
+    std::cout << "rank : " << env.rank() << " startOffset: " << startOffset
+              << std::endl;
+    while (slice.back() != '\n' && localOffset + slice.size() < fileSize)
+        slice.push_back(in.get());
+
+    dss_schimek::mpi::execute_in_order([&]() {
+        std::cout << "rank: " << env.rank() << std::endl;
+        for (auto cur : slice)
+            std::cout << " " << cur;
+        std::cout << std::endl;
+    });
     std::vector<unsigned char> rawStrings;
-    rawStrings.reserve(localSliceSize);
-    std::string nextLine;
-    uint64_t readChars = 0u;
-    while (std::getline(in, nextLine) && readChars + reduceSliceBy < localSliceSize) {
-        for (unsigned char curChar : nextLine)
-            rawStrings.push_back(curChar);
-        rawStrings.push_back(0);
-        readChars += nextLine.size();
+    rawStrings.reserve(slice.size() - startOffset);
+    for (size_t i = startOffset; i < slice.size(); ++i) {
+        rawStrings.push_back(slice[i]);
+        if (rawStrings.back() == '\n') rawStrings.back() = 0u;
     }
+    if (rawStrings.back() != 0u) rawStrings.push_back(0u);
+    dss_schimek::mpi::execute_in_order([&]() {
+        std::cout << "rank: " << env.rank() << std::endl;
+        for (auto cur : rawStrings)
+            std::cout << " " << cur;
+        std::cout << std::endl;
+    });
+
     return rawStrings;
 }
 
