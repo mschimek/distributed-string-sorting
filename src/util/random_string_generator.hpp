@@ -54,7 +54,7 @@ class FileDistributer : public StringLcpContainer<StringSet> {
 public:
     FileDistributer(const std::string& path) {
         std::vector<Char> raw_string_data =
-            dss_schimek::readFileInParallel(path);
+            dss_schimek::distribute_strings(path);
         this->update(std::move(raw_string_data));
     }
 

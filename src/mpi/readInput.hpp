@@ -75,8 +75,12 @@ std::vector<unsigned char> distribute_strings(const std::string& input_path,
         mpi::type_mapper<unsigned char>::type(), MPI_STATUS_IGNORE);
 
     size_t first_end = 0;
-    while (first_end < result.size() && result[first_end] != 0) {
+    while (first_end < result.size() && result[first_end] != '\n') {
         ++first_end;
+    }
+    for (size_t i = 0; i < result.size(); ++i) {
+      if (result[i] == '\n')
+        result[i] = 0;
     }
 
     std::vector<unsigned char> end_of_last_string =
