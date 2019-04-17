@@ -637,8 +637,12 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
         // no bytes are read in this version only for evaluation layout
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
-        return dss_schimek::StringLcpContainer<StringSet>(
+        measuringTool.start("container_construction");
+        dss_schimek::StringLcpContainer<StringSet> returnContainer(
             std::move(receive_buffer_char), std::move(recvLcpValues));
+        measuringTool.stop("container_construction");
+        return returnContainer;
+
     }
 };
 
@@ -921,7 +925,7 @@ struct AllToAllStringImplPrefixDoubling {
         dss_schimek::StringLcpContainer<ReturnStringSet> returnContainer(
             std::move(receive_buffer_char), std::move(recvLcpValues),
             recvNumberStrings, recvOffsets);
-        measuringTool.start("container_construction");
+        measuringTool.stop("container_construction");
         return returnContainer;
     }
 };
