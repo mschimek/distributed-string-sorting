@@ -917,9 +917,12 @@ struct AllToAllStringImplPrefixDoubling {
         //// no bytes are read in this version only for evaluation layout
         measuringTool.start("all_to_all_strings_read");
         measuringTool.stop("all_to_all_strings_read");
-        return dss_schimek::StringLcpContainer<ReturnStringSet>(
+        measuringTool.start("container_construction");
+        dss_schimek::StringLcpContainer<ReturnStringSet> returnContainer(
             std::move(receive_buffer_char), std::move(recvLcpValues),
             recvNumberStrings, recvOffsets);
+        measuringTool.start("container_construction");
+        return returnContainer;
     }
 };
 

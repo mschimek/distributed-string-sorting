@@ -47,27 +47,24 @@ class InitPolicy<GenericCharLengthStringSet<CharType>> {
 
 public:
     std::vector<String> init_strings(std::vector<Char>& raw_strings) {
+
+        //size_t stringNum = 0;
+        //for (size_t i = 0; i < raw_strings.size(); ++i) {
+        //    while (raw_strings[i] != 0)
+        //        ++i;
+        //    ++stringNum;
+        //}
+
         std::vector<String> strings;
-
-        size_t stringNum = 0;
-        for (size_t i = 0; i < raw_strings.size(); ++i) {
-            while (raw_strings[i] != 0)
-                ++i;
-            ++stringNum;
-        }
-
-        // std::cout << " stringNum: " << stringNum
-        //          << std::endl;
-        strings.reserve(stringNum);
-        // std::cout << "reserve in init" << std::endl;
+        strings.reserve(raw_strings.size() / 100); // just a guess
+        size_t curString = 0;
         for (size_t i = 0; i < raw_strings.size(); ++i) {
             strings.emplace_back(raw_strings.data() + i, i);
             while (raw_strings[i] != 0)
                 ++i;
             strings.back().length = i - strings.back().length;
+            ++curString;
         }
-
-        // std::cout << "return in init" << std::endl;
         return strings;
     }
 };
@@ -187,10 +184,14 @@ public:
         size_t curPos = 0u;
         std::copy(startCurString, startCurString + stringLength, extendedRawStrings.begin() + curPos);
         curPos += stringLength;
+        strings_[0].length = stringLength - 1;
         //std::copy_n(startCurString, stringLength,
         //    std::back_inserter(extendedRawStrings));
+        std::vector<size_t> offset(ss.size(), 0);
         for (size_t i = 1; i < ss.size(); ++i) {
+            offset[i] = curPos;
             int64_t lcp_diff = lcps[i] - lcps[i - 1];
+            uint64_t totalStringLength = 0;
             if (lcp_diff < 0) {
                 curPrefix.erase(curPrefix.end() + lcp_diff, curPrefix.end());
                 lcp_diff = 0;
@@ -207,6 +208,7 @@ public:
             }
             std::copy(curPrefix.begin(), curPrefix.end(), extendedRawStrings.begin() + curPos);
             curPos += curPrefix.size();
+            totalStringLength += curPrefix.size();
             //std::copy_n(curPrefix.begin(), curPrefix.size(),
             //    std::back_inserter(extendedRawStrings));
 
@@ -215,11 +217,19 @@ public:
             size_t stringLength = ss.get_length(curString) + 1;
             std::copy(startCurString, startCurString + stringLength, extendedRawStrings.begin() + curPos);
             curPos += stringLength;
+            totalStringLength += stringLength;
+            strings_[i].length = totalStringLength - 1;
+           
             //std::copy_n(startCurString, stringLength,
             //    std::back_inserter(extendedRawStrings));
             // curPos += stringLength;
         }
-        update(std::move(extendedRawStrings));
+        *raw_strings_ = std::move(extendedRawStrings);
+        for (size_t i = 0; i < ss.size(); ++i) {
+          strings_[i].string = raw_strings_->data() + offset[i];
+        }
+
+        //update(std::move(extendedRawStrings));
     }
 
     StringSet make_string_set() {

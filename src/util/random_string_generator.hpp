@@ -129,6 +129,40 @@ public:
     static std::string getName() { return "SuffixGenerator"; }
 };
 
+//template <typename StringSet>
+//class EmptyRanks : public StringLcpContainer<StringSet> {
+//    using Char = typename StringSet::Char;
+//    using String = typename StringSet::String;
+//
+//public:
+//    std::vector<unsigned char> getRawStrings(size_t numStrings,
+//        size_t desiredStringLength,
+//        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+//        const unsigned char charA = 65;
+//        const unsigned char charB = 66;
+//
+//        rawStrings.reserve(numStrings * (stringLength + 1) / env.size());
+//        unsigned char charToUse = charA;
+//        if (env.rank() >= env.size() / 2) charToUse = charB;
+//
+//        for (size_t i = 0; i < numStrings / env.size(); ++i) {
+//            for (size_t j = 0; j < stringLength; ++j)
+//                rawStrings.push_back(charToUse);
+//            rawStrings.push_back(0);
+//        }
+//        rawStrings.shrink_to_fit();
+//        return rawStrings;
+//    }
+//
+//public:
+//    EmptyRanks(const size_t size, const size_t stringLength = 40, ) {
+//        std::vector<Char> rawStrings = getRawStrings(size, stringLength);
+//        this->update(std::move(rawStrings));
+//    }
+//
+//    static std::string getName() { return "EmptyRanks"; }
+//};
+
 template <typename StringSet>
 class DNRatioGenerator : public StringLcpContainer<StringSet> {
     using Char = typename StringSet::Char;
