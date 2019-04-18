@@ -124,7 +124,7 @@ static constexpr bool debug = false;
 
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy>
-class DistributedMergeSort : private SampleIndexedSplittersNumStringsPolicy<
+class DistributedMergeSort : private SampleIndexedSplittersNumCharsPolicy<
                                  typename StringPtr::StringSet>,
                              private AllToAllStringPolicy {
 public:
@@ -200,7 +200,7 @@ public:
         // std::vector<std::size_t> receiving_interval_sizes =
         //    dss_schimek::mpi::alltoall(interval_sizes);
         // measuringTool.stop("compute_interval_sizes");
-        auto sampleIndices = SampleIndexedSplittersNumStringsPolicy<
+        auto sampleIndices = SampleIndexedSplittersNumCharsPolicy<
             typename StringPtr::StringSet>::sample_splitters(local_string_ptr
                                                                  .active(),
             globalLcpAvg);
