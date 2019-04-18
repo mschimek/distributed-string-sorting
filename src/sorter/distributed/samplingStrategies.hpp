@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "mpi/environment.hpp"
+#include "mpi/allgather.hpp"
 
 namespace dss_schimek {
 
@@ -39,6 +40,58 @@ protected:
             raw_splitters.push_back(0);
         }
         return raw_splitters;
+    }
+};
+
+uint64_t getLocalOffset(uint64_t localStringSize) {
+  dss_schimek::mpi::environment env;
+  auto allOffsets = dss_schimek::mpi::allgather(localStringSize);
+  uint64_t localOffset = 0;
+  for (size_t i = 0; i < env.rank(); ++i)
+    localOffset += allOffsets[i];
+  return localOffset;
+}
+
+template <typename StringSet>
+class SampleIndexedSplittersNumStringsPolicy {
+public:
+    static std::string getName() { return "NumIndexedStrings"; }
+    struct SampleIndices {
+      std::vector<unsigned char> sample;
+      std::vector<uint64_t> indices;
+    };
+
+    SampleIndices sample_splitters(const StringSet& ss,
+        size_t maxLength,
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+	maxLength = 100000;
+
+        using Char = typename StringSet::Char;
+        using String = typename StringSet::String;
+        SampleIndices sampleIndices;
+        
+        uint64_t localOffset = getLocalOffset(ss.size());
+
+        const size_t local_num_strings = ss.size();
+        const size_t nr_splitters = std::log2(local_num_strings) * 10;//std::min<size_t>(env.size() - 1, local_num_strings);
+        const double splitter_dist = static_cast<double>(local_num_strings) / static_cast<double>(nr_splitters + 1);
+        std::vector<Char>& raw_splitters = sampleIndices.sample;
+        raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        std::vector<uint64_t>& splitterIndices = sampleIndices.indices;
+        splitterIndices.resize(nr_splitters, localOffset);
+
+        for (size_t i = 1; i <= nr_splitters; ++i) {
+            const uint64_t splitterIndex = static_cast<uint64_t>(i * splitter_dist); 
+            splitterIndices[i - 1] += splitterIndex;
+            const String splitter = ss[ss.begin() + splitterIndex];
+            const size_t splitterLength = ss.get_length(splitter);
+            const size_t usedSplitterLength =
+                splitterLength > (maxLength) ? (maxLength) : splitterLength;
+            std::copy_n(ss.get_chars(splitter, 0), usedSplitterLength,
+                std::back_inserter(raw_splitters));
+            raw_splitters.push_back(0);
+        }
+        return sampleIndices;
     }
 };
 

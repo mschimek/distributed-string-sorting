@@ -529,6 +529,189 @@ protected:
 
 typedef GenericCharStringSet<char> CharStringSet;
 typedef GenericCharStringSet<unsigned char> UCharStringSet;
+/******************************************************************************/
+
+template <typename String, typename Length = size_t>
+struct StringLengthIndex
+{
+  StringLengthIndex() : string(nullptr), length(0), index(0) {}
+  StringLengthIndex(const String string, const Length length, const uint64_t index) : string(string), length(length), index(index) {}
+  String string;
+  Length length;
+  uint64_t index;
+};
+
+template <typename String, typename Length>
+std::ostream& operator<<(std::ostream& out, const StringLengthIndex<String, Length>& str_length) {
+  return out << "[" << str_length.string << "," << str_length.length <<  "," << str_length.index << "]";
+}
+/*!
+ * Traits class implementing StringSet concept for char* and unsigned char*
+ * strings with additional length attribute.
+ */
+template <typename CharType>
+class GenericCharLengthIndexStringSetTraits
+{
+public:
+    //! exported alias for character type
+    using Char = CharType;
+
+    //! String reference: pointer to first character
+    using String = StringLengthIndex<Char*>;
+
+    //! Iterator over string references: pointer over pointers
+    typedef String* Iterator;
+
+    //! iterator of characters in a string
+    typedef const Char* CharIterator;
+
+    //! exported alias for assumed string container
+    typedef std::pair<Iterator, size_t> Container;
+};
+
+/*!
+ * Class implementing StringSet concept for char* and unsigned char* strings with additional length attribute.
+ */
+template <typename CharType>
+class GenericCharLengthIndexStringSet
+    : public GenericCharLengthIndexStringSetTraits<CharType>,
+      public StringSetBase<GenericCharLengthIndexStringSet<CharType>,
+                           GenericCharLengthIndexStringSetTraits<CharType> >
+{
+public:
+    typedef GenericCharLengthIndexStringSetTraits<CharType> Traits;
+
+    typedef typename Traits::Char Char;
+    typedef typename Traits::String String;
+    typedef typename Traits::Iterator Iterator;
+    typedef typename Traits::CharIterator CharIterator;
+    typedef typename Traits::Container Container;
+
+    //! Construct from begin and end string pointers
+    GenericCharLengthIndexStringSet(Iterator begin, Iterator end)
+        : begin_(begin), end_(end)
+    { }
+
+    //! Construct from a string container
+    explicit GenericCharLengthIndexStringSet(const Container& c)
+        : begin_(c.first), end_(c.first + c.second)
+    { }
+
+    //! Return size of string array
+    size_t size() const { return end_ - begin_; }
+    //! Iterator representing first String position
+    Iterator begin() const { return begin_; }
+    //! Iterator representing beyond last String position
+    Iterator end() const { return end_; }
+
+    //! Iterator-based array access (readable and writable) to String objects.
+    String& operator [] (Iterator i) const
+    { return *i; }
+
+    //! Return CharIterator for referenced string, which belong to this set.
+    CharIterator get_chars(const String& s, size_t depth) const
+    { return s.string + depth; }
+
+    //! Returns true if CharIterator is at end of the given String
+    bool is_end(const String&, const CharIterator& i) const
+    { return (*i == 0); }
+
+    //! Return complete string (for debugging purposes)
+    std::string get_string(const String& s, size_t depth = 0) const
+    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
+
+    //! Subset this string set using iterator range.
+    GenericCharLengthIndexStringSet sub(Iterator begin, Iterator end) const
+    { return GenericCharLengthIndexStringSet(begin, end); }
+
+    //! Allocate a new temporary string container with n empty Strings
+    static Container allocate(size_t n)
+    { return std::make_pair(new String[n], n); }
+
+    //! Deallocate a temporary string container
+    static void deallocate(Container& c)
+    { delete[] c.first; c.first = NULL; }
+
+    //! \name CharIterator Comparisons
+    //! \{
+
+    //! check equality of two strings a and b at char iterators ai and bi.
+    bool is_equal(const String& a, const CharIterator& ai,
+                  const String& b, const CharIterator& bi) const
+    {
+        if (*ai == *bi && *ai == 0) {
+          return a.index == b.index; 
+        }
+        return (*ai == *bi);
+    }
+
+    //! check if string a is less or equal to string b at iterators ai and bi.
+    bool is_less(const String& a, const CharIterator& ai,
+                 const String& b, const CharIterator& bi) const
+    {
+        if (*ai == 0 && *bi == 0)
+          return a.index < b.index;
+        return (*ai < *bi);
+    }
+
+    //! check if string a is less or equal to string b at iterators ai and bi.
+    bool is_leq(const String& a, const CharIterator& ai,
+                const String& b, const CharIterator& bi) const
+    {
+        if (*ai == 0 && *bi == 0) 
+          return a.index <= b.index;
+        return (*ai <= *bi);
+    }
+
+    //! \}
+
+    //! \name Character Extractors
+    //! \{
+
+    //! Return up to 1 characters of string s at iterator i packed into a uint8
+    //! (only works correctly for 8-bit characters)
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
+    {
+        return uint8_t(*i);
+    }
+
+    //! \}
+
+    void print() const
+    {
+        size_t i = 0;
+        for (Iterator pi = begin(); pi != end(); ++pi)
+        {
+            LOG1 << "[" << i++ << "] = " << (*pi)
+                 << " = " << get_string(*pi, 0);
+        }
+    }
+
+    static String empty_string()
+    {
+      static Char zeroChar = 0;
+      static String zero(&zeroChar, 0); 
+      return zero;
+    }
+
+    size_t get_length(const String& str) const {
+      return str.length;
+    }
+
+    uint64_t get_index(const String& str) const {
+      return str.index;
+    }
+
+    static std::string getName() {
+      return "GenericCharLengthIndexStringSet"; 
+    }
+
+protected:
+    //! array of string pointers
+    Iterator begin_, end_;
+};
+typedef GenericCharLengthIndexStringSet<char> CharLengthIndexStringSet;
+typedef GenericCharLengthIndexStringSet<unsigned char> UCharLengthIndexStringSet;
 
 /******************************************************************************/
 

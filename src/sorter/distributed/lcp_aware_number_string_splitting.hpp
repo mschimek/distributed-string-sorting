@@ -27,8 +27,8 @@ namespace dss_schimek {
 
 static constexpr bool debug = false;
 
-//template <typename AllToAllStringPolicy, size_t K, typename StringSet>
-//static inline StringLcpContainer<StringSet> merge(
+// template <typename AllToAllStringPolicy, size_t K, typename StringSet>
+// static inline StringLcpContainer<StringSet> merge(
 //    dss_schimek::StringLcpContainer<StringSet>&& recv_string_cont,
 //    const std::vector<std::pair<size_t, size_t>>& ranges,
 //    const size_t num_recv_elems) {
@@ -77,8 +77,8 @@ static constexpr bool debug = false;
 //    return sorted_string_cont;
 //}
 
-//template <typename AllToAllStringPolicy, typename StringLcpContainer>
-//static inline StringLcpContainer choose_merge(
+// template <typename AllToAllStringPolicy, typename StringLcpContainer>
+// static inline StringLcpContainer choose_merge(
 //    StringLcpContainer&& recv_string_cont,
 //    std::vector<std::pair<size_t, size_t>> ranges, size_t num_recv_elems,
 //    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
@@ -124,7 +124,8 @@ static constexpr bool debug = false;
 
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy>
-class DistributedMergeSort : private SampleSplittersPolicy,
+class DistributedMergeSort : private SampleIndexedSplittersNumStringsPolicy<
+                                 typename StringPtr::StringSet>,
                              private AllToAllStringPolicy {
 public:
     dss_schimek::StringLcpContainer<typename StringPtr::StringSet> sort(
@@ -138,7 +139,9 @@ public:
         using namespace dss_schimek::measurement;
 
         using StringSet = typename StringPtr::StringSet;
+        using IndexStringSet = UCharLengthIndexStringSet;
         using Char = typename StringSet::Char;
+
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const StringSet& ss = local_string_ptr.active();
@@ -170,31 +173,57 @@ public:
 
         measuringTool.setPhase("splitter");
         measuringTool.start("sample_splitters");
-        std::vector<Char> raw_splitters =
-            SampleSplittersPolicy::sample_splitters(ss, globalLcpAvg);
+        // std::vector<Char> raw_splitters =
+        //    SampleSplittersPolicy::sample_splitters(ss, globalLcpAvg);
+        // measuringTool.stop("sample_splitters");
+
+        // measuringTool.add(
+        //    raw_splitters.size(), "allgather_splitters_bytes_sent");
+        // measuringTool.start("allgather_splitters");
+        // std::vector<Char> splitters =
+        //    dss_schimek::mpi::allgather_strings(raw_splitters, env);
+        // measuringTool.stop("allgather_splitters");
+
+        // measuringTool.start("choose_splitters");
+        // dss_schimek::StringLcpContainer chosen_splitters_cont =
+        //    choose_splitters(ss, splitters);
+        // measuringTool.stop("choose_splitters");
+
+        //    const StringSet chosen_splitters_set(
+        //        chosen_splitters_cont.strings(),
+        //        chosen_splitters_cont.strings() +
+        //        chosen_splitters_cont.size());
+
+        // measuringTool.start("compute_interval_sizes");
+        // std::vector<std::size_t> interval_sizes =
+        //    compute_interval_binary(ss, chosen_splitters_set);
+        // std::vector<std::size_t> receiving_interval_sizes =
+        //    dss_schimek::mpi::alltoall(interval_sizes);
+        // measuringTool.stop("compute_interval_sizes");
+        auto sampleIndices = SampleIndexedSplittersNumStringsPolicy<
+            typename StringPtr::StringSet>::sample_splitters(local_string_ptr
+                                                                 .active(),
+            globalLcpAvg);
         measuringTool.stop("sample_splitters");
+         measuringTool.add(
+            sampleIndices.sample.size(), "allgather_splitters_bytes_sent");
+         measuringTool.start("allgather_splitters");
+        auto recvSample = mpi::allgatherv(sampleIndices.sample);
+        auto recvIndices = mpi::allgatherv(sampleIndices.indices);
+         measuringTool.stop("allgather_splitters");
 
-        measuringTool.add(
-            raw_splitters.size(), "allgather_splitters_bytes_sent");
-        measuringTool.start("allgather_splitters");
-        std::vector<Char> splitters =
-            dss_schimek::mpi::allgather_strings(raw_splitters, env);
-        measuringTool.stop("allgather_splitters");
-
-        measuringTool.start("choose_splitters");
-        dss_schimek::StringLcpContainer chosen_splitters_cont =
-            choose_splitters(ss, splitters);
-        measuringTool.stop("choose_splitters");
-
-        const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
-            chosen_splitters_cont.strings() + chosen_splitters_cont.size());
-
+         measuringTool.start("choose_splitters");
+        IndexStringLcpContainer<IndexStringSet> indexContainer(
+            std::move(recvSample), recvIndices);
+        indexContainer = choose_splitters(indexContainer);
+         measuringTool.stop("choose_splitters");
         measuringTool.start("compute_interval_sizes");
-        std::vector<std::size_t> interval_sizes =
-            compute_interval_binary(ss, chosen_splitters_set);
-        std::vector<std::size_t> receiving_interval_sizes =
+        auto interval_sizes = compute_interval_binary_index(
+            ss, indexContainer.make_string_set(),
+            getLocalOffset(ss.size()));
+         std::vector<std::size_t> receiving_interval_sizes =
             dss_schimek::mpi::alltoall(interval_sizes);
-        measuringTool.stop("compute_interval_sizes");
+         measuringTool.stop("compute_interval_sizes");
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
@@ -206,9 +235,7 @@ public:
         measuringTool.add(
             recv_string_cont.char_size() - recv_string_cont.size(),
             "num_received_chars", false);
-        measuringTool.add(
-            recv_string_cont.size(),
-            "num_recv_strings", false);
+        measuringTool.add(recv_string_cont.size(), "num_recv_strings", false);
         measuringTool.setPhase("merging");
 
         size_t num_recv_elems =

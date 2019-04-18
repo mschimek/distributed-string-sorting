@@ -6,8 +6,8 @@
 //#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
-#include "mpi/environment.hpp"
 #include "mpi/allgather.hpp"
+#include "mpi/environment.hpp"
 #include "mpi/synchron.hpp"
 
 #include <tlx/sort/strings/radix_sort.hpp>
@@ -36,6 +36,101 @@ size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
     return totalL / totalNumString;
 }
 
+template <typename StringLcpPtr>
+std::vector<std::pair<uint64_t, uint64_t>> getDuplicateRanges(
+    StringLcpPtr strptr) {
+    using StartEnd = std::pair<uint64_t, uint64_t>;
+    using String = typename StringLcpPtr::StringSet::String;
+    std::vector<StartEnd> intervals;
+
+    if (strptr.size() == 0) return intervals;
+
+    mpi::environment env;
+
+    auto ss = strptr.active();
+    intervals.emplace_back(0, 0);
+    uint64_t prevLength = ss.get_length(ss[ss.begin()]);
+    for (size_t i = 1; i < strptr.size(); ++i) {
+        const uint64_t curLcp = strptr.get_lcp(i);
+        auto curString = ss[ss.begin() + i];
+        const uint64_t curLength = ss.get_length(curString);
+        // std::cout << "rank: " << env.rank() << " " << ss.get_chars(curString,
+        // 0) <<  " " << strptr.get_lcp(i) << " length: " << curLength <<
+        // std::endl;
+        if (curLength != curLcp || prevLength != curLcp) {
+            if (intervals.back().first + 1 != i) {
+                intervals.back().second = i;
+                intervals.emplace_back(i, i);
+            }
+            else {
+                intervals.back().first = i;
+            }
+        }
+        // std::cout << "rank: " << env.rank() << " " << intervals.back().first
+        // << " " << intervals.back().first << std::endl; std::cout << "rank: "
+        // << env.rank() << " " << ss.get_chars(curString, 0) <<  " " <<
+        // strptr.get_lcp(i) << " length: " << curLength << std::endl;
+        prevLength = curLength;
+    }
+    intervals.back().second = strptr.size();
+    return intervals;
+}
+
+template <typename StringSet>
+void sortRanges(dss_schimek::IndexStringLcpContainer<StringSet>& indexContainer,
+    const std::vector<std::pair<uint64_t, uint64_t>>& ranges) {
+    using IndexString = typename StringSet::String;
+    for (auto [begin, end] : ranges) {
+        std::sort(indexContainer.strings() + begin,
+            indexContainer.strings() + end,
+            [&](IndexString a, IndexString b) { return a.index < b.index; });
+        ;
+    }
+}
+template <typename StringSet>
+IndexStringLcpContainer<StringSet> choose_splitters(
+    IndexStringLcpContainer<StringSet>& indexContainer,
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+    using Char = typename StringSet::Char;
+    using String = typename StringSet::String;
+
+    tlx::sort_strings_detail::StringLcpPtr all_splitters_strptr =
+        indexContainer.make_string_lcp_ptr();
+    const StringSet& all_splitters_set = all_splitters_strptr.active();
+
+    tlx::sort_strings_detail::radixsort_CI3(all_splitters_strptr, 0, 0);
+    auto ranges = getDuplicateRanges(all_splitters_strptr);
+    sortRanges(indexContainer, ranges);
+
+    const size_t nr_splitters =
+        std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
+    const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
+
+    size_t splitterSize = 0u;
+    for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const auto begin = all_splitters_set.begin();
+        const String splitter = all_splitters_set[begin + i * splitter_dist];
+        splitterSize += all_splitters_set.get_length(splitter) + 1;
+    }
+
+    std::vector<Char> raw_chosen_splitters(splitterSize);
+    std::vector<uint64_t> indices(splitterSize);
+    size_t curPos = 0u;
+    auto ss = all_splitters_set;
+
+    for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const auto begin = all_splitters_set.begin();
+        const String splitter = all_splitters_set[begin + i * splitter_dist];
+        indices[i - 1] = splitter.index;
+        auto chars = ss.get_chars(splitter, 0);
+        const size_t splitterLength = ss.get_length(splitter) + 1;
+        std::copy(chars, chars + splitterLength,
+            raw_chosen_splitters.begin() + curPos);
+        curPos += splitterLength;
+    }
+    return IndexStringLcpContainer<StringSet>(
+        std::move(raw_chosen_splitters), indices);
+}
 template <typename StringSet>
 StringLcpContainer<StringSet> choose_splitters(const StringSet& ss,
     std::vector<typename StringSet::Char>& all_splitters,
@@ -54,12 +149,11 @@ StringLcpContainer<StringSet> choose_splitters(const StringSet& ss,
         std::min<std::size_t>(env.size() - 1, all_splitters_set.size());
     const size_t splitter_dist = all_splitters_set.size() / (nr_splitters + 1);
 
-
     size_t splitterSize = 0u;
     for (std::size_t i = 1; i <= nr_splitters; ++i) {
         const auto begin = all_splitters_set.begin();
         const String splitter = all_splitters_set[begin + i * splitter_dist];
-        splitterSize  += all_splitters_set.get_length(splitter) + 1;
+        splitterSize += all_splitters_set.get_length(splitter) + 1;
     }
 
     std::vector<Char> raw_chosen_splitters(splitterSize);
@@ -137,18 +231,78 @@ inline static int binarySearch(
     return left - ss.begin();
 }
 
+int indexStringCompare(const unsigned char* lhs, const uint64_t indexLhs,
+    const unsigned char* rhs, const uint64_t indexRhs) {
+    while (*lhs == *rhs && *lhs != 0) {
+        ++lhs;
+        ++rhs;
+    }
+    if (*lhs != *rhs) {
+        return static_cast<int>(*lhs - *rhs);
+    }
+    return static_cast<int64_t>(indexLhs - indexRhs);
+}
+
 template <typename StringSet>
+inline static int binarySearchIndexed(const StringSet& ss,
+    const UCharLengthIndexStringSet& splitters, const uint64_t splitterIndex,
+    const uint64_t localOffset) {
+    using String = typename StringSet::String;
+
+    auto left = ss.begin();
+    auto right = ss.end();
+
+    while (left != right) {
+        size_t dist = (right - left) / 2;
+        String curStr = ss[left + dist];
+        uint64_t curIndex = left - ss.begin() + dist + localOffset;
+        auto splitter = splitters[splitters.begin() + splitterIndex];
+        int res = dss_schimek::indexStringCompare(ss.get_chars(curStr, 0),
+            curIndex, splitters.get_chars(splitter, 0), splitter.index);
+        if (res < 0) {
+            left = left + dist + 1;
+        }
+        else if (res == 0) {
+            return left + dist - ss.begin();
+        }
+        else {
+            right = left + dist;
+        }
+    }
+    return left - ss.begin();
+}
+
+template <typename StringSet> // TODO
 inline std::vector<size_t> compute_interval_binary(const StringSet& ss,
     const StringSet& splitters,
     dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
     using CharIt = typename StringSet::CharIterator;
     std::vector<size_t> interval_sizes;
-    interval_sizes.reserve(splitters.size());
+    interval_sizes.reserve(splitters.size() + 1);
 
     for (std::size_t i = 0; i < splitters.size(); ++i) {
         CharIt splitter =
             splitters.get_chars(splitters[splitters.begin() + i], 0);
         size_t pos = binarySearch(ss, splitter);
+        interval_sizes.emplace_back(pos);
+    }
+    interval_sizes.emplace_back(ss.size());
+    for (std::size_t i = interval_sizes.size() - 1; i > 0; --i) {
+        interval_sizes[i] -= interval_sizes[i - 1];
+    }
+    return interval_sizes;
+}
+
+template <typename StringSet> // TODO
+inline std::vector<size_t> compute_interval_binary_index(const StringSet& ss,
+    const UCharLengthIndexStringSet& splitters, const uint64_t localOffset,
+    dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+    using CharIt = typename StringSet::CharIterator;
+    std::vector<size_t> interval_sizes;
+    interval_sizes.reserve(splitters.size() + 1);
+
+    for (std::size_t i = 0; i < splitters.size(); ++i) {
+        size_t pos = binarySearchIndexed(ss, splitters, i, localOffset);
         interval_sizes.emplace_back(pos);
     }
     interval_sizes.emplace_back(ss.size());
