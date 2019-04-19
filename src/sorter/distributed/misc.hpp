@@ -236,7 +236,7 @@ int indexStringCompare(const unsigned char* lhs, const uint64_t indexLhs,
     while (*lhs == *rhs && *lhs != 0) {
         ++lhs;
         ++rhs;
-    }
+    } // TODO
     if (*lhs != *rhs) {
         return static_cast<int>(*lhs - *rhs);
     }
