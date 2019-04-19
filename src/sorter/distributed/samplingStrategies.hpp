@@ -13,11 +13,11 @@ namespace dss_schimek {
 template <typename StringSet>
 class SampleSplittersNumStringsPolicy {
 public:
+    static constexpr bool isIndexed = false;
     static std::string getName() { return "NumStrings"; }
 
-protected:
-    std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
-        size_t maxLength,
+    static std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+        size_t maxLength, uint64_t samplingFactor,
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
         maxLength = 100000;
 
@@ -26,7 +26,7 @@ protected:
 
         const size_t local_num_strings = ss.size();
         const size_t nr_splitters =
-            std::min<size_t>(env.size() - 1, local_num_strings);
+            std::min<size_t>(std::log2(local_num_strings) * samplingFactor, local_num_strings);
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char> raw_splitters;
@@ -63,11 +63,12 @@ struct SampleIndices {
 template <typename StringSet>
 class SampleIndexedSplittersNumStringsPolicy {
 public:
-    static std::string getName() { return "NumIndexedStrings"; }
+    static constexpr bool isIndexed = true;
+    static std::string getName() { return "IndexedNumStrings"; }
 
-    SampleIndices sample_splitters(const StringSet& ss, size_t maxLength,
+    static SampleIndices sample_splitters(const StringSet& ss, size_t maxLength,
+        uint64_t samplingFactor,
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
-        maxLength = 100000;
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
@@ -76,9 +77,8 @@ public:
         uint64_t localOffset = getLocalOffset(ss.size());
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters =
-            std::log2(local_num_strings) *
-            10; // std::min<size_t>(env.size() - 1, local_num_strings);
+        const size_t nr_splitters = std::min<uint64_t>(
+            std::log2(local_num_strings) * samplingFactor, local_num_strings);
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char>& raw_splitters = sampleIndices.sample;
@@ -105,20 +105,18 @@ public:
 template <typename StringSet>
 class SampleIndexedSplittersNumCharsPolicy {
 public:
-    static std::string getName() { return "NumChars"; }
+    static constexpr bool isIndexed = false;
+    static std::string getName() { return "IndexedNumChars"; }
 
-protected:
-    SampleIndices sample_splitters(const StringSet& ss,
-        size_t maxLength,
+    static SampleIndices sample_splitters(const StringSet& ss, const size_t maxLength,
+        const uint64_t samplingFactor,
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
 
         SampleIndices sampleIndices;
-
         uint64_t localOffset = getLocalOffset(ss.size());
-        maxLength = 100000;
         const size_t num_chars =
             std::accumulate(ss.begin(), ss.end(), static_cast<size_t>(0u),
                 [&ss](const size_t& sum, const String& str) {
@@ -126,9 +124,8 @@ protected:
                 });
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters =
-            std::log2(local_num_strings) *
-            10; // std::min<size_t>(env.size() - 1, local_num_strings);
+        const size_t nr_splitters = std::min<uint64_t>(
+            std::log2(local_num_strings) * samplingFactor, local_num_strings);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
 
         std::vector<Char>& raw_splitters = sampleIndices.sample;
@@ -137,7 +134,8 @@ protected:
         splitterIndices.resize(nr_splitters, localOffset);
 
         size_t string_index = 0;
-        for (size_t i = 1; i <= nr_splitters; ++i) {
+        size_t i = 1;
+        for (; i <= nr_splitters && string_index < local_num_strings; ++i) {
             size_t num_chars_seen = 0;
             while (num_chars_seen < splitter_dist &&
                    string_index < local_num_strings) {
@@ -154,6 +152,7 @@ protected:
                 std::back_inserter(raw_splitters));
             raw_splitters.push_back(0);
         }
+        if (i < nr_splitters) splitterIndices.resize(i);
         return sampleIndices;
     }
 };
@@ -161,17 +160,16 @@ protected:
 template <typename StringSet>
 class SampleSplittersNumCharsPolicy {
 public:
+    static constexpr bool isIndexed = false;
     static std::string getName() { return "NumChars"; }
 
-protected:
-    std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
-        size_t maxLength,
+    static std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
+        size_t maxLength, uint64_t samplingFactor,
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
 
-        // maxLength = 100000;
         const size_t num_chars =
             std::accumulate(ss.begin(), ss.end(), static_cast<size_t>(0u),
                 [&ss](const size_t& sum, const String& str) {
@@ -180,13 +178,13 @@ protected:
 
         const size_t local_num_strings = ss.size();
         const size_t nr_splitters =
-            std::min<size_t>(env.size() - 1, local_num_strings);
+            std::min<size_t>(std::log2(local_num_strings) * samplingFactor, local_num_strings);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
         raw_splitters.reserve(nr_splitters * (maxLength + 1));
 
         size_t string_index = 0;
-        for (size_t i = 1; i <= nr_splitters; ++i) {
+        for (size_t i = 1; i <= nr_splitters && string_index < local_num_strings; ++i) {
             size_t num_chars_seen = 0;
             while (num_chars_seen < splitter_dist &&
                    string_index < local_num_strings) {
