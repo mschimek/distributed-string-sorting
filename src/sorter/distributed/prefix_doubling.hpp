@@ -198,8 +198,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
 
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy, typename GolombEncoding>
-class DistributedPrefixDoublingSort : private SampleSplittersPolicy,
-                                      private AllToAllStringPolicy {
+class DistributedPrefixDoublingSort : private AllToAllStringPolicy {
 public:
     std::vector<StringIndexPEIndex> sort(
         dss_schimek::StringLcpContainer<typename StringPtr::StringSet>&&
@@ -247,35 +246,14 @@ public:
         // measuringTool.enableMeasurement();
         measuringTool.stop("bloomfilter_overall");
 
-        measuringTool.setPhase("splitter");
-        measuringTool.start("sample_splitters");
-        std::vector<Char> raw_splitters =
-            SampleSplittersPolicy::sample_splitters(ss, globalLcpAvg);
-        measuringTool.stop("sample_splitters");
-
-        measuringTool.add(
-            raw_splitters.size(), "allgather_splitters_bytes_sent");
-        measuringTool.start("allgather_splitters");
-        std::vector<Char> splitters =
-            dss_schimek::mpi::allgather_strings(raw_splitters, env);
-        measuringTool.stop("allgather_splitters");
-
-        measuringTool.start("choose_splitters");
-        dss_schimek::StringLcpContainer chosen_splitters_cont =
-            choose_splitters(ss, splitters);
-        const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
-            chosen_splitters_cont.strings() + chosen_splitters_cont.size());
-        measuringTool.stop("choose_splitters");
-
-        measuringTool.start("compute_interval_sizes");
-        std::vector<std::size_t> interval_sizes =
-            compute_interval_binary(ss, chosen_splitters_set);
-        std::vector<std::size_t> receiving_interval_sizes =
-            dss_schimek::mpi::alltoall(interval_sizes);
-        measuringTool.stop("compute_interval_sizes");
+        auto interval_sizes =
+            computePartition<SampleSplittersPolicy, StringPtr>(
+                local_string_ptr, globalLcpAvg, 50);
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
+        std::vector<std::size_t> receiving_interval_sizes =
+            dss_schimek::mpi::alltoall(interval_sizes);
         dss_schimek::StringLcpContainer<UCharIndexPEIndexStringSet>
             recv_string_cont = AllToAllStringPolicy::alltoallv(
                 std::move(container), interval_sizes, results);

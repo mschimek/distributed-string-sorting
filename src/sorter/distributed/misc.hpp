@@ -1,7 +1,7 @@
 #pragma once
 
 #include "strings/stringcontainer.hpp"
-
+#include "sorter/distributed/samplingStrategies.hpp"
 #include "merge/stringtools.hpp"
 //#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
@@ -367,5 +367,76 @@ compute_ranges_and_set_lcp_at_start_of_range(
         offset += recv_interval_sizes[i];
     }
     return ranges;
+}
+
+template <typename Sampler, typename StringPtr>
+typename std::enable_if<!Sampler::isIndexed, std::vector<uint64_t>>::type
+computePartition(
+    StringPtr stringptr, uint64_t globalLcpAvg, uint64_t samplingFactor) {
+    using StringSet = typename StringPtr::StringSet;
+    using namespace dss_schimek;
+    using measurement::MeasuringTool;
+
+    auto ss = stringptr.active();
+    MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+    measuringTool.setPhase("splitter");
+    measuringTool.start("sample_splitters");
+    std::vector<unsigned char> raw_splitters =
+        Sampler::sample_splitters(ss, globalLcpAvg, samplingFactor);
+    measuringTool.stop("sample_splitters");
+
+    measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
+    measuringTool.start("allgather_splitters");
+    std::vector<unsigned char> splitters =
+        dss_schimek::mpi::allgather_strings(raw_splitters);
+    measuringTool.stop("allgather_splitters");
+
+    measuringTool.start("choose_splitters");
+    dss_schimek::StringLcpContainer chosen_splitters_cont =
+        choose_splitters(ss, splitters);
+    measuringTool.stop("choose_splitters");
+
+    const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
+        chosen_splitters_cont.strings() + chosen_splitters_cont.size());
+
+    measuringTool.start("compute_interval_sizes");
+    std::vector<std::size_t> interval_sizes =
+        compute_interval_binary(ss, chosen_splitters_set);
+    measuringTool.stop("compute_interval_sizes");
+    return interval_sizes;
+}
+
+template <typename Sampler, typename StringPtr>
+typename std::enable_if<Sampler::isIndexed, std::vector<uint64_t>>::type
+computePartition(
+    StringPtr stringptr, uint64_t globalLcpAvg, uint64_t samplingFactor) {
+    using namespace dss_schimek;
+    using namespace measurement;
+    using IndexStringSet = UCharLengthIndexStringSet;
+    MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+
+    auto ss = stringptr.active();
+    measuringTool.setPhase("splitter");
+    measuringTool.start("sample_splitters");
+    auto sampleIndices = Sampler::sample_splitters(
+        stringptr.active(), 2 * globalLcpAvg, samplingFactor);
+    measuringTool.stop("sample_splitters");
+    measuringTool.add(
+        sampleIndices.sample.size(), "allgather_splitters_bytes_sent");
+    measuringTool.start("allgather_splitters");
+    auto recvSample = mpi::allgatherv(sampleIndices.sample);
+    auto recvIndices = mpi::allgatherv(sampleIndices.indices);
+    measuringTool.stop("allgather_splitters");
+
+    measuringTool.start("choose_splitters");
+    IndexStringLcpContainer<IndexStringSet> indexContainer(
+        std::move(recvSample), recvIndices);
+    indexContainer = choose_splitters(indexContainer);
+    measuringTool.stop("choose_splitters");
+    measuringTool.start("compute_interval_sizes");
+    auto interval_sizes = compute_interval_binary_index(
+        ss, indexContainer.make_string_set(), getLocalOffset(ss.size()));
+    measuringTool.stop("compute_interval_sizes");
+    return interval_sizes;
 }
 } // namespace dss_schimek

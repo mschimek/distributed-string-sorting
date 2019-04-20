@@ -19,7 +19,6 @@ public:
     static std::vector<typename StringSet::Char> sample_splitters(const StringSet& ss,
         size_t maxLength, uint64_t samplingFactor,
         dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
-        maxLength = 100000;
 
         using Char = typename StringSet::Char;
         using String = typename StringSet::String;
@@ -105,7 +104,7 @@ public:
 template <typename StringSet>
 class SampleIndexedSplittersNumCharsPolicy {
 public:
-    static constexpr bool isIndexed = false;
+    static constexpr bool isIndexed = true;
     static std::string getName() { return "IndexedNumChars"; }
 
     static SampleIndices sample_splitters(const StringSet& ss, const size_t maxLength,

@@ -24,11 +24,11 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
             args.numOfStrings, args.stringLength, args.dToNRatio);
     }
     else if constexpr (std::is_same_v<StringGenerator,
-                      dss_schimek::FileDistributer<StringSet>>) {
+                           dss_schimek::FileDistributer<StringSet>>) {
         return dss_schimek::FileDistributer<StringSet>(args.path);
     }
     else if constexpr (std::is_same_v<StringGenerator,
-                      dss_schimek::SuffixGenerator<StringSet>>) {
+                           dss_schimek::SuffixGenerator<StringSet>>) {
         return dss_schimek::SuffixGenerator<StringSet>(args.path);
     }
     else {
@@ -70,8 +70,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     CheckerWithCompleteExchange<StringLcpPtr> checker;
 
     if (!strongScaling) genStringArgs.numOfStrings *= env.size();
-    if (env.rank() == 0)
-      std::cout << "string generation started " << std::endl;
+    if (env.rank() == 0) std::cout << "string generation started " << std::endl;
     env.barrier();
 
     // std::cout << "rank: " << env.rank() <<  " generate strings" << std::endl;
@@ -91,7 +90,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     const size_t numGeneratedChars = generatedContainer.char_size();
     env.barrier();
     if (env.rank() == 0)
-      std::cout << "string generation completed " << std::endl;
+        std::cout << "string generation completed " << std::endl;
     const size_t numGeneratedStrings = generatedContainer.size();
 
     measuringTool.start("sorting_overall");
@@ -201,13 +200,22 @@ StringGenerator getStringGenerator(size_t i) {
         std::abort();
     }
 }
-enum class SampleString { numStrings = 0, numChars = 1 };
+enum class SampleString {
+    numStrings = 0,
+    numChars = 1,
+    indexedNumStrings = 2,
+    indexedNumChars = 3
+};
 SampleString getSampleString(size_t i) {
     switch (i) {
     case 0:
         return SampleString::numStrings;
     case 1:
         return SampleString::numChars;
+    case 2:
+        return SampleString::indexedNumStrings;
+    case 3:
+        return SampleString::indexedNumChars;
     default:
         std::abort();
     }
@@ -353,8 +361,8 @@ void sixthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::GolombEncoding::pipelinedGolombEncoding: {
         using GolombEncoding = dss_schimek::AllToAllHashValuesPipeline;
-        seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-            ByteEncoder, GolombEncoding>(key, args);
+   //     seventhArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+   //         ByteEncoder, GolombEncoding>(key, args);
         break;
     }
     }
@@ -378,20 +386,20 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::ByteEncoder::sequentialDelayedByteEncoder: {
         using ByteEncoder = dss_schimek::SequentialDelayedByteEncoder;
-        sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-            ByteEncoder>(key, args);
+   //     sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+   //         ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::sequentialByteEncoder: {
         using ByteEncoder = dss_schimek::SequentialByteEncoder;
-        sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-            ByteEncoder>(key, args);
+   //     sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+   //         ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::interleavedByteEncoder: {
         using ByteEncoder = dss_schimek::InterleavedByteEncoder;
-        sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-            ByteEncoder>(key, args);
+   //     sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+   //         ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::emptyLcpByteEncoderMemCpy: {
@@ -407,14 +415,14 @@ void fourthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.mpiRoutineAllToAll_) {
     case PolicyEnums::MPIRoutineAllToAll::small: {
         using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvSmall;
-        fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
-            key, args);
+  //      fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
+  //          key, args);
         break;
     }
     case PolicyEnums::MPIRoutineAllToAll::directMessages: {
         using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvDirectMessages;
-        fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
-            key, args);
+ //       fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
+ //           key, args);
         break;
     }
     case PolicyEnums::MPIRoutineAllToAll::combined: {
@@ -441,6 +449,18 @@ void thirdArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         fourthArg<StringSet, StringGenerator, SampleString>(key, args);
         break;
     }
+    case PolicyEnums::SampleString::indexedNumStrings: {
+        using SampleString =
+            dss_schimek::SampleIndexedSplittersNumStringsPolicy<StringSet>;
+        fourthArg<StringSet, StringGenerator, SampleString>(key, args);
+        break;
+    }
+    case PolicyEnums::SampleString::indexedNumChars: {
+        using SampleString =
+            dss_schimek::SampleIndexedSplittersNumCharsPolicy<StringSet>;
+        fourthArg<StringSet, StringGenerator, SampleString>(key, args);
+        break;
+    }
     };
 }
 template <typename StringSet>
@@ -449,7 +469,7 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     case PolicyEnums::StringGenerator::skewedRandomStringLcpContainer: {
         using StringGenerator =
             dss_schimek::SkewedRandomStringLcpContainer<StringSet>;
-        thirdArg<StringSet, StringGenerator>(key, args);
+//        thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
     case PolicyEnums::StringGenerator::DNRatioGenerator: {
@@ -499,7 +519,7 @@ int main(std::int32_t argc, char const* argv[]) {
     unsigned int byteEncoder =
         static_cast<int>(PolicyEnums::ByteEncoder::emptyByteEncoderMemCpy);
     unsigned int mpiRoutineAllToAll =
-        static_cast<int>(PolicyEnums::MPIRoutineAllToAll::small);
+        static_cast<int>(PolicyEnums::MPIRoutineAllToAll::combined);
     unsigned int numberOfStrings = 100000;
     unsigned int numberOfIterations = 5;
     unsigned int stringLength = 50;
@@ -527,7 +547,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
     cp.add_flag('c', "check", check, " ");
     cp.add_flag('c', "exhaustiveCheck", exhaustiveCheck, " ");
-    cp.add_unsigned('k', "generator", generator, " 0 = skewed, 1 = DNGen , 2 = file, 3 = suffix");
+    cp.add_unsigned('k', "generator", generator,
+        " 0 = skewed, 1 = DNGen , 2 = file, 3 = suffix");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_flag('v', "compressLcps", compressLcps,
         " compress Lcp values in alltoall-exchange");
