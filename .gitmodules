@@ -4,3 +4,6 @@
 [submodule "ips4o"]
 	path = ips4o
 	url = https://github.com/SaschaWitt/ips4o.git
+[submodule "KaDiS"]
+	path = KaDiS
+	url = https://github.com/MichaelAxtmann/KaDiS.git
