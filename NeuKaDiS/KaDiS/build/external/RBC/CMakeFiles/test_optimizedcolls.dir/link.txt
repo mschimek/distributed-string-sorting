@@ -1,0 +1,1 @@
+/usr/lib64/openmpi/bin/mpic++   -std=c++14 -W -Wall -Wextra -fPIC -Wcast-qual -Winit-self -Woverloaded-virtual -Wredundant-decls -Wold-style-cast -O2 -DNDEBUG   CMakeFiles/test_optimizedcolls.dir/test/test_optimizedcolls.cpp.o  -o test_optimizedcolls librbc.a external/tlx/tlx/libtlx.a -lpthread 

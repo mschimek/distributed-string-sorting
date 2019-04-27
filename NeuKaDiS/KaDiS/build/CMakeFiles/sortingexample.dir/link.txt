@@ -1,0 +1,1 @@
+/usr/lib64/openmpi/bin/mpic++   -std=c++14 -W -Wall -Wextra -fPIC -Wcast-qual -Winit-self -Woverloaded-virtual -Wredundant-decls -Wold-style-cast -O2 -DNDEBUG   CMakeFiles/sortingexample.dir/example/sorting_example.cpp.o  -o sortingexample -latomic external/RBC/librbc.a external/RBC/external/tlx/tlx/libtlx.a -lpthread 
