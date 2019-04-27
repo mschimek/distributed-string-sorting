@@ -14,6 +14,7 @@ add_compile_options(-std=c++17)
 add_compile_options(-O3)
 add_compile_options(-march=native)
 add_compile_options(-Wall)
+add_compile_options(-g)
 
 
 set(CMAKE_CXX_STANDARD 17)
@@ -42,11 +43,15 @@ endif()
 #add_subdirectory(external/benchmark)
 #add_subdirectory(external/external)
 #add_subdirectory(external/tests)
+include_directories(KaDiS)
 include_directories(src)
-include_directories(tlx)
+#include_directories(tlx)
+
 include_directories(ips4o)
 add_subdirectory(tlx)
+add_subdirectory(KaDiS)
 add_subdirectory(src)
+add_subdirectory(kurpicz)
 
 message(STATUS "Built Type: " ${CMAKE_BUILD_TYPE} )
 

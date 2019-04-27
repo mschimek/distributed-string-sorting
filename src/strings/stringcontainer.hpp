@@ -201,6 +201,32 @@ public:
         lcps_ = std::move(lcp);
     }
 
+    void orderRawStrings() {
+        auto orderedRawStrings = new std::vector<unsigned char>(char_size());
+        uint64_t curPos = 0;
+        for (size_t i = 0; i < size(); ++i) {
+            auto chars = strings_[i].getChars();
+            auto length = strings_[i].getLength();
+            auto curAdress = orderedRawStrings->data() + curPos;
+            std::copy_n(chars, length + 1, curAdress);
+            strings_[i].setChars(curAdress);
+            curPos += length + 1;
+        }
+        raw_strings_.reset(orderedRawStrings);
+    }
+
+    bool isConsistent() {
+      for (size_t i = 0; i < strings_.size(); ++i) {
+        const auto adressEndByteOfString = strings_[i].getChars() + strings_[i].getLength();
+        if (adressEndByteOfString < raw_strings_->data() || adressEndByteOfString >= raw_strings_->data() + raw_strings_->size())  
+          return false;
+        if (*adressEndByteOfString != 0)
+          return false;
+      }
+      return true;
+    }
+
+
     String operator[](size_t i) { return strings_[i]; }
     String front() { return strings_.front(); }
     String back() { return strings_.back(); }
@@ -552,13 +578,13 @@ public:
     std::vector<Char>&& releaseRawStrings() { return std::move(*raw_strings_); }
 
     std::vector<unsigned char> getRawString(int64_t i) {
-      if (i < 0 || i > size())
-        return std::vector<unsigned char>(1, 0);
+        if (i < 0 || static_cast<uint64_t>(i) > size()) return std::vector<unsigned char>(1, 0);
 
-      const auto length = strings_[i].length + 1;
-      std::vector<unsigned char> rawString(length);
-      std::copy(strings_[i].string, strings_[i].string + length, rawString.begin());
-      return rawString;
+        const auto length = strings_[i].length + 1;
+        std::vector<unsigned char> rawString(length);
+        std::copy(
+            strings_[i].string, strings_[i].string + length, rawString.begin());
+        return rawString;
     }
 
     StringSet make_string_set() {
@@ -582,6 +608,30 @@ public:
     void deleteAll() {
         deleteRawStrings();
         deleteStrings();
+    }
+
+    void orderRawStrings() {
+        auto orderedRawStrings = new std::vector<unsigned char>(char_size());
+        uint64_t curPos = 0;
+        for (size_t i = 0; i < size(); ++i) {
+            auto chars = strings_[i].getChars();
+            auto length = strings_[i].getLength();
+            auto curAdress = orderedRawStrings->data() + curPos;
+            std::copy_n(chars, length + 1, curAdress);
+            strings_[i].setChars(curAdress);
+            curPos += length + 1;
+        }
+        raw_strings_.reset(orderedRawStrings);
+    }
+    bool isConsistent() {
+      for (size_t i = 0; i < strings_.size(); ++i) {
+        const auto adressEndByteOfString = strings_[i].getChars() + strings_[i].getLength();
+        if (adressEndByteOfString < raw_strings_->data() || adressEndByteOfString >= raw_strings_->data() + raw_strings_->size())  
+          return false;
+        if (*adressEndByteOfString != 0)
+          return false;
+      }
+      return true;
     }
 
     void set(std::vector<Char>&& raw_strings) {

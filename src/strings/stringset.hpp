@@ -722,6 +722,15 @@ struct StringLength
   StringLength(const String string, const Length length) : string(string), length(length) {}
   String string;
   Length length;
+  inline void setChars(String newString) {
+    string = newString;
+  }
+  inline String getChars() {
+    return string;
+  }
+  inline Length getLength() {
+    return length;
+  }
 };
 
 template <typename String, typename Length>

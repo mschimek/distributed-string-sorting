@@ -68,5 +68,9 @@ endif()
 add_executable(integerCompressionTests integerCompression_tests.cpp ../mpi/environment.cpp)
 target_link_libraries(integerCompressionTests ${MPI_LIBRARIES} tlx)
 add_test(integerCompressionTests1 ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${CMAKE_CURRENT_BINARY_DIR}/integerCompressionTests)
+
 add_executable(generateSuffixesTests generateSuffixes_tests.cpp ../mpi/environment.cpp)
 target_link_libraries(generateSuffixesTests ${MPI_LIBRARIES} tlx)
+
+add_executable(distributedSplitterSortTests distributedSplitterSort_test.cpp ../mpi/environment.cpp)
+target_link_libraries(distributedSplitterSortTests ${MPI_LIBRARIES} tlx rbcsorting atomic)
