@@ -49,7 +49,7 @@ include_directories(src)
 
 include_directories(ips4o)
 add_subdirectory(tlx)
-add_subdirectory(KaDiS)
+add_subdirectory(NeuKaDiS/KaDiS)
 add_subdirectory(src)
 add_subdirectory(kurpicz)
 
