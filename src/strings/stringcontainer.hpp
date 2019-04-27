@@ -205,6 +205,7 @@ public:
     String front() { return strings_.front(); }
     String back() { return strings_.back(); }
     String* strings() { return strings_.data(); }
+    std::vector<String>& getStrings() { return strings_; }
     size_t size() const { return strings_.size(); }
     size_t char_size() const { return raw_strings_->size(); }
     std::vector<size_t>& lcps() { return lcps_; }
@@ -423,8 +424,8 @@ public:
     //    lcps_.resize(size(), 0);
     //}
 
-    explicit IndexStringLcpContainer(std::vector<Char>&& raw_strings,
-        std::vector<uint64_t>& indices)
+    explicit IndexStringLcpContainer(
+        std::vector<Char>&& raw_strings, std::vector<uint64_t>& indices)
         : raw_strings_(
               std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
         update_strings(indices);
@@ -435,6 +436,7 @@ public:
     String front() { return strings_.front(); }
     String back() { return strings_.back(); }
     String* strings() { return strings_.data(); }
+    std::vector<String>& getStrings() { return strings_; }
     size_t size() const { return strings_.size(); }
     size_t char_size() const { return raw_strings_->size(); }
     std::vector<size_t>& lcps() { return lcps_; }
@@ -503,22 +505,116 @@ public:
     }
     size_t sumOfSizes() {
         return raw_strings_->size() * sizeof(Char) +
-               strings_.size() * sizeof(String) +
-               lcps_.size() * sizeof(size_t); 
+               strings_.size() * sizeof(String) + lcps_.size() * sizeof(size_t);
     }
+
 protected:
     static constexpr size_t approx_string_length = 10;
     std::unique_ptr<std::vector<Char>> raw_strings_;
-    std::vector<String> strings_;   // strings
-    std::vector<size_t> lcps_;      // lcp-values
+    std::vector<String> strings_; // strings
+    std::vector<size_t> lcps_;    // lcp-values
 
     void update_strings() {
         strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
     }
 
     void update_strings(const std::vector<uint64_t>& indices) {
-        strings_ = InitPolicy<StringSet>::init_strings(
-            *raw_strings_, indices);
+        strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_, indices);
+    }
+};
+
+template <typename StringSet_>
+class StringContainer : private InitPolicy<StringSet_> {
+public:
+    using StringSet = StringSet_;
+    using Char = typename StringSet::Char;
+    using CharIterator = typename StringSet::CharIterator;
+    using String = typename StringSet::String;
+
+    StringContainer()
+        : raw_strings_(std::make_unique<std::vector<Char>>()), strings_() {}
+
+    explicit StringContainer(std::vector<Char>&& raw_strings)
+        : raw_strings_(
+              std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
+        update_strings();
+    }
+
+    String operator[](size_t i) { return strings_[i]; }
+    String front() { return strings_.front(); }
+    String back() { return strings_.back(); }
+    String* strings() { return strings_.data(); }
+    std::vector<String>& getStrings() { return strings_; }
+    size_t size() const { return strings_.size(); }
+    size_t char_size() const { return raw_strings_->size(); }
+    std::vector<Char>& raw_strings() { return *raw_strings_; }
+    const std::vector<Char>& raw_strings() const { return *raw_strings_; }
+    std::vector<Char>&& releaseRawStrings() { return std::move(*raw_strings_); }
+
+    std::vector<unsigned char> getRawString(int64_t i) {
+      if (i < 0 || i > size())
+        return std::vector<unsigned char>(1, 0);
+
+      const auto length = strings_[i].length + 1;
+      std::vector<unsigned char> rawString(length);
+      std::copy(strings_[i].string, strings_[i].string + length, rawString.begin());
+      return rawString;
+    }
+
+    StringSet make_string_set() {
+        return StringSet(strings(), strings() + size());
+    }
+
+    tlx::sort_strings_detail::StringPtr<StringSet> make_string_ptr() {
+        return tlx::sort_strings_detail::StringPtr(make_string_set());
+    }
+
+    void deleteRawStrings() {
+        raw_strings_->clear();
+        raw_strings_->shrink_to_fit();
+    }
+
+    void deleteStrings() {
+        strings_.clear();
+        strings_.shrink_to_fit();
+    }
+
+    void deleteAll() {
+        deleteRawStrings();
+        deleteStrings();
+    }
+
+    void set(std::vector<Char>&& raw_strings) {
+        *raw_strings_ = std::move(raw_strings);
+    }
+    void set(std::vector<String>&& strings) { strings_ = std::move(strings); }
+
+    bool operator==(const StringLcpContainer<StringSet_>& other) {
+        return (raw_strings() == other.raw_strings());
+    }
+
+    void update(std::vector<Char>&& raw_strings) {
+        set(std::move(raw_strings));
+        update_strings();
+    }
+
+public:
+    size_t sumOfCapacities() {
+        return raw_strings_->capacity() * sizeof(Char) +
+               strings_.capacity() * sizeof(String);
+    }
+    size_t sumOfSizes() {
+        return raw_strings_->size() * sizeof(Char) +
+               strings_.size() * sizeof(String);
+    }
+
+protected:
+    static constexpr size_t approx_string_length = 10;
+    std::unique_ptr<std::vector<Char>> raw_strings_;
+    std::vector<String> strings_; // strings
+
+    void update_strings() {
+        strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
     }
 };
 

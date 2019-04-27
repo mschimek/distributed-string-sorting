@@ -862,6 +862,15 @@ public:
                  << " = " << get_string(*pi, 0);
         }
     }
+    void print(const std::string& prefix) const
+    {
+        size_t i = 0;
+        for (Iterator pi = begin(); pi != end(); ++pi)
+        {
+            LOG1 << prefix << "[" << i++ << "] = " << (*pi)
+                 << " = " << get_string(*pi, 0);
+        }
+    }
 
     static String empty_string()
     {
