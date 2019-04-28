@@ -14,7 +14,7 @@ add_compile_options(-std=c++17)
 add_compile_options(-O3)
 add_compile_options(-march=native)
 add_compile_options(-Wall)
-add_compile_options(-g)
+#add_compile_options(-g)
 
 
 set(CMAKE_CXX_STANDARD 17)
@@ -51,7 +51,7 @@ include_directories(ips4o)
 add_subdirectory(tlx)
 add_subdirectory(NeuKaDiS/KaDiS)
 add_subdirectory(src)
-add_subdirectory(kurpicz)
+#add_subdirectory(kurpicz)
 
 message(STATUS "Built Type: " ${CMAKE_BUILD_TYPE} )
 
