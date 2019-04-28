@@ -10,7 +10,6 @@
 
 #include "mpi/allgather.hpp"
 #include "mpi/environment.hpp"
-#include "mpi/scan.hpp"
 #include "mpi/synchron.hpp"
 
 #include <tlx/sort/strings/radix_sort.hpp>
