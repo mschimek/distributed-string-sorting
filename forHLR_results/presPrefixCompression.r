@@ -21,7 +21,7 @@ colTypeSpec = cols(numberProcessors = col_integer(),
 
 # "Constants"
 POINTSIZE = 0.1
-globalSize <- 500000
+globalSize <- 5000000
 
 filename = paste(args[[1]], "/data.txt", sep="")
 allData <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
@@ -336,24 +336,31 @@ numberPlot <- function(data, operation_, title = " ") {
   plot <- plot + ggtitle(title)
   plot
 }
-barPlotWhitelist <- function(data_, operations_, type_, size_, title = " ") {
-  filteredData <- filter(data_, operation %in% operations_, type == type_, size == size_)
+barPlotWhitelist <- function(data_, operations_, type_, title = " ", work = FALSE) {
+  filteredData <- filter(data_, operation %in% operations_, type == type_)
   filteredData$dToNRatio <- as.factor(filteredData$dToNRatio)
   sumInternIteration <- group_by(filteredData, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type, iteration)
   sumInternIteration <- summarise(sumInternIteration, value = sum(value, rm.na = TRUE))
   group <- group_by(sumInternIteration, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type)
   valueMean <- summarise(group, value = mean(value, rm.na = TRUE))
   valueMean$size <- as.factor(valueMean$size)
+  if (work) {
   valueMean$numberProcessors <- as.character(valueMean$numberProcessors)
   valueMean$numberProcessors <- as.numeric(valueMean$numberProcessors)
-  #valueMean$value <- valueMean$value * valueMean$numberProcessors
+  valueMean$value <- valueMean$value * valueMean$numberProcessors
   valueMean$numberProcessors <- as.factor(valueMean$numberProcessors)
+  }
   plot <- ggplot(data = valueMean)
   plot <- plot + geom_bar(mapping = aes(x = numberProcessors, y = value, fill = operation), stat="identity")
   if (isD2N) {
-  plot <- plot + facet_wrap(ByteEncoder ~ dToNRatio, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(dToNRatio ~ ByteEncoder, labeller = label_both, nrow=1)
   } else {
-  plot <- plot + facet_wrap(ByteEncoder ~ samplePolicy, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(samplePolicy ~ ByteEncoder, labeller = label_both, nrow=1)
+  }
+  if (work) {
+    plot <- plot + ylab("work in nano sec * #procs")
+  } else {
+  plot <- plot + ylab("time in  nano sec")
   }
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   plot <- plot + ggtitle(title)
@@ -382,37 +389,52 @@ plot <- ggplot(data = data_)
 pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
+samplePolicyFilter="NumStrings"
+allData <- filter(allData, samplePolicy==samplePolicyFilter)
 communicationVolume(allData, "communication volume ")
 scatterPlot(allData, c("num_received_chars"), "number", 0.1, "Number of recv. characters")
+scatterPlot(allData, c("num_recv_strings"), "number", 0.1, "Number of recv. strings")
 numberPlot(allData, "charactersInSet", "number characters to sort")
 
- operations <- c("prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
+ print("1")
+ operations <- c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
+ print("1.1")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", title = "overall avg Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall Work", TRUE)
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall avg Loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall avg Loss Work", TRUE)
+ print("2")
 
  operations <- c("prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall Work", TRUE)
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss Work", TRUE)
 
  operations <- c("merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
 
- operations <- c("all_to_all_strings_intern_copy")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", size_ = globalSize, title = "overall avg Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", size_ = globalSize, title = "overall max Time")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgLoss", size_ = globalSize, title = "overall avg Loss")
- barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", size_ = globalSize, title = "overall max Loss")
-#efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "efficiency sorting")
-#efficiency_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "efficiency overall")
-#speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "speedup sorting")
-#speedup_sum(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "speedup overall")
-#sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation == "sort_locally"), type_ = "avgTime", size_ = globalSize, title = "sorting")
-#sumData(data_ = filter(allDataWithoutIt1_EmptyTimer, operation != "sorting_overall"), type_ = "avgTime", size_ = globalSize, title = "sum overall")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall Work", TRUE)
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss Work", TRUE)
 
+ operations <- c("merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "allgather_splitters", "sample_splitters")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
+
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall Work", TRUE)
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss Work", TRUE)
+
+ operations <- c("all_to_all_strings", "container_construction", "all_to_all_strings_intern_copy", "all_to_all_strings_mpi", "all_to_all_strings_read", "prefix_decompression")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "avgTime", title = "overall avgTime Time")
+
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall Work", TRUE)
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxLoss", title = "overall loss Work", TRUE)
+
+ operations <- c("prefix_decompression")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
+ operations <- c("merge_ranges")
+ barPlotWhitelist(data_ = allData, operations_ = operations, type_ = "maxTime", title = "overall max Time")
