@@ -170,9 +170,16 @@ public:
         const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
         measuringTool.stop("avg_lcp");
 
-        auto interval_sizes =
-            computePartition<SampleSplittersPolicy, StringPtr>(
+        std::vector<uint64_t> interval_sizes;
+        if constexpr (SampleSplittersPolicy::isIndexed) {
+            interval_sizes = computePartition<SampleSplittersPolicy, StringPtr>(
                 local_string_ptr, globalLcpAvg, 50);
+        }
+        else {
+            interval_sizes =
+                computePartition_<SampleSplittersPolicy, StringPtr>(
+                    local_string_ptr, globalLcpAvg, 50);
+        }
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
         std::vector<std::size_t> receiving_interval_sizes =

@@ -1,13 +1,16 @@
 #pragma once
 
-#include "strings/stringcontainer.hpp"
-#include "sorter/distributed/samplingStrategies.hpp"
+#include "RQuick.hpp"
 #include "merge/stringtools.hpp"
+#include "sorter/distributed/samplingStrategies.hpp"
+#include "strings/stringcontainer.hpp"
+#include <random>
 //#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
 #include "mpi/allgather.hpp"
 #include "mpi/environment.hpp"
+#include "mpi/scan.hpp"
 #include "mpi/synchron.hpp"
 
 #include <tlx/sort/strings/radix_sort.hpp>
@@ -34,6 +37,55 @@ size_t getAvgLcp(const StringLcpPtr stringLcpPtr) {
         totalNumString += elem.numStrings;
     }
     return totalL / totalNumString;
+}
+
+template <typename StringContainer>
+std::vector<unsigned char> getSplitters(StringContainer& sortedLocalSample) {
+    dss_schimek::mpi::environment env;
+    uint64_t localSampleSize = sortedLocalSample.size();
+    const auto allLocalSizes = dss_schimek::mpi::allgather(localSampleSize);
+    const uint64_t localPrefix = std::accumulate(
+        allLocalSizes.begin(), allLocalSizes.begin() + env.rank(), 0ull);
+    const uint64_t totalSize =
+        std::accumulate(allLocalSizes.begin() + env.rank(),
+            allLocalSizes.end(), localPrefix);
+
+    const size_t nr_splitters =
+        std::min<std::size_t>(env.size() - 1, totalSize);
+    const size_t splitter_dist = totalSize / (nr_splitters + 1);
+
+    auto ss = sortedLocalSample.make_string_set();
+    size_t splitterSize = 0u;
+    for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const uint64_t curIndex = i * splitter_dist;
+        if (curIndex >= localPrefix &&
+            curIndex < localPrefix + localSampleSize) {
+            const auto str = ss[ss.begin() + curIndex - localPrefix];
+            const auto length = ss.get_length(str) + 1;
+            splitterSize += length;
+        }
+    }
+    //std::cout << "rank: " << env.rank() << " localSample: " << ss.size()
+    //          << " splitterSize: " << splitterSize
+    //          << " nr_splitters: " << nr_splitters
+    //          << " splitter_dist: " << splitter_dist
+    //          << " localPrefix:" << localPrefix << " totalSize: " << totalSize
+    //          << std::endl;
+
+    std::vector<unsigned char> chosenSplitters(splitterSize);
+    uint64_t curPos = 0;
+    for (std::size_t i = 1; i <= nr_splitters; ++i) {
+        const uint64_t curIndex = i * splitter_dist;
+        if (curIndex >= localPrefix &&
+            curIndex < localPrefix + localSampleSize) {
+            const auto str = ss[ss.begin() + curIndex - localPrefix];
+            const auto length = ss.get_length(str) + 1;
+            auto chars = ss.get_chars(str, 0);
+            std::copy_n(chars, length, chosenSplitters.data() + curPos);
+            curPos += length;
+        }
+    }
+    return dss_schimek::mpi::allgatherv(chosenSplitters);
 }
 
 template <typename StringLcpPtr>
@@ -436,6 +488,79 @@ computePartition(
     measuringTool.start("compute_interval_sizes");
     auto interval_sizes = compute_interval_binary_index(
         ss, indexContainer.make_string_set(), getLocalOffset(ss.size()));
+    measuringTool.stop("compute_interval_sizes");
+    return interval_sizes;
+}
+
+struct StringComparator {
+    using String = dss_schimek::UCharLengthStringSet::String;
+    bool operator()(String lhs, String rhs) {
+        const unsigned char* lhsChars = lhs.string;
+        const unsigned char* rhsChars = rhs.string;
+        size_t counter = 0;
+        // std::cout << "lhs: " << lhsChars << " rhs: " << rhsChars <<
+        // std::endl;
+        while (*lhsChars == *rhsChars && *lhsChars != 0) {
+            ++lhsChars;
+            ++rhsChars;
+            counter++;
+        }
+        return *lhsChars < *rhsChars;
+    }
+};
+
+dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> splitterSort(
+    std::vector<unsigned char>&& rawStrings) {
+    dss_schimek::mpi::environment env;
+
+    StringComparator comp;
+    std::mt19937_64 generator;
+    int data_seed = 3469931 + env.rank();
+    generator.seed(data_seed);
+    int tag = 11111;
+    return RQuick::sort(
+        generator, rawStrings, MPI_BYTE, tag, env.communicator(), comp);
+}
+
+template <typename Sampler, typename StringPtr>
+typename std::enable_if<!Sampler::isIndexed, std::vector<uint64_t>>::type
+computePartition_(
+    StringPtr stringptr, uint64_t globalLcpAvg, uint64_t samplingFactor) {
+    using StringSet = typename StringPtr::StringSet;
+    using StringContainer = dss_schimek::StringContainer<StringSet>;
+    using namespace dss_schimek;
+    using measurement::MeasuringTool;
+
+    auto ss = stringptr.active();
+    MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+    measuringTool.setPhase("splitter");
+    measuringTool.start("sample_splitters");
+    std::vector<unsigned char> raw_splitters =
+        Sampler::sample_splitters(ss, globalLcpAvg, samplingFactor);
+    measuringTool.stop("sample_splitters");
+
+    measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
+
+    measuringTool.start("sort_splitter");
+    StringContainer sortedLocalSample = splitterSort(std::move(raw_splitters));
+    measuringTool.stop("sort_splitter");
+
+    dss_schimek::mpi::environment env;
+
+    measuringTool.start("choose_splitters");
+    auto rawChosenSplitters = getSplitters(sortedLocalSample);
+    StringContainer chosen_splitters_cont(std::move(rawChosenSplitters));
+    measuringTool.stop("choose_splitters");
+
+    const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
+        chosen_splitters_cont.strings() + chosen_splitters_cont.size());
+
+    std::cout << "rank: " << env.rank() << std::endl;
+    chosen_splitters_set.print();
+
+    measuringTool.start("compute_interval_sizes");
+    std::vector<std::size_t> interval_sizes =
+        compute_interval_binary(ss, chosen_splitters_set);
     measuringTool.stop("compute_interval_sizes");
     return interval_sizes;
 }
