@@ -226,6 +226,9 @@ public:
         for (const auto& data : collect())
             stream << data << std::endl;
     }
+    void disableBarrier(bool value) {
+      timer.setDisableBarrier(value);
+    }
 
     void enable() { disabled = false; }
 

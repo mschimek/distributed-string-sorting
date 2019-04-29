@@ -49,6 +49,7 @@ namespace dss_schimek {
         return;
 
       const PointInTime endPoint = Clock::now();
+      if (!disableBarrier)
       env.barrier();
       const PointInTime endPointAfterBarrier = Clock::now();
       //measurement stopped
@@ -99,8 +100,13 @@ namespace dss_schimek {
         }
       }
 
+    void setDisableBarrier(bool value) {
+      disableBarrier = value;
+    }
+
     private:
     bool measurementEnabled = true;
+    bool disableBarrier = false;
     dss_schimek::mpi::environment env;
 
     size_t incrementCounterPerPseudoKey(const Key& key) {
