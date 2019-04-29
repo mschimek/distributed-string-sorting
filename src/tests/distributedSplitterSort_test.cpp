@@ -57,9 +57,13 @@ int main(int argc, char** argv) {
     double dToNRatio = 1;
     bool strongScaling = false;
     bool check = false;
+    bool splitterMode = false;
+    unsigned int samplingFactor = 2;
     unsigned int stringLength = 100;
+    cp.add_flag('b', "splitterMode", splitterMode, " ");
     cp.add_unsigned('s', "size", numberOfStrings, "");
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
+    cp.add_unsigned('c', "samplingFactor", samplingFactor, "");
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_flag('y', "check", check, " ");
     cp.add_double('r', "dToNRatio", dToNRatio, "D/N ratio");
@@ -85,6 +89,7 @@ int main(int argc, char** argv) {
         PRINT_ROOT("Create random input elements");
         // Container container = Generator("testData.dat");
         if (strongScaling) numberOfStrings *= size;
+        if (splitterMode) numberOfStrings = env.size() * (env.size() - 1) * samplingFactor;
 
         Container container = Generator(size, stringLength, dToNRatio);
         if (!container.isConsistent()) {
