@@ -58,9 +58,13 @@ int main(int argc, char** argv) {
     bool strongScaling = false;
     bool check = false;
     bool splitterMode = false;
+    bool realSplitterMode = false;
     unsigned int samplingFactor = 2;
     unsigned int stringLength = 100;
+    double lcpFactor = 1.0;
+    cp.add_double('b', "lcpFactor", lcpFactor, " ");
     cp.add_flag('b', "splitterMode", splitterMode, " ");
+    cp.add_flag('d', "realSplitterMode", realSplitterMode, " ");
     cp.add_unsigned('s', "size", numberOfStrings, "");
     cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
     cp.add_unsigned('c', "samplingFactor", samplingFactor, "");
@@ -79,7 +83,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(comm, &size);
     for (size_t i = 0; i < numberOfIterations; ++i) {
         if (strongScaling) numberOfStrings *= size;
-        if (splitterMode) numberOfStrings = env.size() * (env.size() - 1) * samplingFactor;
+        if (splitterMode || realSplitterMode) numberOfStrings = env.size() * (env.size() - 1) * samplingFactor;
         measuringTool.setPrefix(
             "RESULT numberProcessors=" + std::to_string(size) + " iteration=" +
             std::to_string(i) + " size=" + std::to_string(numberOfStrings) +
@@ -92,6 +96,24 @@ int main(int argc, char** argv) {
         // Container container = Generator("testData.dat");
 
         Container container = Generator(numberOfStrings, stringLength, dToNRatio);
+        if (realSplitterMode) {
+          std::vector<unsigned char> tmp;
+          tmp.reserve(container.char_size());
+          const uint64_t maxLength = lcpFactor * dToNRatio * stringLength + 10;
+          auto ss = container.make_string_set();
+          std::cout << ss.size() << std::endl;
+          for (size_t i = 0; i < ss.size(); ++i) {
+            const auto str = ss[ss.begin() + i];
+            const auto length = ss.get_length(str);
+            const auto actualLength = std::min(maxLength, length);
+            auto chars = ss.get_chars(str, 0);
+            std::copy_n(chars, actualLength, std::back_inserter(tmp));
+            tmp.push_back(0);
+          }
+          tmp.shrink_to_fit();
+          container.update(std::move(tmp));
+          container.make_string_set().print();
+        }
         if (!container.isConsistent()) {
             std::cout << "initial input is corrupt" << std::endl;
             std::abort();
