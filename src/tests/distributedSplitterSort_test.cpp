@@ -17,6 +17,7 @@
 #include "strings/stringset.hpp"
 #include "util/measuringTool.hpp"
 #include "util/random_string_generator.hpp"
+#include <tlx/cmdline_parser.hpp>
 #include <tlx/sort/strings/radix_sort.hpp>
 
 #define PRINT_ROOT(msg)                                                        \
@@ -43,39 +44,58 @@ int main(int argc, char** argv) {
     using namespace dss_schimek;
     using namespace dss_schimek::mpi;
     using StringSet = UCharLengthStringSet;
-    using Generator = FileDistributer<StringSet>;
-    // using Generator = DNRatioGenerator<StringSet>;
+    // using Generator = FileDistributer<StringSet>;
+    using Generator = DNRatioGenerator<StringSet>;
     using Container = StringLcpContainer<StringSet>;
 
     using measurement::MeasuringTool;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
+    tlx::CmdlineParser cp;
+    unsigned int numberOfIterations = 1;
+    unsigned int numberOfStrings = 1000;
+    double dToNRatio = 1;
+    bool strongScaling = true;
+    bool check = false;
+    unsigned int stringLength = 100;
+    cp.add_unsigned('s', "size", numberOfStrings, "");
+    cp.add_unsigned('i', "numberOfIterations", numberOfIterations, "");
+    cp.add_flag('x', "strongScaling", strongScaling, " ");
+    cp.add_flag('y', "check", check, " ");
+    cp.add_double('r', "dToNRatio", dToNRatio, "D/N ratio");
+    cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
+    if (!cp.process(argc, argv)) {
+        return -1;
+    }
     // Initialize the MPI environment
     dss_schimek::mpi::environment env;
     MPI_Comm comm = env.communicator();
-    const uint64_t numStrings = 100000;
     int rank, size;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
-    for (size_t i = 0; i < 5; ++i)
-    {
-      measuringTool.setPrefix("iteration=" + std::to_string(i));
-    // Create random input elements
-    PRINT_ROOT("Create random input elements");
-    Container container = Generator("testData.dat");
-    // Container container = Generator(numStrings);
-    if (!container.isConsistent()) {
-        std::cout << "initial input is corrupt" << std::endl;
-        std::abort();
-    }
-    auto rawStrings = container.raw_strings();
-    measuringTool.start("allgatherv");
-    auto globalUnsortedRawStrings = allgatherv(rawStrings);
-    measuringTool.stop("allgatherv");
-    std::mt19937_64 generator;
-    int data_seed = 3469931 + rank;
-    generator.seed(data_seed);
-     
+    for (size_t i = 0; i < numberOfIterations; ++i) {
+        measuringTool.setPrefix(
+            "RESULT numberProcessors=" + std::to_string(size) + " iteration=" +
+            std::to_string(i) + " size=" + std::to_string(numberOfStrings) +
+            " strongScaling=" + std::to_string(strongScaling) +
+            " dToNRatio=" + std::to_string(dToNRatio) +
+            " stringLength=" + std::to_string(stringLength));
+
+        // Create random input elements
+        PRINT_ROOT("Create random input elements");
+        // Container container = Generator("testData.dat");
+        if (strongScaling) numberOfStrings *= size;
+
+        Container container = Generator(size, stringLength, dToNRatio);
+        if (!container.isConsistent()) {
+            std::cout << "initial input is corrupt" << std::endl;
+            std::abort();
+        }
+        auto rawStrings = container.raw_strings();
+        std::mt19937_64 generator;
+        int data_seed = 3469931 + rank;
+        generator.seed(data_seed);
+
         /* RQuick */
         int tag = 11111;
 
@@ -89,30 +109,34 @@ int main(int argc, char** argv) {
             generator, container.raw_strings(), MPI_BYTE, tag, comm, comp);
         measuringTool.stop("distributed_sort");
         env.barrier();
-        std::vector<unsigned char> sortedRawStrings(container.char_size());
 
-        env.barrier();
-        sortedContainer.orderRawStrings();
-        std::vector<unsigned char> localSortedRawStrings =
-            sortedContainer.raw_strings();
-        const std::vector<unsigned char> globalSortedRawStrings =
-            allgatherv(localSortedRawStrings);
-        StringLcpContainer<StringSet> globalUnsortedStrings(
-            std::move(globalUnsortedRawStrings));
-        auto stringPtr = globalUnsortedStrings.make_string_ptr();
-        measuringTool.start("local_sort");
-        tlx::sort_strings_detail::radixsort_CI3(stringPtr, 0, 0);
-        measuringTool.stop("local_sort");
-        globalUnsortedStrings.orderRawStrings();
+        if (check) {
+            measuringTool.start("allgatherv");
+            auto globalUnsortedRawStrings = allgatherv(rawStrings);
+            measuringTool.stop("allgatherv");
+            env.barrier();
+            sortedContainer.orderRawStrings();
+            std::vector<unsigned char> localSortedRawStrings =
+                sortedContainer.raw_strings();
+            const std::vector<unsigned char> globalSortedRawStrings =
+                allgatherv(localSortedRawStrings);
+            StringLcpContainer<StringSet> globalUnsortedStrings(
+                std::move(globalUnsortedRawStrings));
+            auto stringPtr = globalUnsortedStrings.make_string_ptr();
+            measuringTool.start("local_sort");
+            tlx::sort_strings_detail::radixsort_CI3(stringPtr, 0, 0);
+            measuringTool.stop("local_sort");
+            globalUnsortedStrings.orderRawStrings();
 
-        auto finalInitRawStrings = globalUnsortedStrings.raw_strings();
-        if (finalInitRawStrings.size() != globalSortedRawStrings.size()) {
-            std::cout << "we have lost chars: " << std::endl;
-            std::abort();
-        }
-        if (finalInitRawStrings != globalSortedRawStrings) {
-            std::cout << "something is wrong " << std::endl;
-            std::abort();
+            auto finalInitRawStrings = globalUnsortedStrings.raw_strings();
+            if (finalInitRawStrings.size() != globalSortedRawStrings.size()) {
+                std::cout << "we have lost chars: " << std::endl;
+                std::abort();
+            }
+            if (finalInitRawStrings != globalSortedRawStrings) {
+                std::cout << "something is wrong " << std::endl;
+                std::abort();
+            }
         }
 
         PRINT_ROOT("Elements have been sorted");
