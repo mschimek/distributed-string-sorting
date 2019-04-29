@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     unsigned int numberOfIterations = 1;
     unsigned int numberOfStrings = 1000;
     double dToNRatio = 1;
-    bool strongScaling = true;
+    bool strongScaling = false;
     bool check = false;
     unsigned int stringLength = 100;
     cp.add_unsigned('s', "size", numberOfStrings, "");
