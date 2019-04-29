@@ -112,7 +112,6 @@ int main(int argc, char** argv) {
           }
           tmp.shrink_to_fit();
           container.update(std::move(tmp));
-          container.make_string_set().print();
         }
         if (!container.isConsistent()) {
             std::cout << "initial input is corrupt" << std::endl;
