@@ -555,8 +555,6 @@ computePartition_(
     const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
         chosen_splitters_cont.strings() + chosen_splitters_cont.size());
 
-    std::cout << "rank: " << env.rank() << std::endl;
-    chosen_splitters_set.print();
 
     measuringTool.start("compute_interval_sizes");
     std::vector<std::size_t> interval_sizes =

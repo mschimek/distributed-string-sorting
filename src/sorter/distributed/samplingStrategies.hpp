@@ -10,6 +10,10 @@
 
 namespace dss_schimek {
 
+uint64_t getNumberSplitter(uint64_t PESize, uint64_t localSetSize, uint64_t overSamplingFactor) {
+  return std::min<uint64_t>(overSamplingFactor * (PESize - 1), localSetSize);
+}
+
 template <typename StringSet>
 class SampleSplittersNumStringsPolicy {
 public:
@@ -24,8 +28,7 @@ public:
         using String = typename StringSet::String;
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters =
-            std::min<size_t>(std::log2(local_num_strings) * samplingFactor, local_num_strings);
+        const size_t nr_splitters = getNumberSplitter(env.size(), ss.size(), samplingFactor);
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char> raw_splitters;
@@ -76,8 +79,7 @@ public:
         uint64_t localOffset = getLocalOffset(ss.size());
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters = std::min<uint64_t>(
-            std::log2(local_num_strings) * samplingFactor, local_num_strings);
+        const size_t nr_splitters = getNumberSplitter(env.size(), local_num_strings, samplingFactor);
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char>& raw_splitters = sampleIndices.sample;
@@ -123,8 +125,7 @@ public:
                 });
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters = std::min<uint64_t>(
-            std::log2(local_num_strings) * samplingFactor, local_num_strings);
+        const size_t nr_splitters = getNumberSplitter(env.size(), local_num_strings, samplingFactor);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
 
         std::vector<Char>& raw_splitters = sampleIndices.sample;
@@ -176,8 +177,7 @@ public:
                 });
 
         const size_t local_num_strings = ss.size();
-        const size_t nr_splitters =
-            std::min<size_t>(std::log2(local_num_strings) * samplingFactor, local_num_strings);
+        const size_t nr_splitters = getNumberSplitter(env.size(), local_num_strings, samplingFactor);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
         raw_splitters.reserve(nr_splitters * (maxLength + 1));
