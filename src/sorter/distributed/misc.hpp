@@ -538,7 +538,8 @@ computePartition_(
         Sampler::sample_splitters(ss, globalLcpAvg, samplingFactor);
     measuringTool.stop("sample_splitters");
 
-    measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent");
+    measuringTool.add(raw_splitters.size(), "allgather_splitters_bytes_sent", false);
+    measuringTool.add(globalLcpAvg, "globalLcpAvg", false);
 
     measuringTool.start("sort_splitter");
     StringContainer sortedLocalSample = splitterSort(std::move(raw_splitters));
