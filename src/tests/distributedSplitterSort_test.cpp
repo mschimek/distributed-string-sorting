@@ -78,6 +78,8 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     for (size_t i = 0; i < numberOfIterations; ++i) {
+        if (strongScaling) numberOfStrings *= size;
+        if (splitterMode) numberOfStrings = env.size() * (env.size() - 1) * samplingFactor;
         measuringTool.setPrefix(
             "RESULT numberProcessors=" + std::to_string(size) + " iteration=" +
             std::to_string(i) + " size=" + std::to_string(numberOfStrings) +
@@ -88,10 +90,8 @@ int main(int argc, char** argv) {
         // Create random input elements
         PRINT_ROOT("Create random input elements");
         // Container container = Generator("testData.dat");
-        if (strongScaling) numberOfStrings *= size;
-        if (splitterMode) numberOfStrings = env.size() * (env.size() - 1) * samplingFactor;
 
-        Container container = Generator(size, stringLength, dToNRatio);
+        Container container = Generator(numberOfStrings, stringLength, dToNRatio);
         if (!container.isConsistent()) {
             std::cout << "initial input is corrupt" << std::endl;
             std::abort();
