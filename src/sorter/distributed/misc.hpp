@@ -554,6 +554,8 @@ computePartition_(
 
     const StringSet chosen_splitters_set(chosen_splitters_cont.strings(),
         chosen_splitters_cont.strings() + chosen_splitters_cont.size());
+    measuringTool.add(chosen_splitters_set.size(), "chosenSplitterSize", false);
+    measuringTool.add(chosen_splitters_cont.char_size(), "chosenSplitterCharSize", false);
 
 
     measuringTool.start("compute_interval_sizes");
