@@ -56,6 +56,7 @@ namespace RQuick {
 namespace _internal {
 constexpr bool debugQuicksort = false;
 
+uint64_t initialSize = 0;
 inline void split(RBC::Comm& comm, RBC::Comm* subcomm) {
     const auto nprocs = comm.getSize();
     const auto myrank = comm.getRank();
@@ -426,6 +427,10 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     const uint64_t ownCharsSize =
         stringContainer.char_size() - sendCharsContiguous.size();
 
+    uint64_t inbalance =
+        std::abs(static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
+    measuringTool.add(inbalance, "inbalance", false);
+
     tracker.partition_t.stop();
     measuringTool.stop("Splitter_partition");
 
@@ -485,7 +490,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
         auto res = sortRec(gen, bit_store, std::move(stringContainer),
             std::forward<Comp>(comp), mpi_type, is_robust,
             std::forward<Tracker>(tracker), tag, subcomm);
-    measuringTool.disableBarrier(false);
+        measuringTool.disableBarrier(false);
         measuringTool.setRound(0);
         return res;
     }
@@ -890,7 +895,6 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     // container.update(std::move(matthiasTmp));
 
     // return StringContainer();
-    std::cout << " im here " << std::endl;
     RandomBitStore bit_store;
     return _internal::sortRec(async_gen, bit_store, std::move(container),
         std::forward<Comp>(comp), mpi_type, is_robust,
