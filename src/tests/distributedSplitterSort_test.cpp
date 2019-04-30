@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
         StringComparator comp;
         PRINT_ROOT("Start sorting algorithm RQuick with MPI_Comm. "
                    << "RBC::Communicators are used internally.");
+        env.barrier();
         measuringTool.start("distributed_sort");
         auto sortedContainer = RQuick::sort(
             generator, container.raw_strings(), MPI_BYTE, tag, comm, comp);
