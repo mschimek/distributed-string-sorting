@@ -59,9 +59,11 @@ int main(int argc, char** argv) {
     bool check = false;
     bool splitterMode = false;
     bool realSplitterMode = false;
+    bool readFile = false;
     unsigned int samplingFactor = 2;
     unsigned int stringLength = 100;
     double lcpFactor = 1.0;
+    cp.add_flag('e', "readFile", readFile, " ");
     cp.add_double('b', "lcpFactor", lcpFactor, " ");
     cp.add_flag('b', "splitterMode", splitterMode, " ");
     cp.add_flag('d', "realSplitterMode", realSplitterMode, " ");
@@ -95,7 +97,13 @@ int main(int argc, char** argv) {
         PRINT_ROOT("Create random input elements");
         // Container container = Generator("testData.dat");
 
-        Container container = Generator(numberOfStrings, stringLength, dToNRatio);
+        Container container;
+        if (readFile) {
+          std::string path = "sampleInput/TMP_Sample_" + std::to_string(rank);
+          std::vector<unsigned char> input = readFilePerPE(path);
+          container.update(std::move(input));
+        }
+        container = Generator(numberOfStrings, stringLength, dToNRatio);
         if (realSplitterMode) {
           std::vector<unsigned char> tmp;
           tmp.reserve(container.char_size());

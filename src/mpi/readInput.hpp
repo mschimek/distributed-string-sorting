@@ -79,8 +79,7 @@ std::vector<unsigned char> distribute_strings(const std::string& input_path,
         ++first_end;
     }
     for (size_t i = 0; i < result.size(); ++i) {
-      if (result[i] == '\n')
-        result[i] = 0;
+        if (result[i] == '\n') result[i] = 0;
     }
 
     std::vector<unsigned char> end_of_last_string =
@@ -102,6 +101,45 @@ std::vector<unsigned char> distribute_strings(const std::string& input_path,
     }
 
     return result;
+}
+
+std::vector<unsigned char> readFilePerPE(const std::string& path) {
+    dss_schimek::mpi::environment env;
+
+    std::ifstream in(path, std::ifstream::binary);
+    if (!in.good()) {
+        std::cout << "file not good on rank: " << env.rank() << std::endl;
+        std::abort();
+    }
+
+    const uint64_t fileSize = getFileSize(path);
+    std::vector<unsigned char> content;
+    for (size_t i = 0; i < fileSize; ++i) {
+        unsigned char curChar = in.get();
+        content.push_back(curChar);
+    }
+    return content;
+}
+
+dss_schimek::RawStringsLines readFile(const std::string& path) {
+    using dss_schimek::RawStringsLines;
+    RawStringsLines data;
+    const size_t fileSize = getFileSize(path);
+    std::ifstream in(path);
+    std::vector<unsigned char>& rawStrings = data.rawStrings;
+    rawStrings.reserve(1.5 * fileSize);
+
+    std::string line;
+    data.lines = 0u;
+    while (std::getline(in, line)) {
+        ++data.lines;
+        for (unsigned char curChar : line)
+            rawStrings.push_back(curChar);
+        rawStrings.push_back(0);
+    }
+    std::cout << "lines: " << data.lines << std::endl;
+    in.close();
+    return data;
 }
 
 std::vector<unsigned char> readFileInParallel(const std::string& path) {
@@ -166,26 +204,7 @@ std::vector<unsigned char> readFileInParallel(const std::string& path) {
     return rawStrings;
 }
 
-dss_schimek::RawStringsLines readFile(const std::string& path) {
-    using dss_schimek::RawStringsLines;
-    RawStringsLines data;
-    const size_t fileSize = getFileSize(path);
-    std::ifstream in(path);
-    std::vector<unsigned char>& rawStrings = data.rawStrings;
-    rawStrings.reserve(1.5 * fileSize);
 
-    std::string line;
-    data.lines = 0u;
-    while (std::getline(in, line)) {
-        ++data.lines;
-        for (unsigned char curChar : line)
-            rawStrings.push_back(curChar);
-        rawStrings.push_back(0);
-    }
-    std::cout << "lines: " << data.lines << std::endl;
-    in.close();
-    return data;
-}
 
 std::vector<unsigned char> readFileAndDistribute(const std::string& path) {
     dss_schimek::mpi::environment env;
