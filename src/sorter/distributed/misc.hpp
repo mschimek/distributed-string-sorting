@@ -8,6 +8,7 @@
 //#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
 
+#include "mpi/writeToFile.hpp"
 #include "mpi/allgather.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/synchron.hpp"
@@ -539,6 +540,7 @@ computePartition_(
     measuringTool.stop("sample_splitters");
 
     auto tmp1 = raw_splitters;
+    mpi::writeToOwnFile("TMP_Sample_", raw_splitters);
     StringContainer tmp(std::move(tmp1));
 
     measuringTool.add(tmp.size(), "splitterSortInputNumString", false);
