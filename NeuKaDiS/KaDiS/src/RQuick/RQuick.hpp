@@ -55,6 +55,7 @@
 namespace RQuick {
 namespace _internal {
 constexpr bool debugQuicksort = false;
+constexpr bool barrierActive = true;
 
 uint64_t initialSize = 0;
 inline void split(RBC::Comm& comm, RBC::Comm* subcomm) {
@@ -358,7 +359,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     ++iteration;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.setRound(iteration);
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_median_select_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_median_select_Barrier");
+    }
     measuringTool.start("Splitter_median_select");
     tracker.median_select_t.start(comm);
 
@@ -376,12 +381,16 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
         stringContainer, mpi_type, std::forward<Comp>(comp), tag, comm);
 
     tracker.median_select_t.stop();
+    String pivotString(pivot.data(), pivot.size() - 1);
     measuringTool.stop("Splitter_median_select");
 
     // Partition data into small elements and large elements.
-    String pivotString(pivot.data(), pivot.size() - 1);
 
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_partition_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_partition_Barrier");
+    }
     measuringTool.start("Splitter_partition");
     tracker.partition_t.start(comm);
 
@@ -429,8 +438,8 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     const uint64_t ownCharsSize =
         stringContainer.char_size() - sendCharsContiguous.size();
 
-    uint64_t inbalance =
-        std::abs(static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
+    uint64_t inbalance = std::abs(
+        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
     measuringTool.add(inbalance, "inbalance", false);
 
     tracker.partition_t.stop();
@@ -438,7 +447,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
 
     // Move elements to partner and receive elements for own group.
     tracker.exchange_t.start(comm);
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_exchange_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_exchange_Barrier");
+    }
     measuringTool.start("Splitter_exchange");
 
     const auto partner = (myrank + (nprocs / 2)) % nprocs;
@@ -453,7 +466,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     measuringTool.stop("Splitter_exchange");
     // Merge received elements with own elements.
     tracker.merge_t.start(comm);
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_merge_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_merge_Barrier");
+    }
     measuringTool.start("Splitter_merge");
 
     const auto num_elements = recvStrings.size() + (own_end - own_begin);
@@ -482,7 +499,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
 
     if (nprocs >= 4) {
         // Split communicator and solve subproblems.
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_split_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_split_Barrier");
+    }
         measuringTool.start("Splitter_split");
         tracker.comm_split_t.start(comm);
 
@@ -705,6 +726,12 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
 
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.disableBarrier(true);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_baseCase_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_baseCase_Barrier");
+    }
+    measuringTool.start("Splitter_baseCase");
     if (comm.getSize() == 1) {
         StringContainer container(std::move(v));
         tracker.local_sort_t.start(comm);
@@ -713,8 +740,13 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
         tracker.local_sort_t.stop();
         return container;
     }
+    measuringTool.stop("Splitter_baseCase");
 
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_move_to_pow_of_two_t_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_move_to_pow_of_two_t_Barrier");
+    }
     measuringTool.start("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.start(comm);
 
@@ -789,7 +821,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
 
     assert(tlx::is_power_of_two(comm.getSize()));
 
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("splitter_shuffle_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("splitter_shuffle_Barrier");
+    }
     tracker.parallel_shuffle_t.start(comm);
     measuringTool.start("Splitter_shuffle");
 
@@ -885,7 +921,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     measuringTool.stop("Splitter_shuffle");
     tracker.parallel_shuffle_t.stop();
 
-    RBC::Barrier(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_sortLocally_Barrier");
+        RBC::Barrier(comm);
+        measuringTool.stop("Splitter_sortLocally_Barrier");
+    }
     measuringTool.start("Splitter_sortLocally");
     tracker.local_sort_t.start(comm);
     sortLocally(container.make_string_ptr());
