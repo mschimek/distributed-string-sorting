@@ -99,11 +99,12 @@ int main(int argc, char** argv) {
 
         Container container;
         if (readFile) {
-          std::string path = "sampleInput/TMP_Sample_" + std::to_string(rank);
+          std::string path = "sampleInput/TMP_Sample_iteration_" + std::to_string(i) + "_"  + std::to_string(rank);
           std::vector<unsigned char> input = readFilePerPE(path);
           container.update(std::move(input));
-        }
+        } else {
         container = Generator(numberOfStrings, stringLength, dToNRatio);
+}
         if (realSplitterMode) {
           std::vector<unsigned char> tmp;
           tmp.reserve(container.char_size());
