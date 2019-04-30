@@ -139,16 +139,30 @@ int main(int argc, char** argv) {
         StringComparator comp;
         PRINT_ROOT("Start sorting algorithm RQuick with MPI_Comm. "
                    << "RBC::Communicators are used internally.");
+
+
+
+        RBC::Comm rbcComm;
+        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
         measuringTool.start("firstBarrier");
         env.barrier();
         measuringTool.stop("firstBarrier");
+
+        measuringTool.start("firstRBCComm");
+        RBC::Barrier(rbcComm);
+        measuringTool.stop("firstRBCComm");
+
         measuringTool.start("secondBarrier");
         env.barrier();
         measuringTool.stop("secondBarrier");
+
         measuringTool.start("distributed_sort");
         auto sortedContainer = RQuick::sort(
             generator, container.raw_strings(), MPI_BYTE, tag, comm, comp);
         measuringTool.stop("distributed_sort");
+
+
+
         env.barrier();
 
         if (check) {
