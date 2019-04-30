@@ -358,6 +358,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     ++iteration;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.setRound(iteration);
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_median_select");
     tracker.median_select_t.start(comm);
 
@@ -380,6 +381,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     // Partition data into small elements and large elements.
     String pivotString(pivot.data(), pivot.size() - 1);
 
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_partition");
     tracker.partition_t.start(comm);
 
@@ -436,6 +438,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
 
     // Move elements to partner and receive elements for own group.
     tracker.exchange_t.start(comm);
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_exchange");
 
     const auto partner = (myrank + (nprocs / 2)) % nprocs;
@@ -450,6 +453,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     measuringTool.stop("Splitter_exchange");
     // Merge received elements with own elements.
     tracker.merge_t.start(comm);
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_merge");
 
     const auto num_elements = recvStrings.size() + (own_end - own_begin);
@@ -478,6 +482,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
 
     if (nprocs >= 4) {
         // Split communicator and solve subproblems.
+    RBC::Barrier(comm);
         measuringTool.start("Splitter_split");
         tracker.comm_split_t.start(comm);
 
@@ -795,89 +800,90 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     tmp2.reserve(v.capacity() / 2);
 
     measuringTool.start("Splitter_shuffle");
-     if (is_robust) {
-        using StringIndexPEIndex = std::pair<uint64_t, uint64_t>;
-        std::vector<StringIndexPEIndex> stringIndicesPEIndices(
-            container.size());
-        const auto rank = comm.getRank();
-        for (size_t i = 0; i < container.size(); ++i) {
-            stringIndicesPEIndices[i].first = i;
-            stringIndicesPEIndices[i].second = rank;
-        }
-        // for (size_t i = 0; i < stringIndicesPEIndices.size(); ++i) {
-        //    std::cout << "rank: " << rank << " ("
-        //              << stringIndicesPEIndices[i].first << ", "
-        //              << stringIndicesPEIndices[i].second << std::endl;
-        //}
-        shuffle(async_gen, stringIndicesPEIndices, tmp2, MPI_BYTE, tag, comm);
-        // for (size_t i = 0; i < stringIndicesPEIndices.size(); ++i) {
-        //    std::cout << "rank: " << rank << " ("
-        //              << stringIndicesPEIndices[i].first << ", "
-        //              << stringIndicesPEIndices[i].second << ")" <<
-        //std::endl;
-        //}
-        // alltoall string exchange
-        std::vector<uint64_t> elemsFromRanks(comm.getSize(), 0);
-        std::vector<uint64_t> prefixSum;
-        prefixSum.reserve(comm.getSize());
-        for (const auto& elem : stringIndicesPEIndices)
-            ++elemsFromRanks[elem.second];
-        std::partial_sum(elemsFromRanks.begin(), elemsFromRanks.end(),
-            std::back_inserter(prefixSum));
-        std::vector<uint64_t> elemsFromRanksCopy(elemsFromRanks);
-        std::vector<uint64_t> requests(stringIndicesPEIndices.size());
-        for (const auto& elem : stringIndicesPEIndices) {
-            const auto requestIndex =
-                prefixSum[elem.second] - (elemsFromRanksCopy[elem.second]--);
-            requests[requestIndex] = elem.first;
-        }
-        // for (size_t i = 0; i < requests.size(); ++i) {
-        //    std::cout << "rank: " << rank << " " << requests[i] <<
-        //std::endl;
-        //}
-        dss_schimek::mpi::environment env;
-        env.setCommunicator(comm.get());
-        auto recvRequestSizes = dss_schimek::mpi::alltoall(elemsFromRanks);
-        // for (size_t i = 0; i < comm.getSize(); ++i) {
-        //  std::cout << " rank: " << rank << " received " <<
-        //  recvRequestSizes[i] << " from " << i << std::endl;
-        //}
-        using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
-            dss_schimek::mpi::AllToAllvSmall>;
-        auto recvRequests =
-            AllToAllv::alltoallv(requests.data(), elemsFromRanks, env);
+    // if (is_robust) {
+    //    using StringIndexPEIndex = std::pair<uint64_t, uint64_t>;
+    //    std::vector<StringIndexPEIndex> stringIndicesPEIndices(
+    //        container.size());
+    //    const auto rank = comm.getRank();
+    //    for (size_t i = 0; i < container.size(); ++i) {
+    //        stringIndicesPEIndices[i].first = i;
+    //        stringIndicesPEIndices[i].second = rank;
+    //    }
+    //    // for (size_t i = 0; i < stringIndicesPEIndices.size(); ++i) {
+    //    //    std::cout << "rank: " << rank << " ("
+    //    //              << stringIndicesPEIndices[i].first << ", "
+    //    //              << stringIndicesPEIndices[i].second << std::endl;
+    //    //}
+    //    shuffle(async_gen, stringIndicesPEIndices, tmp2, MPI_BYTE, tag, comm);
+    //    // for (size_t i = 0; i < stringIndicesPEIndices.size(); ++i) {
+    //    //    std::cout << "rank: " << rank << " ("
+    //    //              << stringIndicesPEIndices[i].first << ", "
+    //    //              << stringIndicesPEIndices[i].second << ")" <<
+    //    //std::endl;
+    //    //}
+    //    // alltoall string exchange
+    //    std::vector<uint64_t> elemsFromRanks(comm.getSize(), 0);
+    //    std::vector<uint64_t> prefixSum;
+    //    prefixSum.reserve(comm.getSize());
+    //    for (const auto& elem : stringIndicesPEIndices)
+    //        ++elemsFromRanks[elem.second];
+    //    std::partial_sum(elemsFromRanks.begin(), elemsFromRanks.end(),
+    //        std::back_inserter(prefixSum));
+    //    std::vector<uint64_t> elemsFromRanksCopy(elemsFromRanks);
+    //    std::vector<uint64_t> requests(stringIndicesPEIndices.size());
+    //    for (const auto& elem : stringIndicesPEIndices) {
+    //        const auto requestIndex =
+    //            prefixSum[elem.second] - (elemsFromRanksCopy[elem.second]--);
+    //        requests[requestIndex] = elem.first;
+    //    }
+    //    // for (size_t i = 0; i < requests.size(); ++i) {
+    //    //    std::cout << "rank: " << rank << " " << requests[i] <<
+    //    //std::endl;
+    //    //}
+    //    dss_schimek::mpi::environment env;
+    //    env.setCommunicator(comm.get());
+    //    auto recvRequestSizes = dss_schimek::mpi::alltoall(elemsFromRanks);
+    //    // for (size_t i = 0; i < comm.getSize(); ++i) {
+    //    //  std::cout << " rank: " << rank << " received " <<
+    //    //  recvRequestSizes[i] << " from " << i << std::endl;
+    //    //}
+    //    using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
+    //        dss_schimek::mpi::AllToAllvSmall>;
+    //    auto recvRequests =
+    //        AllToAllv::alltoallv(requests.data(), elemsFromRanks, env);
 
-        std::vector<uint64_t> sendCharCounts(comm.getSize(), 0);
+    //    std::vector<uint64_t> sendCharCounts(comm.getSize(), 0);
 
-        StringSet ss = container.make_string_set();
-        std::vector<unsigned char> sendRawStrings(container.char_size());
-        uint64_t curPos = 0;
-        uint64_t curRequest = 0;
-        for (int64_t i = 0; i < comm.getSize(); ++i) {
-            for (size_t j = 0; j < recvRequestSizes[i]; ++j, ++curRequest) {
-                // std::cout << "rank: " << rank << " " <<
-                // recvRequests[curRequest] << " size: " << ss.size() <<
-                // std::endl;
-                const auto curString =
-                    ss[ss.begin() + recvRequests[curRequest]];
-                const auto length = ss.get_length(curString) + 1;
-                const auto chars = ss.get_chars(curString, 0);
-                std::copy(
-                    chars, chars + length, sendRawStrings.data() + curPos);
-                curPos += length;
-                sendCharCounts[i] += length;
-            }
-        }
+    //    StringSet ss = container.make_string_set();
+    //    std::vector<unsigned char> sendRawStrings(container.char_size());
+    //    uint64_t curPos = 0;
+    //    uint64_t curRequest = 0;
+    //    for (int64_t i = 0; i < comm.getSize(); ++i) {
+    //        for (size_t j = 0; j < recvRequestSizes[i]; ++j, ++curRequest) {
+    //            // std::cout << "rank: " << rank << " " <<
+    //            // recvRequests[curRequest] << " size: " << ss.size() <<
+    //            // std::endl;
+    //            const auto curString =
+    //                ss[ss.begin() + recvRequests[curRequest]];
+    //            const auto length = ss.get_length(curString) + 1;
+    //            const auto chars = ss.get_chars(curString, 0);
+    //            std::copy(
+    //                chars, chars + length, sendRawStrings.data() + curPos);
+    //            curPos += length;
+    //            sendCharCounts[i] += length;
+    //        }
+    //    }
 
-        auto recvRawStrings =
-            AllToAllv::alltoallv(sendRawStrings.data(), sendCharCounts, env);
-        container.update(std::move(recvRawStrings));
-        // std::cout << "----------" << std::endl;
-    }
+    //    auto recvRawStrings =
+    //        AllToAllv::alltoallv(sendRawStrings.data(), sendCharCounts, env);
+    //    container.update(std::move(recvRawStrings));
+    //    // std::cout << "----------" << std::endl;
+    //}
 
     measuringTool.stop("Splitter_shuffle");
     tracker.parallel_shuffle_t.stop();
 
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_sortLocally");
     tracker.local_sort_t.start(comm);
     sortLocally(container.make_string_ptr());
