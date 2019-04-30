@@ -509,14 +509,11 @@ struct StringComparator {
     }
 };
 
+template <typename Generator, typename Comparator>
 dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> splitterSort(
-    std::vector<unsigned char>&& rawStrings) {
+    std::vector<unsigned char>&& rawStrings, Generator& generator, Comparator& comp) {
     dss_schimek::mpi::environment env;
 
-    StringComparator comp;
-    std::mt19937_64 generator;
-    int data_seed = 3469931 + env.rank();
-    generator.seed(data_seed);
     int tag = 11111;
     return RQuick::sort(
         generator, rawStrings, MPI_BYTE, tag, env.communicator(), comp);
@@ -530,6 +527,8 @@ computePartition_(
     using StringContainer = dss_schimek::StringContainer<StringSet>;
     using namespace dss_schimek;
     using measurement::MeasuringTool;
+    static int64_t iteration = -1;
+    ++iteration;
 
     auto ss = stringptr.active();
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -541,18 +540,23 @@ computePartition_(
     measuringTool.stop("sample_splitters");
 
     auto tmp1 = raw_splitters;
-    mpi::writeToOwnFile("TMP_Sample_", raw_splitters);
+    mpi::writeToOwnFile("TMP_Sample_iteration_" + std::to_string(iteration) + "_", raw_splitters);
     StringContainer tmp(std::move(tmp1));
 
     measuringTool.add(tmp.size(), "splitterSortInputNumString", false);
     measuringTool.add(raw_splitters.size(), "splitterSortInputNumChars", false);
     measuringTool.add(globalLcpAvg, "globalLcpAvg", false);
 
+    dss_schimek::mpi::environment env;
+    StringComparator comp;
+    std::mt19937_64 generator;
+    int data_seed = 3469931 + env.rank();
+    generator.seed(data_seed);
+    env.barrier();
     measuringTool.start("sort_splitter");
-    StringContainer sortedLocalSample = splitterSort(std::move(raw_splitters));
+    StringContainer sortedLocalSample = splitterSort(std::move(raw_splitters), generator, comp);
     measuringTool.stop("sort_splitter");
 
-    dss_schimek::mpi::environment env;
 
     measuringTool.start("choose_splitters");
     auto rawChosenSplitters = getSplitters(sortedLocalSample);
