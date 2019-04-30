@@ -714,6 +714,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
         return container;
     }
 
+    RBC::Barrier(comm);
     measuringTool.start("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.start(comm);
 
@@ -788,7 +789,9 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
 
     assert(tlx::is_power_of_two(comm.getSize()));
 
+    RBC::Barrier(comm);
     tracker.parallel_shuffle_t.start(comm);
+    measuringTool.start("Splitter_shuffle");
 
     // Vector is used to store about the same number of elements as v.
     std::vector<T> tmp1;
@@ -799,7 +802,6 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     std::vector<T> tmp2;
     tmp2.reserve(v.capacity() / 2);
 
-    measuringTool.start("Splitter_shuffle");
     // if (is_robust) {
     //    using StringIndexPEIndex = std::pair<uint64_t, uint64_t>;
     //    std::vector<StringIndexPEIndex> stringIndicesPEIndices(
