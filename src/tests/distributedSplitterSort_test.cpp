@@ -13,6 +13,7 @@
 #include "JanusSort.hpp"
 #include "RQuick.hpp"
 #include "mpi/environment.hpp"
+#include "mpi/allgather.hpp"
 #include "mpi/synchron.hpp"
 #include "strings/stringset.hpp"
 #include "util/measuringTool.hpp"
@@ -97,13 +98,15 @@ int main(int argc, char** argv) {
         PRINT_ROOT("Create random input elements");
         // Container container = Generator("testData.dat");
 
+
         Container container;
         if (readFile) {
-          std::string path = "sampleInput/TMP_Sample_" + std::to_string(rank);
+          std::string path = "sampleInput/TMP_Sample_iteration_" + std::to_string(i) + "_" + std::to_string(rank);
           std::vector<unsigned char> input = readFilePerPE(path);
           container.update(std::move(input));
-        }
+        } else {
         container = Generator(numberOfStrings, stringLength, dToNRatio);
+	}
         if (realSplitterMode) {
           std::vector<unsigned char> tmp;
           tmp.reserve(container.char_size());
@@ -134,6 +137,16 @@ int main(int argc, char** argv) {
         int tag = 11111;
 
         // Sort data descending
+        uint64_t localSize = container.size();
+        uint64_t localChars = container.char_size();
+        auto sumOfLocalInput = dss_schimek::mpi::allgather(localSize);
+        auto sumOfLocalInputChars = dss_schimek::mpi::allgather(localChars);
+	if (env.rank() == 0) {
+		const uint64_t sumStrings = std::accumulate(sumOfLocalInput.begin(), sumOfLocalInput.end(), 0);
+		std::cout << "total sum: " <<  sumStrings<< std::endl;
+		const uint64_t sumChars = std::accumulate(sumOfLocalInputChars.begin(), sumOfLocalInputChars.end(), 0);
+		std::cout << "total sum chars: " << sumChars << std::endl;
+	}
 
         StringComparator comp;
         PRINT_ROOT("Start sorting algorithm RQuick with MPI_Comm. "

@@ -311,6 +311,7 @@ public:
         std::mt19937 rand_gen(randSeedGenerator());
         auto rand = [&](size_t n) { return rand_gen() % n; };
         std::random_shuffle(begin, begin + genStrings, rand);
+	this->orderRawStrings();
     }
 
     static std::string getName() { return "DNRatioGenerator"; }
