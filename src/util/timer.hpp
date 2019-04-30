@@ -40,6 +40,8 @@ namespace dss_schimek {
       const auto&[itToStart, blabla] = keyToStart.emplace(key, PointInTime());
 
       // Start measurement
+      if (!disableBarrier)
+        env.barrier();
       const PointInTime start = Clock::now();
       itToStart->second = start;
     }
