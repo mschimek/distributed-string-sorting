@@ -561,7 +561,7 @@ computePartition_(
     measuringTool.start("createRBCComm");
         RBC::Comm rbcComm;
         RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
-    measuringTool.end("createRBCComm");
+    measuringTool.stop("createRBCComm");
     env.barrier();
     measuringTool.start("firstRBCBarrier");
     RBC::Barrier(rbcComm);
