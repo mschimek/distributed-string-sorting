@@ -73,4 +73,4 @@ add_executable(generateSuffixesTests generateSuffixes_tests.cpp ../mpi/environme
 target_link_libraries(generateSuffixesTests ${MPI_LIBRARIES} tlx)
 
 add_executable(distributedSplitterSortTests distributedSplitterSort_test.cpp ../mpi/environment.cpp)
-target_link_libraries(distributedSplitterSortTests ${MPI_LIBRARIES} tlx rbcsorting atomic)
+target_link_libraries(distributedSplitterSortTests ${MPI_LIBRARIES} tlx)

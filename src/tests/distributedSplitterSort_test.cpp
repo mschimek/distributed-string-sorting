@@ -10,8 +10,7 @@
 #include <random>
 #include <vector>
 
-#include "JanusSort.hpp"
-#include "RQuick.hpp"
+#include "../sorter/RQuick/RQuick.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/synchron.hpp"
 #include "strings/stringset.hpp"
@@ -142,23 +141,24 @@ int main(int argc, char** argv) {
 
 
 
-        RBC::Comm rbcComm;
-        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
+        //RBC::Comm rbcComm;
+        //RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
         measuringTool.start("firstBarrier");
         env.barrier();
         measuringTool.stop("firstBarrier");
 
-        measuringTool.start("firstRBCComm");
-        RBC::Barrier(rbcComm);
-        measuringTool.stop("firstRBCComm");
+        //measuringTool.start("firstRBCComm");
+        //RBC::Barrier(rbcComm);
+        //measuringTool.stop("firstRBCComm");
 
         measuringTool.start("secondBarrier");
         env.barrier();
         measuringTool.stop("secondBarrier");
 
+        const bool isRobust = true;
         measuringTool.start("distributed_sort");
         auto sortedContainer = RQuick::sort(
-            generator, container.raw_strings(), MPI_BYTE, tag, comm, comp);
+            generator, container.raw_strings(), MPI_BYTE, tag, comm, comp, isRobust);
         measuringTool.stop("distributed_sort");
 
 
@@ -196,8 +196,8 @@ int main(int argc, char** argv) {
 
         PRINT_ROOT("Elements have been sorted");
         std::stringstream buffer;
-        measuringTool.writeToStream(buffer);
-        if (env.rank() == 0) {
+          measuringTool.writeToStream(buffer);
+          if (env.rank() == 0) {
             std::cout << buffer.str() << std::endl;
         }
         measuringTool.reset();
