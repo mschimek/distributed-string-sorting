@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <cstdint>
 #include <limits>
 #include <mpi.h>
