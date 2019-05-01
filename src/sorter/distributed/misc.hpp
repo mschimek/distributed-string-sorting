@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RQuick.hpp"
+#include "sorter/RQuick/RQuick.hpp"
 #include "merge/stringtools.hpp"
 #include "sorter/distributed/samplingStrategies.hpp"
 #include "strings/stringcontainer.hpp"
@@ -514,9 +514,11 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> splitterSort(
     Comparator& comp) {
     dss_schimek::mpi::environment env;
 
+    const bool isRobust = true;
     int tag = 11111;
+    MPI_Comm comm = env.communicator();
     return RQuick::sort(
-        generator, rawStrings, MPI_BYTE, tag, env.communicator(), comp);
+        generator, rawStrings, MPI_BYTE, tag, comm, comp, isRobust);
 }
 
 template <typename Sampler, typename StringPtr>
@@ -558,13 +560,14 @@ computePartition_(
     generator.seed(data_seed);
     generator2.seed(data_seed);
     env.barrier();
+
     measuringTool.start("createRBCComm");
-        RBC::Comm rbcComm;
-        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
+//        RBC::Comm rbcComm;
+//        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
     measuringTool.stop("createRBCComm");
     env.barrier();
     measuringTool.start("firstRBCBarrier");
-    RBC::Barrier(rbcComm);
+//    RBC::Barrier(rbcComm);
     measuringTool.stop("firstRBCBarrier");
     measuringTool.start("sort_splitterWarumup");
     measuringTool.disable();
