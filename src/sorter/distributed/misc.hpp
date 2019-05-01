@@ -541,15 +541,13 @@ computePartition_(
         Sampler::sample_splitters(ss, 2 * globalLcpAvg, samplingFactor);
     measuringTool.stop("sample_splitters");
 
-    auto tmp1 = raw_splitters;
-    auto tmp2 = raw_splitters;
-    mpi::writeToOwnFile(
-        "TMP_Sample_iteration_" + std::to_string(iteration) + "_",
-        raw_splitters);
-    StringContainer tmp(std::move(tmp1));
+//    auto tmp1 = raw_splitters;
+//    auto tmp2 = raw_splitters;
+//    mpi::writeToOwnFile(
+//        "TMP_Sample_iteration_" + std::to_string(iteration) + "_",
+//        raw_splitters);
+//    StringContainer tmp(std::move(tmp1));
 
-    measuringTool.add(tmp.size(), "splitterSortInputNumString", false);
-    measuringTool.add(raw_splitters.size(), "splitterSortInputNumChars", false);
     measuringTool.add(globalLcpAvg, "globalLcpAvg", false);
 
     dss_schimek::mpi::environment env;
@@ -559,23 +557,23 @@ computePartition_(
     int data_seed = 3469931 + env.rank();
     generator.seed(data_seed);
     generator2.seed(data_seed);
-    env.barrier();
-
-    measuringTool.start("createRBCComm");
-//        RBC::Comm rbcComm;
-//        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
-    measuringTool.stop("createRBCComm");
-    env.barrier();
-    measuringTool.start("firstRBCBarrier");
-//    RBC::Barrier(rbcComm);
-    measuringTool.stop("firstRBCBarrier");
-    measuringTool.start("sort_splitterWarumup");
-    measuringTool.disable();
-    StringContainer sortedLocalSample2 =
-        splitterSort(std::move(tmp2), generator2, comp);
-    measuringTool.enable();
-    measuringTool.stop("sort_splitterWarumup");
-
+//    env.barrier();
+//
+//    measuringTool.start("createRBCComm");
+////        RBC::Comm rbcComm;
+////        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
+//    measuringTool.stop("createRBCComm");
+//    env.barrier();
+//    measuringTool.start("firstRBCBarrier");
+////    RBC::Barrier(rbcComm);
+//    measuringTool.stop("firstRBCBarrier");
+//    measuringTool.start("sort_splitterWarumup");
+//    measuringTool.disable();
+//    StringContainer sortedLocalSample2 =
+//        splitterSort(std::move(tmp2), generator2, comp);
+//    measuringTool.enable();
+//    measuringTool.stop("sort_splitterWarumup");
+//
     env.barrier();
     measuringTool.start("sort_splitter");
     StringContainer sortedLocalSample =
