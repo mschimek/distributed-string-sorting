@@ -558,6 +558,14 @@ computePartition_(
     generator.seed(data_seed);
     generator2.seed(data_seed);
     env.barrier();
+    measuringTool.start("createRBCComm");
+        RBC::Comm rbcComm;
+        RBC::Create_Comm_from_MPI(env.communicator(), &rbcComm);
+    measuringTool.end("createRBCComm");
+    env.barrier();
+    measuringTool.start("firstRBCBarrier");
+    RBC::Barrier(rbcComm);
+    measuringTool.stop("firstRBCBarrier");
     measuringTool.start("sort_splitterWarumup");
     measuringTool.disable();
     StringContainer sortedLocalSample2 =
