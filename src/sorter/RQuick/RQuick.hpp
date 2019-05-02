@@ -71,15 +71,15 @@ inline void split(Communicator& comm, Communicator* subcomm) {
     bool is_left_group = myrank < (nprocs / 2);
     int32_t colour = is_left_group;
 
-    int first = 0, last = 0;
-    if (is_left_group) {
-        first = 0;
-        last = nprocs / 2 - 1;
-    }
-    else {
-        first = nprocs / 2;
-        last = nprocs - 1;
-    }
+    // int first = 0, last = 0;
+    // if (is_left_group) {
+    //    first = 0;
+    //    last = nprocs / 2 - 1;
+    //}
+    // else {
+    //    first = nprocs / 2;
+    //    last = nprocs - 1;
+    //}
 
     MPI_Comm_split(comm, colour, myrank, subcomm);
 }
@@ -603,7 +603,8 @@ void sortLocally(Iterator begin, Iterator end, Comp&& comp) {
 template <class Tracker, class T, class Comp, class Communicator>
 dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     std::mt19937_64& async_gen, std::vector<T>& v, MPI_Datatype mpi_type,
-    int tag, Communicator comm, Tracker&& tracker, Comp&& comp, bool is_robust) {
+    int tag, Communicator comm, Tracker&& tracker, Comp&& comp,
+    bool is_robust) {
     using StringSet = dss_schimek::UCharLengthStringSet;
     using StringContainer = dss_schimek::StringContainer<StringSet>;
     using dss_schimek::measurement::MeasuringTool;
@@ -643,66 +644,68 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
 
     // Send data to a smaller hypercube if the number of processes is
     // not a power of two.
-    //if (myrank < nprocs - pow) {
-    //    // Not a power of two but we are part of the smaller hypercube
-    //    // and receive elements.
+    if (myrank < nprocs - pow) {
+        // Not a power of two but we are part of the smaller hypercube
+        // and receive elements.
 
-    //    MPI_Status status;
-    //    const auto source = pow + myrank;
+        MPI_Status status;
+        const auto source = pow + myrank;
 
-    //    MPI_Probe(source, tag, comm, &status);
-    //    int recv_cnt = 0;
-    //    MPI_Get_count(&status, mpi_type, &recv_cnt);
+        MPI_Probe(source, tag, comm, &status);
+        int recv_cnt = 0;
+        MPI_Get_count(&status, mpi_type, &recv_cnt);
 
-    //    // Avoid reallocations later.
-    //    v.reserve(2 * (v.size() + recv_cnt));
+        // Avoid reallocations later.
+        v.reserve(2 * (v.size() + recv_cnt));
 
-    //    v.resize(v.size() + recv_cnt);
-    //    MPI_Request request;
-    //    MPI_Irecv(v.data() + v.size() - recv_cnt, recv_cnt, mpi_type, source,
-    //        tag, comm, &request);
-    //    MPI_Wait(&request, MPI_STATUS_IGNORE);
+        v.resize(v.size() + recv_cnt);
+        MPI_Request request;
+        MPI_Irecv(v.data() + v.size() - recv_cnt, recv_cnt, mpi_type, source,
+            tag, comm, &request);
+        MPI_Wait(&request, MPI_STATUS_IGNORE);
 
-    //    MPI_Comm sub_comm;
-    //    MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
-    //    comm = sub_comm;
-    //}
-    //else if (myrank >= pow) {
-    //    // Not a power of two and we are not part of the smaller
-    //    // hypercube.
+        MPI_Comm sub_comm;
+        // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
+        MPI_Comm_split(comm, 0, myrank, &sub_comm);
+        comm = sub_comm;
+    }
+    else if (myrank >= pow) {
+        // Not a power of two and we are not part of the smaller
+        // hypercube.
 
-    //    const auto target = myrank - pow;
-    //    MPI_Send(v.data(), v.size(), mpi_type, target, tag, comm);
-    //    v.clear();
+        const auto target = myrank - pow;
+        MPI_Send(v.data(), v.size(), mpi_type, target, tag, comm);
+        v.clear();
 
-    //    // This process is not part of 'sub_comm'. We call
-    //    // this function to support MPI implementations
-    //    // without MPI_Comm_create_group.
-    //    MPI_Comm sub_comm;
-    //    MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
-    //    comm = sub_comm;
+        // This process is not part of 'sub_comm'. We call
+        // this function to support MPI implementations
+        // without MPI_Comm_create_group.
+        MPI_Comm sub_comm;
+        // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
+        MPI_Comm_split(comm, 1, myrank, &sub_comm);
+        comm = sub_comm;
+        measuringTool.stop("Splitter_move_to_pow_of_two_t");
+        measuringTool.disableBarrier(false);
 
-    //    tracker.move_to_pow_of_two_t.stop();
+        return StringContainer();
+    }
+    else if (pow != nprocs) {
+        // Not a power of two but we are part of the smaller hypercube
+        // and do not receive elements.
 
-    //    return StringContainer();
-    //}
-    //else if (pow != nprocs) {
-    //    // Not a power of two but we are part of the smaller hypercube
-    //    // and do not receive elements.
+        MPI_Comm sub_comm;
+        MPI_Comm_split(comm, 0, myrank, &sub_comm);
+        comm = sub_comm;
 
-    //    MPI_Comm sub_comm;
-    //    MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
-    //    comm = sub_comm;
+        // Avoid reallocations later.
+        v.reserve(3 * v.size());
+    }
+    else {
+        // The number of processes is a power of two.
 
-    //    // Avoid reallocations later.
-    //    v.reserve(3 * v.size());
-    //}
-    //else {
-    //    // The number of processes is a power of two.
-
-    //    // Avoid reallocations later.
-    //    v.reserve(2 * v.size());
-    //}
+        // Avoid reallocations later.
+        v.reserve(2 * v.size());
+    }
 
     StringContainer container(std::move(v));
     measuringTool.stop("Splitter_move_to_pow_of_two_t");
@@ -857,6 +860,6 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     int tag, MPI_Comm& mpi_comm, Comp&& comp, bool is_robust) {
     _internal::DummyTracker tracker;
     return RQuick::_internal::sort(
-        async_gen,  v, mpi_type, tag, mpi_comm, tracker, comp, is_robust);
+        async_gen, v, mpi_type, tag, mpi_comm, tracker, comp, is_robust);
 }
 } // namespace RQuick
