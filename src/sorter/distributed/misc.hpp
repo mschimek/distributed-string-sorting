@@ -576,8 +576,10 @@ computePartition_(
 //
     env.barrier();
     measuringTool.start("sort_splitter");
+    measuringTool.disable();
     StringContainer sortedLocalSample =
         splitterSort(std::move(raw_splitters), generator, comp);
+    measuringTool.enable();
     measuringTool.stop("sort_splitter");
 
     measuringTool.start("choose_splitters");

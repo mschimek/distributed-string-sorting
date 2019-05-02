@@ -157,11 +157,11 @@ int main(int argc, char** argv) {
 
         const bool isRobust = true;
         measuringTool.start("distributed_sort");
+        measuringTool.disable();
         auto sortedContainer = RQuick::sort(
             generator, container.raw_strings(), MPI_BYTE, tag, comm, comp, isRobust);
+        measuringTool.enable();
         measuringTool.stop("distributed_sort");
-
-
 
         env.barrier();
 
@@ -193,7 +193,6 @@ int main(int argc, char** argv) {
                 std::abort();
             }
         }
-
         PRINT_ROOT("Elements have been sorted");
         std::stringstream buffer;
           measuringTool.writeToStream(buffer);
