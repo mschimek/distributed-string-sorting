@@ -7,6 +7,7 @@
 #include <random>
 //#include "merge/stringptr.hpp"
 #include "merge/bingmann-lcp_losertree.hpp"
+#include "sorter/distributed/duplicateSorting.hpp"
 
 #include "mpi/allgather.hpp"
 #include "mpi/environment.hpp"
@@ -87,57 +88,8 @@ std::vector<unsigned char> getSplitters(StringContainer& sortedLocalSample) {
     return dss_schimek::mpi::allgatherv(chosenSplitters);
 }
 
-template <typename StringLcpPtr>
-std::vector<std::pair<uint64_t, uint64_t>> getDuplicateRanges(
-    StringLcpPtr strptr) {
-    using StartEnd = std::pair<uint64_t, uint64_t>;
-    using String = typename StringLcpPtr::StringSet::String;
-    std::vector<StartEnd> intervals;
 
-    if (strptr.size() == 0) return intervals;
 
-    mpi::environment env;
-
-    auto ss = strptr.active();
-    intervals.emplace_back(0, 0);
-    uint64_t prevLength = ss.get_length(ss[ss.begin()]);
-    for (size_t i = 1; i < strptr.size(); ++i) {
-        const uint64_t curLcp = strptr.get_lcp(i);
-        auto curString = ss[ss.begin() + i];
-        const uint64_t curLength = ss.get_length(curString);
-        // std::cout << "rank: " << env.rank() << " " << ss.get_chars(curString,
-        // 0) <<  " " << strptr.get_lcp(i) << " length: " << curLength <<
-        // std::endl;
-        if (curLength != curLcp || prevLength != curLcp) {
-            if (intervals.back().first + 1 != i) {
-                intervals.back().second = i;
-                intervals.emplace_back(i, i);
-            }
-            else {
-                intervals.back().first = i;
-            }
-        }
-        // std::cout << "rank: " << env.rank() << " " << intervals.back().first
-        // << " " << intervals.back().first << std::endl; std::cout << "rank: "
-        // << env.rank() << " " << ss.get_chars(curString, 0) <<  " " <<
-        // strptr.get_lcp(i) << " length: " << curLength << std::endl;
-        prevLength = curLength;
-    }
-    intervals.back().second = strptr.size();
-    return intervals;
-}
-
-template <typename StringSet>
-void sortRanges(dss_schimek::IndexStringLcpContainer<StringSet>& indexContainer,
-    const std::vector<std::pair<uint64_t, uint64_t>>& ranges) {
-    using IndexString = typename StringSet::String;
-    for (auto [begin, end] : ranges) {
-        std::sort(indexContainer.strings() + begin,
-            indexContainer.strings() + end,
-            [&](IndexString a, IndexString b) { return a.index < b.index; });
-        ;
-    }
-}
 template <typename StringSet>
 IndexStringLcpContainer<StringSet> choose_splitters(
     IndexStringLcpContainer<StringSet>& indexContainer,

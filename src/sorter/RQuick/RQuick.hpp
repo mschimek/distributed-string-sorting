@@ -35,6 +35,7 @@
 #include "mpi/alltoall.hpp"
 #include "mpi/environment.hpp"
 #include "mpi/synchron.hpp"
+#include "sorter/distributed/duplicateSorting.hpp"
 #include "strings/stringcontainer.hpp"
 #include "strings/stringset.hpp"
 #include <tlx/sort/strings/radix_sort.hpp>
@@ -57,6 +58,114 @@ public:
 
 } // namespace Tools
 namespace RQuick {
+
+template <class StringContainer_, bool isIndexed>
+struct Data {
+    using StringContainer = StringContainer_;
+    std::vector<unsigned char> rawStrings;
+    std::vector<uint64_t> indices;
+    static constexpr bool isIndexed_ = isIndexed;
+
+    void clear() {
+        rawStrings.clear();
+        indices.clear();
+        rawStrings.shrink_to_fit();
+        indices.shrink_to_fit();
+    }
+    StringContainer moveToContainer() {
+        if constexpr (isIndexed) {
+            return StringContainer(std::move(rawStrings));
+        }
+        else {
+            return StringContainer(std::move(rawStrings));
+        }
+    }
+
+    void IReceiveAppend(MPI_Comm comm, int32_t source, int32_t tag) {
+        if constexpr (!isIndexed) {
+            MPI_Status status;
+
+            MPI_Probe(source, tag, comm, &status);
+            int recv_cnt = 0;
+            MPI_Get_count(&status, MPI_BYTE, &recv_cnt);
+
+            // Avoid reallocations later.
+            rawStrings.reserve(2 * (rawStrings.size() + recv_cnt));
+
+            rawStrings.resize(rawStrings.size() + recv_cnt);
+            MPI_Request request;
+            MPI_Irecv(rawStrings.data() + rawStrings.size() - recv_cnt,
+                recv_cnt, MPI_BYTE, source, tag, comm, &request);
+            MPI_Wait(&request, MPI_STATUS_IGNORE);
+        }
+        else {
+            MPI_Status status[2];
+
+            MPI_Probe(source, tag, comm, status);
+            int recv_cnt = 0;
+            MPI_Get_count(status, MPI_BYTE, &recv_cnt);
+            MPI_Probe(source, tag, comm, status + 1);
+            int recv_indices_cnt = 0;
+            MPI_Get_count(status + 1, MPI_BYTE, &recv_indices_cnt);
+
+            // Avoid reallocations later.
+            rawStrings.reserve(2 * (rawStrings.size() + recv_cnt));
+            indices.reserve(2 * (indices.size() + recv_indices_cnt));
+
+            rawStrings.resize(rawStrings.size() + recv_cnt);
+            indices.resize(indices.size() + recv_indices_cnt);
+
+            MPI_Request request[2];
+            MPI_Irecv(rawStrings.data() + rawStrings.size() - recv_cnt,
+                recv_cnt, MPI_BYTE, source, tag, comm, request);
+            MPI_Irecv(indices.data() + indices.size() - recv_indices_cnt,
+                recv_indices_cnt, MPI_BYTE, source, tag, comm, request + 1);
+            MPI_Waitall(2, request, MPI_STATUSES_IGNORE);
+        }
+    }
+    Data Recv(MPI_Comm comm, int32_t source, int32_t tag) {
+        if constexpr (!isIndexed) {
+            Data<StringContainer, isIndexed> returnData;
+            MPI_Status status;
+            MPI_Probe(source, tag, comm, &status);
+            int count = 0;
+            MPI_Get_count(&status, MPI_BYTE, &count);
+            assert(static_cast<size_t>(count) <= n);
+            returnData.rawStrings.resize(count);
+
+            MPI_Recv(returnData.rawStrings.data(), count, MPI_BYTE, source, tag,
+                comm, MPI_STATUS_IGNORE);
+            return returnData;
+        }
+        else {
+            Data<StringContainer, isIndexed> returnData;
+            MPI_Status status[2];
+            MPI_Probe(source, tag, comm, status);
+            int charCount = 0;
+            MPI_Get_count(status, MPI_BYTE, &charCount);
+            MPI_Probe(source, tag, comm, status + 1);
+            int indexCount = 0;
+            MPI_Get_count(status + 1, MPI_BYTE, &indexCount);
+            returnData.rawStrings.resize(charCount);
+            returnData.indices.resize(indexCount);
+
+            MPI_Recv(returnData.rawStrings.data(), charCount, MPI_BYTE, source,
+                tag, comm, MPI_STATUS_IGNORE);
+            MPI_Recv(returnData.indices.data(), indexCount, MPI_BYTE, source,
+                tag, comm, MPI_STATUS_IGNORE);
+            return returnData;
+        }
+    }
+    void Send(MPI_Comm comm, int32_t target, int32_t tag) {
+        MPI_Send(
+            rawStrings.data(), rawStrings.size(), MPI_BYTE, target, tag, comm);
+        if constexpr (isIndexed) {
+            MPI_Send(indices.data(), indices.size() * sizeof(uint64_t),
+                MPI_BYTE, target, tag, comm);
+        }
+    }
+};
+
 namespace _internal {
 constexpr bool debugQuicksort = false;
 constexpr bool barrierActive = true;
@@ -95,11 +204,19 @@ inline void split(Communicator& comm, Communicator* subcomm) {
  * number.
  */
 template <class StringContainer>
-std::vector<unsigned char> middleMostElements(StringContainer& cont, size_t k,
-    std::mt19937_64& async_gen, RandomBitStore& bit_gen) {
+Data<StringContainer, StringContainer::isIndexed> middleMostElements(
+    StringContainer& cont, size_t k, std::mt19937_64& async_gen,
+    RandomBitStore& bit_gen) {
 
+    Data<StringContainer, StringContainer::isIndexed> data;
     if (cont.size() <= k) {
-        return std::vector<unsigned char>(cont.raw_strings());
+        data.rawStrings = cont.raw_strings();
+        if constexpr (StringContainer::isIndexed) {
+            data.indices.reserve(cont.size());
+            for (auto str : cont.make_string_set())
+                data.indices.push_back(str.index);
+        }
+        return data;
     }
 
     const auto offset = (cont.size() - k) / 2;
@@ -109,7 +226,6 @@ std::vector<unsigned char> middleMostElements(StringContainer& cont, size_t k,
     const uint64_t begin = offset + shift;
     auto ss = cont.make_string_set();
 
-    std::vector<unsigned char> middleMostRawStrings;
     if constexpr (debugQuicksort) {
         if (begin + k > cont.size()) {
             std::cout
@@ -123,9 +239,12 @@ std::vector<unsigned char> middleMostElements(StringContainer& cont, size_t k,
         const auto str = ss[ss.begin() + i];
         const auto length = ss.get_length(str) + 1;
         auto chars = ss.get_chars(str, 0);
-        std::copy_n(chars, length, std::back_inserter(middleMostRawStrings));
+        std::copy_n(chars, length, std::back_inserter(data.rawStrings));
+        if constexpr (StringContainer::isIndexed) {
+            data.indices.push_back(str.index);
+        }
     }
-    return middleMostRawStrings;
+    return data;
 }
 
 /*
@@ -134,7 +253,7 @@ std::vector<unsigned char> middleMostElements(StringContainer& cont, size_t k,
  * @param v Local input. The input must be sorted.
  */
 template <class Comp, class StringContainer, class Communicator>
-std::vector<unsigned char> selectSplitter(std::mt19937_64& async_gen,
+Data<StringContainer, StringContainer::isIndexed> selectSplitter(std::mt19937_64& async_gen,
     RandomBitStore& bit_gen, StringContainer& stringContainer,
     MPI_Datatype mpi_type, Comp&& comp, int tag, Communicator& comm) {
 
@@ -145,12 +264,12 @@ std::vector<unsigned char> selectSplitter(std::mt19937_64& async_gen,
             std::abort();
         }
     }
-    // dss_schimek::mpi::environment env;
-    std::vector<unsigned char> local_medians =
+    std::cout << "sort REc: " << StringContainer::isIndexed << std::endl;
+    dss_schimek::mpi::environment env;
+    Data<StringContainer, StringContainer::isIndexed> local_medians =
         middleMostElements(stringContainer, 2, async_gen, bit_gen);
 
-    std::vector<unsigned char> res = BinTreeMedianSelection::select(
-        local_medians.data(), local_medians.data() + local_medians.size(), 2,
+    auto res = BinTreeMedianSelection::select(std::move(local_medians), 2,
         std::forward<Comp>(comp), mpi_type, async_gen, bit_gen, tag, comm);
     if constexpr (debugQuicksort) {
         if (res.size() < 1 || res.back() != 0) {
@@ -226,9 +345,9 @@ void merge(const T* begin1, const T* end1, const T* begin2, const T* end2,
     std::merge(begin1, end1, begin2, end2, tbegin, std::forward<Comp>(comp));
 }
 
-template <class Tracker, class Comp, class StringContainer, class Communicator>
-dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
-    std::mt19937_64& gen, RandomBitStore& bit_store,
+template <bool isIndexed, class Tracker, class Comp, class StringContainer,
+    class Communicator>
+StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     StringContainer&& stringContainer, Comp&& comp, MPI_Datatype mpi_type,
     bool is_robust, Tracker&& tracker, int tag, Communicator& comm) {
 
@@ -238,7 +357,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     static uint64_t iteration = 0;
     ++iteration;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    measuringTool.setRound(iteration);
+    // measuringTool.setRound(iteration);
     if constexpr (barrierActive) {
         measuringTool.start("Splitter_median_select_Barrier");
         MPI_Barrier(comm);
@@ -259,151 +378,155 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sortRec(
     const auto is_left_group = myrank < nprocs / 2;
 
     // Select pivot globally with binary tree median selection.
-    std::vector<unsigned char> pivot = selectSplitter(gen, bit_store,
+    auto pivot = selectSplitter(gen, bit_store,
         stringContainer, mpi_type, std::forward<Comp>(comp), tag, comm);
 
     tracker.median_select_t.stop();
-    String pivotString(pivot.data(), pivot.size() - 1);
-    measuringTool.stop("Splitter_median_select");
+    // String pivotString(pivot.data(), pivot.size() - 1);
+    // measuringTool.stop("Splitter_median_select");
 
-    // Partition data into small elements and large elements.
+    //// Partition data into small elements and large elements.
 
-    if constexpr (barrierActive) {
-        measuringTool.start("Splitter_partition_Barrier");
-        MPI_Barrier(comm);
-        measuringTool.stop("Splitter_partition_Barrier");
-    }
-    measuringTool.start("Splitter_partition");
-    tracker.partition_t.start(comm);
+    // if constexpr (barrierActive) {
+    //    measuringTool.start("Splitter_partition_Barrier");
+    //    MPI_Barrier(comm);
+    //    measuringTool.stop("Splitter_partition_Barrier");
+    //}
+    // measuringTool.start("Splitter_partition");
+    // tracker.partition_t.start(comm);
 
-    const auto* separator = locateSplitter(stringContainer.getStrings(),
-        std::forward<Comp>(comp), pivotString, gen, bit_store, is_robust);
+    // const auto* separator = locateSplitter(stringContainer.getStrings(),
+    //    std::forward<Comp>(comp), pivotString, gen, bit_store, is_robust);
 
-    if constexpr (debugQuicksort) {
-        if (separator < stringContainer.getStrings().data() ||
-            separator >
-                stringContainer.getStrings().data() + stringContainer.size()) {
-            std::cout << "error in locate splitter" << std::endl;
-            std::abort();
-        }
-    }
+    // if constexpr (debugQuicksort) {
+    //    if (separator < stringContainer.getStrings().data() ||
+    //        separator >
+    //            stringContainer.getStrings().data() + stringContainer.size())
+    //            {
+    //        std::cout << "error in locate splitter" << std::endl;
+    //        std::abort();
+    //    }
+    //}
 
-    if constexpr (debugQuicksort) {
-        const uint64_t partitionSize =
-            separator - stringContainer.getStrings().data();
-        std::cout << "rank: " << comm.getRank() << " size: " << partitionSize
-                  << " " << stringContainer.size() - partitionSize << std::endl;
-    }
+    // if constexpr (debugQuicksort) {
+    //    const uint64_t partitionSize =
+    //        separator - stringContainer.getStrings().data();
+    //    std::cout << "rank: " << comm.getRank() << " size: " << partitionSize
+    //              << " " << stringContainer.size() - partitionSize <<
+    //              std::endl;
+    //}
 
-    String* send_begin = stringContainer.getStrings().data();
-    String* send_end = const_cast<String*>(separator);
-    String* own_begin = const_cast<String*>(separator);
-    String* own_end = stringContainer.getStrings().data() +
-                      stringContainer.getStrings().size();
-    if (is_left_group) {
-        std::swap(send_begin, own_begin);
-        std::swap(send_end, own_end);
-    }
+    // String* send_begin = stringContainer.getStrings().data();
+    // String* send_end = const_cast<String*>(separator);
+    // String* own_begin = const_cast<String*>(separator);
+    // String* own_end = stringContainer.getStrings().data() +
+    //                  stringContainer.getStrings().size();
+    // if (is_left_group) {
+    //    std::swap(send_begin, own_begin);
+    //    std::swap(send_end, own_end);
+    //}
 
-    uint64_t sendCounts = 0;
-    for (auto i = send_begin; i < send_end; ++i) {
-        sendCounts += i->getLength() + 1;
-    }
-    std::vector<unsigned char> sendCharsContiguous(sendCounts);
-    uint64_t curPos = 0;
-    for (auto i = send_begin; i < send_end; ++i) {
-        auto length = i->getLength() + 1;
-        auto chars = i->getChars();
-        std::copy_n(chars, length, sendCharsContiguous.begin() + curPos);
-        curPos += length;
-    }
-    const uint64_t ownCharsSize =
-        stringContainer.char_size() - sendCharsContiguous.size();
+    // uint64_t sendCounts = 0;
+    // for (auto i = send_begin; i < send_end; ++i) {
+    //    sendCounts += i->getLength() + 1;
+    //}
+    // std::vector<unsigned char> sendCharsContiguous(sendCounts);
+    // uint64_t curPos = 0;
+    // for (auto i = send_begin; i < send_end; ++i) {
+    //    auto length = i->getLength() + 1;
+    //    auto chars = i->getChars();
+    //    std::copy_n(chars, length, sendCharsContiguous.begin() + curPos);
+    //    curPos += length;
+    //}
+    // const uint64_t ownCharsSize =
+    //    stringContainer.char_size() - sendCharsContiguous.size();
 
-    uint64_t inbalance = std::abs(
-        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
-    measuringTool.add(inbalance, "inbalance", false);
+    // uint64_t inbalance = std::abs(
+    //    static_cast<int64_t>(stringContainer.size()) - (send_end -
+    //    send_begin));
+    // measuringTool.add(inbalance, "inbalance", false);
 
-    tracker.partition_t.stop();
-    measuringTool.stop("Splitter_partition");
+    // tracker.partition_t.stop();
+    // measuringTool.stop("Splitter_partition");
 
-    // Move elements to partner and receive elements for own group.
-    tracker.exchange_t.start(comm);
-    if constexpr (barrierActive) {
-        measuringTool.start("Splitter_exchange_Barrier");
-        MPI_Barrier(comm);
-        measuringTool.stop("Splitter_exchange_Barrier");
-    }
-    measuringTool.start("Splitter_exchange");
+    //// Move elements to partner and receive elements for own group.
+    // tracker.exchange_t.start(comm);
+    // if constexpr (barrierActive) {
+    //    measuringTool.start("Splitter_exchange_Barrier");
+    //    MPI_Barrier(comm);
+    //    measuringTool.stop("Splitter_exchange_Barrier");
+    //}
+    // measuringTool.start("Splitter_exchange");
 
-    const auto partner = (myrank + (nprocs / 2)) % nprocs;
-    std::vector<unsigned char> recvRawStrings;
-    exchange(sendCharsContiguous.data(),
-        sendCharsContiguous.data() + sendCharsContiguous.size(), recvRawStrings,
-        partner, mpi_type, tag, comm);
+    // const auto partner = (myrank + (nprocs / 2)) % nprocs;
+    // std::vector<unsigned char> recvRawStrings;
+    // exchange(sendCharsContiguous.data(),
+    //    sendCharsContiguous.data() + sendCharsContiguous.size(),
+    //    recvRawStrings, partner, mpi_type, tag, comm);
 
-    StringContainer recvStrings(std::move(recvRawStrings));
+    // StringContainer recvStrings(std::move(recvRawStrings));
 
-    tracker.exchange_t.stop();
-    measuringTool.stop("Splitter_exchange");
-    // Merge received elements with own elements.
-    tracker.merge_t.start(comm);
-    if constexpr (barrierActive) {
-        measuringTool.start("Splitter_merge_Barrier");
-        MPI_Barrier(comm);
-        measuringTool.stop("Splitter_merge_Barrier");
-    }
-    measuringTool.start("Splitter_merge");
+    // tracker.exchange_t.stop();
+    // measuringTool.stop("Splitter_exchange");
+    //// Merge received elements with own elements.
+    // tracker.merge_t.start(comm);
+    // if constexpr (barrierActive) {
+    //    measuringTool.start("Splitter_merge_Barrier");
+    //    MPI_Barrier(comm);
+    //    measuringTool.stop("Splitter_merge_Barrier");
+    //}
+    // measuringTool.start("Splitter_merge");
 
-    const auto num_elements = recvStrings.size() + (own_end - own_begin);
-    std::vector<String> mergedStrings(num_elements);
-    merge(own_begin, own_end, recvStrings.getStrings().begin(),
-        recvStrings.getStrings().end(), mergedStrings.begin(),
-        std::forward<Comp>(comp));
-    std::vector<unsigned char> mergedRawStrings(
-        recvStrings.char_size() + ownCharsSize);
+    // const auto num_elements = recvStrings.size() + (own_end - own_begin);
+    // std::vector<String> mergedStrings(num_elements);
+    // merge(own_begin, own_end, recvStrings.getStrings().begin(),
+    //    recvStrings.getStrings().end(), mergedStrings.begin(),
+    //    std::forward<Comp>(comp));
+    // std::vector<unsigned char> mergedRawStrings(
+    //    recvStrings.char_size() + ownCharsSize);
 
-    curPos = 0;
-    for (auto str : mergedStrings) {
-        auto length = str.getLength() + 1;
-        auto chars = str.getChars();
-        std::copy_n(chars, length, mergedRawStrings.begin() + curPos);
-        curPos += length;
-    }
-    stringContainer.update(std::move(mergedRawStrings));
-    measuringTool.stop("Splitter_merge");
-    if constexpr (debugQuicksort) {
-        if (!stringContainer.isConsistent()) {
-            std::cout << "merged string cont not consistent " << std::endl;
-            std::abort();
-        }
-    }
+    // curPos = 0;
+    // for (auto str : mergedStrings) {
+    //    auto length = str.getLength() + 1;
+    //    auto chars = str.getChars();
+    //    std::copy_n(chars, length, mergedRawStrings.begin() + curPos);
+    //    curPos += length;
+    //}
+    // stringContainer.update(std::move(mergedRawStrings));
+    // measuringTool.stop("Splitter_merge");
+    // if constexpr (debugQuicksort) {
+    //    if (!stringContainer.isConsistent()) {
+    //        std::cout << "merged string cont not consistent " << std::endl;
+    //        std::abort();
+    //    }
+    //}
 
-    if (nprocs >= 4) {
-        // Split communicator and solve subproblems.
-        if constexpr (barrierActive) {
-            measuringTool.start("Splitter_split_Barrier");
-            MPI_Barrier(comm);
-            measuringTool.stop("Splitter_split_Barrier");
-        }
-        measuringTool.start("Splitter_split");
-        tracker.comm_split_t.start(comm);
+    // if (nprocs >= 4) {
+    //    // Split communicator and solve subproblems.
+    //    if constexpr (barrierActive) {
+    //        measuringTool.start("Splitter_split_Barrier");
+    //        MPI_Barrier(comm);
+    //        measuringTool.stop("Splitter_split_Barrier");
+    //    }
+    //    measuringTool.start("Splitter_split");
+    //    tracker.comm_split_t.start(comm);
 
-        MPI_Comm subcomm;
-        split(comm, &subcomm);
+    //    MPI_Comm subcomm;
+    //    split(comm, &subcomm);
 
-        tracker.comm_split_t.stop();
-        measuringTool.stop("Splitter_split");
+    //    tracker.comm_split_t.stop();
+    //    measuringTool.stop("Splitter_split");
 
-        auto res = sortRec(gen, bit_store, std::move(stringContainer),
-            std::forward<Comp>(comp), mpi_type, is_robust,
-            std::forward<Tracker>(tracker), tag, subcomm);
-        measuringTool.disableBarrier(false);
-        measuringTool.setRound(0);
-        return res;
-    }
-    measuringTool.disableBarrier(false);
-    measuringTool.setRound(0);
+    //    auto res = sortRec<isIndexed>(gen, bit_store,
+    //    std::move(stringContainer),
+    //        std::forward<Comp>(comp), mpi_type, is_robust,
+    //        std::forward<Tracker>(tracker), tag, subcomm);
+    //    measuringTool.disableBarrier(false);
+    //    measuringTool.setRound(0);
+    //    return res;
+    //}
+    // measuringTool.disableBarrier(false);
+    // measuringTool.setRound(0);
     return std::move(stringContainer);
 }
 
@@ -586,9 +709,21 @@ void shuffle(std::mt19937_64& async_gen, std::vector<T>& v,
     }
 }
 
-template <typename StringPtr>
-void sortLocally(StringPtr strptr) {
-    tlx::sort_strings_detail::radixsort_CI3(strptr, 0, 0);
+template <typename StringContainer>
+void sortLocally(StringContainer& stringContainer) {
+    if constexpr (StringContainer::isIndexed) {
+        std::vector<uint64_t> lcp(stringContainer.size(), 0);
+        auto strptr = stringContainer.make_string_ptr();
+        auto augmentedStringPtr =
+            tlx::sort_strings_detail::StringLcpPtr(strptr.active(), lcp.data());
+        tlx::sort_strings_detail::radixsort_CI3(augmentedStringPtr, 0, 0);
+        auto ranges = getDuplicateRanges(augmentedStringPtr);
+        sortRanges(stringContainer, ranges);
+    }
+    else {
+        tlx::sort_strings_detail::radixsort_CI3(
+            stringContainer.make_string_ptr(), 0, 0);
+    }
 }
 
 template <class Iterator, class Comp>
@@ -600,13 +735,12 @@ void sortLocally(Iterator begin, Iterator end, Comp&& comp) {
 #endif
 }
 
-template <class Tracker, class T, class Comp, class Communicator>
-dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
-    std::mt19937_64& async_gen, std::vector<T>& v, MPI_Datatype mpi_type,
-    int tag, Communicator comm, Tracker&& tracker, Comp&& comp,
-    bool is_robust) {
-    using StringSet = dss_schimek::UCharLengthStringSet;
-    using StringContainer = dss_schimek::StringContainer<StringSet>;
+template <class Tracker, class Data, class Comp, class Communicator>
+typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
+    MPI_Datatype mpi_type, int tag, Communicator comm, Tracker&& tracker,
+    Comp&& comp, bool is_robust) {
+    using StringContainer = typename Data::StringContainer;
+    using StringSet = typename StringContainer::StringSet;
     using dss_schimek::measurement::MeasuringTool;
 
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -623,11 +757,12 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     MPI_Comm_rank(comm, &myrank);
 
     if (nprocs == 1) {
-        StringContainer container(std::move(v));
+        StringContainer container = data.moveToContainer();
         tracker.local_sort_t.start(comm);
 
-        sortLocally(container.make_string_ptr());
+        sortLocally(container);
         tracker.local_sort_t.stop();
+        measuringTool.stop("Splitter_baseCase");
         return container;
     }
     measuringTool.stop("Splitter_baseCase");
@@ -648,22 +783,9 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
         // Not a power of two but we are part of the smaller hypercube
         // and receive elements.
 
-        MPI_Status status;
         const auto source = pow + myrank;
 
-        MPI_Probe(source, tag, comm, &status);
-        int recv_cnt = 0;
-        MPI_Get_count(&status, mpi_type, &recv_cnt);
-
-        // Avoid reallocations later.
-        v.reserve(2 * (v.size() + recv_cnt));
-
-        v.resize(v.size() + recv_cnt);
-        MPI_Request request;
-        MPI_Irecv(v.data() + v.size() - recv_cnt, recv_cnt, mpi_type, source,
-            tag, comm, &request);
-        MPI_Wait(&request, MPI_STATUS_IGNORE);
-
+        data.IReceiveAppend(comm, source, tag);
         MPI_Comm sub_comm;
         // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
         MPI_Comm_split(comm, 0, myrank, &sub_comm);
@@ -674,18 +796,17 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
         // hypercube.
 
         const auto target = myrank - pow;
-        MPI_Send(v.data(), v.size(), mpi_type, target, tag, comm);
-        v.clear();
+        data.Send(comm, target, tag);
+        data.clear();
 
         // This process is not part of 'sub_comm'. We call
         // this function to support MPI implementations
         // without MPI_Comm_create_group.
         MPI_Comm sub_comm;
-        // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
         MPI_Comm_split(comm, 1, myrank, &sub_comm);
         comm = sub_comm;
         measuringTool.stop("Splitter_move_to_pow_of_two_t");
-        measuringTool.disableBarrier(false);
+        // measuringTool.disableBarrier(false);
 
         return StringContainer();
     }
@@ -698,16 +819,16 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
         comm = sub_comm;
 
         // Avoid reallocations later.
-        v.reserve(3 * v.size());
+        // v.reserve(3 * v.size());
     }
     else {
         // The number of processes is a power of two.
 
         // Avoid reallocations later.
-        v.reserve(2 * v.size());
+        // v.reserve(2 * v.size());
     }
 
-    StringContainer container(std::move(v));
+    StringContainer container = data.moveToContainer();
     measuringTool.stop("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.stop();
 
@@ -721,16 +842,6 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     tracker.parallel_shuffle_t.start(comm);
     measuringTool.start("Splitter_shuffle");
 
-    // Vector is used to store about the same number of elements as v.
-    std::vector<T> tmp1;
-    tmp1.reserve(v.capacity());
-
-    // Vector is used to store about half the number of elements as
-    // v. This vector is used to receive data.
-    std::vector<T> tmp2;
-    tmp2.reserve(v.capacity() / 2);
-
-    // if (is_robust) {
     //    using StringIndexPEIndex = std::pair<uint64_t, uint64_t>;
     //    std::vector<StringIndexPEIndex> stringIndicesPEIndices(
     //        container.size());
@@ -744,16 +855,13 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     //    //              << stringIndicesPEIndices[i].first << ", "
     //    //              << stringIndicesPEIndices[i].second << std::endl;
     //    //}
-    //    shuffle(async_gen, stringIndicesPEIndices, tmp2, MPI_BYTE, tag, comm);
-    //    // for (size_t i = 0; i < stringIndicesPEIndices.size(); ++i) {
-    //    //    std::cout << "rank: " << rank << " ("
-    //    //              << stringIndicesPEIndices[i].first << ", "
-    //    //              << stringIndicesPEIndices[i].second << ")" <<
-    //    //std::endl;
-    //    //}
-    //    // alltoall string exchange
-    //    std::vector<uint64_t> elemsFromRanks(comm.getSize(), 0);
-    //    std::vector<uint64_t> prefixSum;
+    //    shuffle(async_gen, stringIndicesPEIndices, tmp2, MPI_BYTE, tag,
+    // comm); /    // for (size_t i = 0; i < stringIndicesPEIndices.size();
+    // ++i) { /    //    std::cout << "rank: " << rank << " (" /    // <<
+    // stringIndicesPEIndices[i].first << ", " /    //              <<
+    // stringIndicesPEIndices[i].second << ")" << /    //std::endl; /    //} /
+    /// alltoall string exchange /    std::vector<uint64_t>
+    // elemsFromRanks(comm.getSize(), 0); /    std::vector<uint64_t> prefixSum;
     //    prefixSum.reserve(comm.getSize());
     //    for (const auto& elem : stringIndicesPEIndices)
     //        ++elemsFromRanks[elem.second];
@@ -763,24 +871,19 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     //    std::vector<uint64_t> requests(stringIndicesPEIndices.size());
     //    for (const auto& elem : stringIndicesPEIndices) {
     //        const auto requestIndex =
-    //            prefixSum[elem.second] - (elemsFromRanksCopy[elem.second]--);
-    //        requests[requestIndex] = elem.first;
-    //    }
-    //    // for (size_t i = 0; i < requests.size(); ++i) {
-    //    //    std::cout << "rank: " << rank << " " << requests[i] <<
-    //    //std::endl;
-    //    //}
-    //    dss_schimek::mpi::environment env;
-    //    env.setCommunicator(comm.get());
-    //    auto recvRequestSizes = dss_schimek::mpi::alltoall(elemsFromRanks);
-    //    // for (size_t i = 0; i < comm.getSize(); ++i) {
-    //    //  std::cout << " rank: " << rank << " received " <<
-    //    //  recvRequestSizes[i] << " from " << i << std::endl;
-    //    //}
-    //    using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
-    //        dss_schimek::mpi::AllToAllvSmall>;
-    //    auto recvRequests =
-    //        AllToAllv::alltoallv(requests.data(), elemsFromRanks, env);
+    //            prefixSum[elem.second] -
+    ///(elemsFromRanksCopy[elem.second]--); /        requests[requestIndex] =
+    /// elem.first; /    } /    // for (size_t i = 0; i < requests.size(); ++i)
+    /// { /    //    std::cout << "rank: " << rank << " " << requests[i] << /
+    /////std::endl; /    //} /    dss_schimek::mpi::environment env; /
+    /// env.setCommunicator(comm.get()); /    auto recvRequestSizes =
+    /// dss_schimek::mpi::alltoall(elemsFromRanks); /    // for (size_t i = 0; i
+    ///< comm.getSize(); ++i) { /    //  std::cout << " rank: " << rank << "
+    /// received " << /    //  recvRequestSizes[i] << " from " << i <<
+    /// std::endl; /    //} /    using AllToAllv =
+    /// dss_schimek::mpi::AllToAllvCombined< /
+    /// dss_schimek::mpi::AllToAllvSmall>; /    auto recvRequests = /
+    /// AllToAllv::alltoallv(requests.data(), elemsFromRanks, env);
 
     //    std::vector<uint64_t> sendCharCounts(comm.getSize(), 0);
 
@@ -805,9 +908,10 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     //    }
 
     //    auto recvRawStrings =
-    //        AllToAllv::alltoallv(sendRawStrings.data(), sendCharCounts, env);
-    //    container.update(std::move(recvRawStrings));
-    //    // std::cout << "----------" << std::endl;
+    //        AllToAllv::alltoallv(sendRawStrings.data(), sendCharCounts,
+    /// env); /    container.update(std::move(recvRawStrings)); /    //
+    /// std::cout
+    ///<< "----------" << std::endl;
     //}
 
     measuringTool.stop("Splitter_shuffle");
@@ -820,7 +924,7 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     }
     measuringTool.start("Splitter_sortLocally");
     tracker.local_sort_t.start(comm);
-    sortLocally(container.make_string_ptr());
+    sortLocally(container);
     tracker.local_sort_t.stop();
     measuringTool.stop("Splitter_sortLocally");
     // std::vector<unsigned char> matthiasTmp;
@@ -834,10 +938,10 @@ dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
     //}
     // container.update(std::move(matthiasTmp));
 
-    // return StringContainer();
+    std::cout << "sort: " << StringContainer::isIndexed << std::endl;
     RandomBitStore bit_store;
-    return _internal::sortRec(async_gen, bit_store, std::move(container),
-        std::forward<Comp>(comp), mpi_type, is_robust,
+    return _internal::sortRec<Data::isIndexed_>(async_gen, bit_store,
+        std::move(container), std::forward<Comp>(comp), mpi_type, is_robust,
         std::forward<Tracker>(tracker), tag, comm);
 }
 
@@ -854,12 +958,12 @@ public:
 };
 } // namespace _internal
 
-template <class T, class Comp>
-dss_schimek::StringContainer<dss_schimek::UCharLengthStringSet> sort(
-    std::mt19937_64& async_gen, std::vector<T>& v, MPI_Datatype mpi_type,
-    int tag, MPI_Comm& mpi_comm, Comp&& comp, bool is_robust) {
+template <class Comp, class Data>
+typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
+    MPI_Datatype mpi_type, int tag, MPI_Comm mpi_comm, Comp&& comp,
+    bool is_robust) {
     _internal::DummyTracker tracker;
-    return RQuick::_internal::sort(
-        async_gen, v, mpi_type, tag, mpi_comm, tracker, comp, is_robust);
+    return RQuick::_internal::sort(async_gen, std::forward<Data>(data),
+        mpi_type, tag, mpi_comm, tracker, comp, is_robust);
 }
 } // namespace RQuick

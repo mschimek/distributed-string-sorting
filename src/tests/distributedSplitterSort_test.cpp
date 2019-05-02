@@ -23,7 +23,7 @@
     if (rank == 0) std::cout << msg << std::endl;
 
 struct StringComparator {
-    using String = dss_schimek::UCharLengthStringSet::String;
+    using String = dss_schimek::UCharLengthIndexStringSet::String;
     bool operator()(String lhs, String rhs) {
         const unsigned char* lhsChars = lhs.string;
         const unsigned char* rhsChars = rhs.string;
@@ -155,15 +155,27 @@ int main(int argc, char** argv) {
         env.barrier();
         measuringTool.stop("secondBarrier");
 
+        using StringContainer = dss_schimek::StringContainer<StringSet>;
+        using IndexStringContainer = dss_schimek::StringContainer<dss_schimek::UCharLengthIndexStringSet>;
+        RQuick::Data<IndexStringContainer, true> data;
+
+        std::vector<uint64_t> indices(container.size(), 42);
+        data.rawStrings = container.raw_strings();
+        data.indices = indices;
+
         const bool isRobust = true;
         measuringTool.start("distributed_sort");
         measuringTool.disable();
+        
+        MPI_Comm commInput = env.communicator();
         auto sortedContainer = RQuick::sort(
-            generator, container.raw_strings(), MPI_BYTE, tag, comm, comp, isRobust);
+            generator, std::move(data), MPI_BYTE, tag, commInput, comp, isRobust);
         measuringTool.enable();
         measuringTool.stop("distributed_sort");
 
+        std::cout << "before barrier: " << env.rank() << std::endl;
         env.barrier();
+        std::cout << "after barrier: " << env.rank() << std::endl;
 
         if (check) {
             measuringTool.start("allgatherv");

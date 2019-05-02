@@ -39,127 +39,125 @@
 int globalIteration;
 int globalRank;
 namespace BinTreeMedianSelection {
-template <class Iterator, class Comp, class Communicator>
-std::vector<unsigned char> select(Iterator begin, Iterator end, size_t n,
-    Comp&& comp, MPI_Datatype mpi_type, std::mt19937_64& async_gen,
-    RandomBitStore& bit_gen, int tag, Communicator& comm);
+template <class Data, class Comp, class Communicator>
+Data select(Data&& data, size_t n, Comp&& comp, MPI_Datatype mpi_type,
+    std::mt19937_64& async_gen, RandomBitStore& bit_gen, int tag,
+    Communicator& comm);
 
 namespace _internal {
-template <class T, class Comp>
-void selectMedians(std::vector<T>& recv_v, std::vector<T>& tmp_v,
-    std::vector<T>& vs, size_t n, Comp&& comp, std::mt19937_64& async_gen,
-    RandomBitStore& bit_gen) {
-    using StringSet = dss_schimek::UCharLengthStringSet;
-    using StringContainer = dss_schimek::StringContainer<StringSet>;
-    using String = StringSet::String;
+template <class Data, class Comp>
+Data selectMedians(Data&& data, Data&& recvData, size_t n, Comp&& comp,
+    std::mt19937_64& async_gen, RandomBitStore& bit_gen) {
+    using StringContainer = typename Data::StringContainer;
+    using StringSet = typename StringContainer::StringSet;
+    using String = typename StringSet::String;
     // std::copy(recv_v.begin(), recv_v.end(), std::back_inserter(vs));
     // recv_v.clear();
     // return;
     // assert(recv_v.size() <= n);
     // assert(vs.size() <= n);
 
-    tmp_v.resize(recv_v.size() +
-                 vs.size()); // recv_v and vs contain 0 terminated raw strings
-    StringContainer recv_v_container(std::move(recv_v));
-    StringContainer vs_container(std::move(vs));
+    StringContainer dataContainer = data.moveToContainer();
+    StringContainer recvContainer = data.moveToContainer();
     // recv_v_container.make_string_set().print();
     // vs_container.make_string_set().print();
-    std::vector<String> tmp_v_strings(
-        recv_v_container.size() + vs_container.size());
+    std::vector<String> mergedStrings(
+        dataContainer.size() + recvContainer.size());
+    Data mergedData;
 
-    std::merge(recv_v_container.getStrings().begin(),
-        recv_v_container.getStrings().end(), vs_container.getStrings().begin(),
-        vs_container.getStrings().end(), tmp_v_strings.begin(),
+    std::merge(dataContainer.getStrings().begin(),
+        dataContainer.getStrings().end(), recvContainer.getStrings().begin(),
+        recvContainer.getStrings().end(), mergedStrings.begin(),
         std::forward<Comp>(comp));
 
     {
+        mergedData.rawStrings.resize(
+            dataContainer.char_size() + recvContainer.char_size());
         uint64_t curPos = 0;
-        for (const auto& str : tmp_v_strings) {
-            std::copy(
-                str.string, str.string + str.length + 1, tmp_v.data() + curPos);
+        for (const auto& str : mergedStrings) {
+            std::copy(str.string, str.string + str.length + 1,
+                mergedData.rawStrings.data() + curPos);
             curPos += str.length + 1;
+            if constexpr (Data::isIndexed_) {
+                mergedData.indices.push_back(str.index);
+            }
         }
     }
-    auto copyTmp = tmp_v;
-    StringContainer tmpContainer(std::move(copyTmp));
-    // std::cout << "iteration: " << globalIteration << " on rank: " <<
-    // globalRank << std::endl;
-    // tmpContainer.make_string_set().print("iteration" +
-    // std::to_string(globalIteration) + " on rank: " +
-    // std::to_string(globalRank));
 
-    if (tmp_v_strings.size() <= n) {
-        vs = vs_container.releaseRawStrings();
-        vs.swap(tmp_v);
-        // assert(std::is_sorted(vs.begin(), vs.end(),
-        // std::forward<Comp>(comp)));
-        return;
+    if (dataContainer.size() + recvContainer.size() <= n) {
+        return mergedData;
     }
     else {
-        auto ss = tmpContainer.make_string_set();
-        if ((tmp_v_strings.size() - n) % 2 == 0) {
-            const auto offset = (tmp_v_strings.size() - n) / 2;
-            assert(offset + n < tmp_v_strings.size());
-            vs.clear();
+        StringContainer mergedContainer = mergedData.moveToContainer();
+        Data returnData;
+        auto ss = mergedContainer.make_string_set();
+        if ((mergedContainer.size() - n) % 2 == 0) {
+            const auto offset = (mergedContainer.size() - n) / 2;
+            assert(offset + n < mergedContainer.size());
 
             for (size_t i = offset; i < offset + n; ++i) {
                 const auto str = ss[ss.begin() + i];
                 const auto length = ss.get_length(str) + 1;
                 auto chars = ss.get_chars(str, 0);
-                std::copy_n(chars, length, std::back_inserter(vs));
+                std::copy_n(
+                    chars, length, std::back_inserter(returnData.rawStrings));
+                if constexpr (StringContainer::isIndexed) {
+                    returnData.indices.push_back(str.index);
+                }
             }
-            return;
+            return returnData;
         }
         else {
             // We cannot remove the same number of elements at
             // the right and left end.
-            const auto offset = (tmp_v_strings.size() - n) / 2;
+            const auto offset = (mergedContainer.size() - n) / 2;
             const auto padding_cnt = bit_gen.getNextBit(async_gen);
             assert(padding_cnt <= 1);
-            assert(offset + padding_cnt + n <= tmp_v_strings.size());
+            assert(offset + padding_cnt + n <= mergedContainer.size());
 
-            vs.clear();
             for (size_t i = offset + padding_cnt; i < offset + padding_cnt + n;
                  ++i) {
                 const auto str = ss[ss.begin() + i];
                 const auto length = ss.get_length(str) + 1;
                 auto chars = ss.get_chars(str, 0);
-                std::copy_n(chars, length, std::back_inserter(vs));
+                std::copy_n(
+                    chars, length, std::back_inserter(returnData.rawStrings));
+                if constexpr (StringContainer::isIndexed) {
+                    returnData.indices.push_back(str.index);
+                }
             }
-            return;
+            return returnData;
         }
     }
 }
 
-template <class T>
-int64_t selectMedian(const std::vector<T>& v, std::mt19937_64& async_gen,
-    RandomBitStore& bit_gen) {
-    if (v.size() == 0) {
+int64_t selectMedian(
+    const uint64_t size, std::mt19937_64& async_gen, RandomBitStore& bit_gen) {
+    if (size == 0) {
         return -1;
     }
 
-    assert(v.size() > 0);
-    if (v.size() % 2 == 0) {
+    assert(size > 0);
+    if (size % 2 == 0) {
         if (bit_gen.getNextBit(async_gen)) {
-            return v.size() / 2;
+            return size / 2;
         }
         else {
-            return (v.size() / 2) - 1;
+            return (size / 2) - 1;
         }
     }
     else {
-        return v.size() / 2;
+        return size / 2;
     }
 }
 } // namespace _internal
 
-template <class Iterator, class Comp, class Communicator>
-std::vector<unsigned char> select(Iterator begin, Iterator end, size_t n,
-    Comp&& comp, MPI_Datatype mpi_type, std::mt19937_64& async_gen,
-    RandomBitStore& bit_gen, int tag, Communicator& comm) {
-    using T = unsigned char;
-    using StringSet = dss_schimek::UCharLengthStringSet;
-    using StringContainer = dss_schimek::StringContainer<StringSet>;
+template <class Data, class Comp, class Communicator>
+Data select(Data&& data, size_t n, Comp&& comp,
+    MPI_Datatype mpi_type, std::mt19937_64& async_gen, RandomBitStore& bit_gen,
+    int tag, Communicator& comm) {
+    using StringContainer = typename Data::StringContainer;
+    using StringSet = typename StringContainer::StringSet;
 
     int32_t myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);
@@ -167,15 +165,7 @@ std::vector<unsigned char> select(Iterator begin, Iterator end, size_t n,
 
     // assert(static_cast<size_t>(end - begin) <= n);
 
-    std::vector<T> v(begin, end);
-    std::vector<T> recv_v;
-    std::vector<T> tmp_v;
-
-    // v.reserve(2 * n);
-    // recv_v.reserve(2 * n);
-    // tmp_v.reserve(2 * n);
-
-    assert(std::is_sorted(begin, end, std::forward<Comp>(comp)));
+    // assert(std::is_sorted(begin, end, std::forward<Comp>(comp)));
 
     const auto tailing_zeros = static_cast<unsigned>(tlx::ffs(myrank)) - 1;
     const auto logp = tlx::integer_log2_floor(nprocs);
@@ -184,42 +174,50 @@ std::vector<unsigned char> select(Iterator begin, Iterator end, size_t n,
     for (size_t it = 0; it != iterations; ++it) {
         const auto source = myrank + (1 << it);
 
-        MPI_Status status;
-        MPI_Probe(source, tag, comm, &status);
-        int count = 0;
-        MPI_Get_count(&status, mpi_type, &count);
-        assert(static_cast<size_t>(count) <= n);
-        recv_v.resize(count);
-
-        MPI_Recv(recv_v.data(), count, mpi_type, source, tag, comm,
-            MPI_STATUS_IGNORE);
-
+        Data recvData = data.Recv(comm, source, tag);
         globalIteration = it;
         globalRank = myrank;
-        _internal::selectMedians(
-            recv_v, tmp_v, v, n, std::forward<Comp>(comp), async_gen, bit_gen);
+        data = _internal::selectMedians(std::move(data), std::move(recvData), n,
+            std::forward<Comp>(comp), async_gen, bit_gen);
     }
     if (myrank == 0) {
-        StringContainer container(std::move(v));
+        StringContainer container = data.moveToContainer();
         auto medianIndex =
-            _internal::selectMedian(container.getStrings(), async_gen, bit_gen);
+            _internal::selectMedian(container.size(), async_gen, bit_gen);
 
         auto requestedRawString = container.getRawString(medianIndex);
         int32_t size = requestedRawString.size();
         MPI_Bcast(&size, 1, MPI_INT, 0, comm);
         MPI_Bcast(requestedRawString.data(), size, MPI_BYTE, 0, comm);
-        return requestedRawString;
+        Data returnData;
+        returnData.rawStrings = requestedRawString;
+        if constexpr (StringContainer::isIndexed) {
+            auto stringIndex = container.strings()[medianIndex].index;
+            MPI_Bcast(&stringIndex, sizeof(stringIndex), MPI_BYTE, 0, comm);
+            returnData.index.push_back(stringIndex);
+        }
+        return returnData;
     }
     else {
         int target = myrank - (1 << tailing_zeros);
-        assert(v.size() <= n);
-        MPI_Send(v.data(), v.size(), MPI_BYTE, target, tag, comm);
+        // assert(v.size() <= n);
+        MPI_Send(data.rawStrings.data(), data.rawStrings.size(), MPI_BYTE,
+            target, tag, comm);
+        if constexpr (StringContainer::isIndexed)
+            MPI_Send(data.indices.data(),
+                data.indices.size() * sizeof(uint64_t), MPI_BYTE, target, tag,
+                comm);
 
         int32_t medianSize;
         MPI_Bcast(&medianSize, 1, MPI_INT, 0, comm);
-        std::vector<unsigned char> median(medianSize);
-        MPI_Bcast(median.data(), medianSize, MPI_CHAR, 0, comm);
-        return median;
+        Data returnData;
+        returnData.rawStrings.resize(medianSize);
+        MPI_Bcast(returnData.rawStrings.data(), medianSize, MPI_BYTE, 0, comm);
+        if constexpr (StringContainer::isIndexed) {
+          returnData.indices.resize(1);
+          MPI_Bcast(returnData.indices.data(), sizeof(uint64_t), MPI_BYTE, 0, comm);
+        }
+        return returnData;
     }
 }
 } // namespace BinTreeMedianSelection
