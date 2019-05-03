@@ -540,7 +540,6 @@ computePartition(
     mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
-    std::cout << "before sampling" << std::endl;
     auto ss = stringptr.active();
     measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
@@ -550,7 +549,6 @@ computePartition(
     measuringTool.add(
         sampleIndices.sample.size(), "allgather_splitters_bytes_sent");
 
-    std::cout << "before sorting" << std::endl;
     
     measuringTool.start("sort_splitter");
     Comparator comp;
@@ -565,7 +563,6 @@ computePartition(
         splitterSort(std::move(sampleData), generator, comp);
     measuringTool.enable();
     measuringTool.stop("sort_splitter");
-    std::cout << "after sorting" << std::endl;
 
     measuringTool.start("choose_splitters");
     auto [rawChosenSplitters, splitterIndices] = getSplittersIndexed(sortedLocalSample);

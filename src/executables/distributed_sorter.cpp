@@ -445,7 +445,7 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::StringGenerator::File: {
         using StringGenerator = dss_schimek::FileDistributer<StringSet>;
-        // thirdArg<StringSet, StringGenerator>(key, args);
+        thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
     case PolicyEnums::StringGenerator::Suffix: {

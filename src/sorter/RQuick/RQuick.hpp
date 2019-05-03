@@ -223,7 +223,7 @@ struct Data {
 }; // namespace RQuick
 
 namespace _internal {
-constexpr bool debugQuicksort = true;
+constexpr bool debugQuicksort = false;
 constexpr bool barrierActive = true;
 
 uint64_t initialSize = 0;
@@ -321,7 +321,6 @@ Data<StringContainer, StringContainer::isIndexed> selectSplitter(
             std::abort();
         }
     }
-    std::cout << "sort REc: " << StringContainer::isIndexed << std::endl;
     dss_schimek::mpi::environment env;
     Data<StringContainer, StringContainer::isIndexed> local_medians =
         middleMostElements(stringContainer, 2, async_gen, bit_gen);
@@ -460,10 +459,8 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     measuringTool.start("Splitter_partition");
     tracker.partition_t.start(comm);
 
-    std::cout << "before locate splitter " << std::endl;
     const auto* separator = locateSplitter(stringContainer.getStrings(),
         std::forward<Comp>(comp), pivotString, gen, bit_store, is_robust);
-    std::cout << "locate splitter " << std::endl;
     if constexpr (debugQuicksort) {
         if (separator < stringContainer.getStrings().data() ||
             separator >
@@ -857,7 +854,6 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     tracker.move_to_pow_of_two_t.start(comm);
 
     const auto pow = tlx::round_down_to_power_of_two(nprocs);
-    std::cout << "before exchange" << std::endl;
 
     // Send data to a smaller hypercube if the number of processes is
     // not a power of two.
@@ -867,9 +863,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
 
         const auto source = pow + myrank;
 
-        std::cout << "recv: " << myrank << std::endl;
         data.IReceiveAppend(comm, source, tag);
-        std::cout << "recv completed: " << myrank << std::endl;
         MPI_Comm sub_comm;
         // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
         MPI_Comm_split(comm, 0, myrank, &sub_comm);
@@ -880,9 +874,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         // hypercube.
 
         const auto target = myrank - pow;
-        std::cout << "send: " << myrank << std::endl;
         data.Send(comm, target, tag);
-        std::cout << "send completed: " << myrank << std::endl;
         data.clear();
 
         // This process is not part of 'sub_comm'. We call
@@ -925,7 +917,6 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         MPI_Barrier(comm);
         measuringTool.stop("splitter_shuffle_Barrier");
     }
-    std::cout << "before shuffle" << std::endl;
     tracker.parallel_shuffle_t.start(comm);
     measuringTool.start("Splitter_shuffle");
 
@@ -1025,7 +1016,6 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     //}
     // container.update(std::move(matthiasTmp));
 
-    std::cout << "sort: " << StringContainer::isIndexed << std::endl;
     RandomBitStore bit_store;
     return _internal::sortRec<Data::isIndexed_>(async_gen, bit_store,
         std::move(container), std::forward<Comp>(comp), mpi_type, is_robust,
