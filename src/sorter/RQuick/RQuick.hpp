@@ -74,10 +74,56 @@ struct Data {
     }
     StringContainer moveToContainer() {
         if constexpr (isIndexed) {
-            return StringContainer(std::move(rawStrings));
+            return StringContainer(std::move(rawStrings), indices);
         }
         else {
             return StringContainer(std::move(rawStrings));
+        }
+    }
+
+    Data exchange(MPI_Comm comm, int32_t target, int32_t tag) {
+        if constexpr (!isIndexed) {
+            MPI_Request requests[2];
+            MPI_Isend(rawStrings.data(), rawStrings.size(), MPI_BYTE, target,
+                tag, comm, requests);
+
+            int recv_size = 0;
+            MPI_Status status;
+            MPI_Probe(target, tag, comm, &status);
+            MPI_Get_count(&status, MPI_BYTE, &recv_size);
+
+            Data returnData;
+            returnData.rawStrings.resize(recv_size);
+            MPI_Irecv(returnData.rawStrings.data(), recv_size, MPI_BYTE, target,
+                tag, comm, requests + 1);
+            MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+            return returnData;
+        }
+        else {
+            int32_t tagIndices = tag + 1;
+            MPI_Request requests[4];
+            MPI_Isend(rawStrings.data(), rawStrings.size(), MPI_BYTE, target,
+                tag, comm, requests);
+            MPI_Isend(indices.data(), indices.size() * sizeof(uint64_t),
+                MPI_BYTE, target, tagIndices, comm, requests + 1);
+
+            int recv_size = 0;
+            int recv_indices_size = 0;
+            MPI_Status status[2];
+            MPI_Probe(target, tag, comm, status);
+            MPI_Get_count(status, MPI_BYTE, &recv_size);
+            MPI_Probe(target, tagIndices, comm, status + 1);
+            MPI_Get_count(status + 1, MPI_BYTE, &recv_indices_size);
+
+            Data returnData;
+            returnData.rawStrings.resize(recv_size);
+            returnData.indices.resize(recv_indices_size);
+            MPI_Irecv(returnData.rawStrings.data(), recv_size, MPI_BYTE, target,
+                tag, comm, requests + 2);
+            MPI_Irecv(returnData.indices.data(), recv_indices_size, MPI_BYTE,
+                target, tagIndices, comm, requests + 3);
+            MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
+            return returnData;
         }
     }
 
@@ -99,27 +145,33 @@ struct Data {
             MPI_Wait(&request, MPI_STATUS_IGNORE);
         }
         else {
+            int32_t tagIndices = tag + 1;
             MPI_Status status[2];
+            MPI_Request request[2];
 
             MPI_Probe(source, tag, comm, status);
             int recv_cnt = 0;
             MPI_Get_count(status, MPI_BYTE, &recv_cnt);
-            MPI_Probe(source, tag, comm, status + 1);
+
+            // Avoid reallocations later.
+            rawStrings.reserve(2 * (rawStrings.size() + recv_cnt));
+            rawStrings.resize(rawStrings.size() + recv_cnt);
+
+            MPI_Irecv(rawStrings.data() + rawStrings.size() - recv_cnt,
+                recv_cnt, MPI_BYTE, source, tag, comm, request);
+
+            MPI_Probe(source, tagIndices, comm, status + 1);
             int recv_indices_cnt = 0;
             MPI_Get_count(status + 1, MPI_BYTE, &recv_indices_cnt);
 
             // Avoid reallocations later.
-            rawStrings.reserve(2 * (rawStrings.size() + recv_cnt));
             indices.reserve(2 * (indices.size() + recv_indices_cnt));
-
-            rawStrings.resize(rawStrings.size() + recv_cnt);
             indices.resize(indices.size() + recv_indices_cnt);
 
-            MPI_Request request[2];
-            MPI_Irecv(rawStrings.data() + rawStrings.size() - recv_cnt,
-                recv_cnt, MPI_BYTE, source, tag, comm, request);
             MPI_Irecv(indices.data() + indices.size() - recv_indices_cnt,
-                recv_indices_cnt, MPI_BYTE, source, tag, comm, request + 1);
+                recv_indices_cnt, MPI_BYTE, source, tagIndices, comm,
+                request + 1);
+
             MPI_Waitall(2, request, MPI_STATUSES_IGNORE);
         }
     }
@@ -138,21 +190,24 @@ struct Data {
             return returnData;
         }
         else {
+            int32_t tagIndices = tag + 1;
             Data<StringContainer, isIndexed> returnData;
             MPI_Status status[2];
             MPI_Probe(source, tag, comm, status);
             int charCount = 0;
             MPI_Get_count(status, MPI_BYTE, &charCount);
-            MPI_Probe(source, tag, comm, status + 1);
-            int indexCount = 0;
-            MPI_Get_count(status + 1, MPI_BYTE, &indexCount);
             returnData.rawStrings.resize(charCount);
-            returnData.indices.resize(indexCount);
 
             MPI_Recv(returnData.rawStrings.data(), charCount, MPI_BYTE, source,
                 tag, comm, MPI_STATUS_IGNORE);
+
+            MPI_Probe(source, tagIndices, comm, status + 1);
+            int indexCount = 0;
+            MPI_Get_count(status + 1, MPI_BYTE, &indexCount);
+            returnData.indices.resize(indexCount);
+
             MPI_Recv(returnData.indices.data(), indexCount, MPI_BYTE, source,
-                tag, comm, MPI_STATUS_IGNORE);
+                tagIndices, comm, MPI_STATUS_IGNORE);
             return returnData;
         }
     }
@@ -160,14 +215,15 @@ struct Data {
         MPI_Send(
             rawStrings.data(), rawStrings.size(), MPI_BYTE, target, tag, comm);
         if constexpr (isIndexed) {
+            int32_t tagIndices = tag + 1;
             MPI_Send(indices.data(), indices.size() * sizeof(uint64_t),
-                MPI_BYTE, target, tag, comm);
+                MPI_BYTE, target, tagIndices, comm);
         }
     }
-};
+}; // namespace RQuick
 
 namespace _internal {
-constexpr bool debugQuicksort = false;
+constexpr bool debugQuicksort = true;
 constexpr bool barrierActive = true;
 
 uint64_t initialSize = 0;
@@ -253,9 +309,10 @@ Data<StringContainer, StringContainer::isIndexed> middleMostElements(
  * @param v Local input. The input must be sorted.
  */
 template <class Comp, class StringContainer, class Communicator>
-Data<StringContainer, StringContainer::isIndexed> selectSplitter(std::mt19937_64& async_gen,
-    RandomBitStore& bit_gen, StringContainer& stringContainer,
-    MPI_Datatype mpi_type, Comp&& comp, int tag, Communicator& comm) {
+Data<StringContainer, StringContainer::isIndexed> selectSplitter(
+    std::mt19937_64& async_gen, RandomBitStore& bit_gen,
+    StringContainer& stringContainer, MPI_Datatype mpi_type, Comp&& comp,
+    int tag, Communicator& comm) {
 
     // assert StringContainer is sorted
     if constexpr (debugQuicksort) {
@@ -272,7 +329,7 @@ Data<StringContainer, StringContainer::isIndexed> selectSplitter(std::mt19937_64
     auto res = BinTreeMedianSelection::select(std::move(local_medians), 2,
         std::forward<Comp>(comp), mpi_type, async_gen, bit_gen, tag, comm);
     if constexpr (debugQuicksort) {
-        if (res.size() < 1 || res.back() != 0) {
+        if (res.rawStrings.size() < 1 || res.rawStrings.back() != 0) {
             std::cout << "error in final median" << std::endl;
             std::abort();
         }
@@ -378,155 +435,179 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     const auto is_left_group = myrank < nprocs / 2;
 
     // Select pivot globally with binary tree median selection.
-    auto pivot = selectSplitter(gen, bit_store,
-        stringContainer, mpi_type, std::forward<Comp>(comp), tag, comm);
+    auto pivot = selectSplitter(gen, bit_store, stringContainer, mpi_type,
+        std::forward<Comp>(comp), tag, comm);
+    if constexpr (debugQuicksort) {
+        if (StringContainer::isIndexed && pivot.indices.size() != 1) {
+            std::cout << "pivot does not contain exactly one string!";
+            std::abort();
+        }
+    }
 
     tracker.median_select_t.stop();
-    // String pivotString(pivot.data(), pivot.size() - 1);
-    // measuringTool.stop("Splitter_median_select");
+    String pivotString(pivot.rawStrings.data(), pivot.rawStrings.size() - 1);
+    if constexpr (StringContainer::isIndexed)
+        pivotString.index = pivot.indices.front();
+    measuringTool.stop("Splitter_median_select");
 
-    //// Partition data into small elements and large elements.
+    // Partition data into small elements and large elements.
 
-    // if constexpr (barrierActive) {
-    //    measuringTool.start("Splitter_partition_Barrier");
-    //    MPI_Barrier(comm);
-    //    measuringTool.stop("Splitter_partition_Barrier");
-    //}
-    // measuringTool.start("Splitter_partition");
-    // tracker.partition_t.start(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_partition_Barrier");
+        MPI_Barrier(comm);
+        measuringTool.stop("Splitter_partition_Barrier");
+    }
+    measuringTool.start("Splitter_partition");
+    tracker.partition_t.start(comm);
 
-    // const auto* separator = locateSplitter(stringContainer.getStrings(),
-    //    std::forward<Comp>(comp), pivotString, gen, bit_store, is_robust);
+    std::cout << "before locate splitter " << std::endl;
+    const auto* separator = locateSplitter(stringContainer.getStrings(),
+        std::forward<Comp>(comp), pivotString, gen, bit_store, is_robust);
+    std::cout << "locate splitter " << std::endl;
+    if constexpr (debugQuicksort) {
+        if (separator < stringContainer.getStrings().data() ||
+            separator >
+                stringContainer.getStrings().data() + stringContainer.size()) {
+            std::cout << "error in locate splitter" << std::endl;
+            std::abort();
+        }
+    }
 
-    // if constexpr (debugQuicksort) {
-    //    if (separator < stringContainer.getStrings().data() ||
-    //        separator >
-    //            stringContainer.getStrings().data() + stringContainer.size())
-    //            {
-    //        std::cout << "error in locate splitter" << std::endl;
-    //        std::abort();
-    //    }
-    //}
+    if constexpr (debugQuicksort) {
+        const uint64_t partitionSize =
+            separator - stringContainer.getStrings().data();
+        std::cout << "rank: " << myrank << " size: " << partitionSize << " "
+                  << stringContainer.size() - partitionSize << std::endl;
+    }
 
-    // if constexpr (debugQuicksort) {
-    //    const uint64_t partitionSize =
-    //        separator - stringContainer.getStrings().data();
-    //    std::cout << "rank: " << comm.getRank() << " size: " << partitionSize
-    //              << " " << stringContainer.size() - partitionSize <<
-    //              std::endl;
-    //}
+    String* send_begin = stringContainer.getStrings().data();
+    String* send_end = const_cast<String*>(separator);
+    String* own_begin = const_cast<String*>(separator);
+    String* own_end = stringContainer.getStrings().data() +
+                      stringContainer.getStrings().size();
+    if (is_left_group) {
+        std::swap(send_begin, own_begin);
+        std::swap(send_end, own_end);
+    }
 
-    // String* send_begin = stringContainer.getStrings().data();
-    // String* send_end = const_cast<String*>(separator);
-    // String* own_begin = const_cast<String*>(separator);
-    // String* own_end = stringContainer.getStrings().data() +
-    //                  stringContainer.getStrings().size();
-    // if (is_left_group) {
-    //    std::swap(send_begin, own_begin);
-    //    std::swap(send_end, own_end);
-    //}
+    uint64_t sendCounts = 0;
+    for (auto i = send_begin; i < send_end; ++i) {
+        sendCounts += i->getLength() + 1;
+    }
+    Data<StringContainer, StringContainer::isIndexed> exchangeData;
+    exchangeData.rawStrings.resize(sendCounts);
+    if constexpr (StringContainer::isIndexed)
+        exchangeData.indices.resize(send_end - send_begin);
+    uint64_t curPos = 0;
+    for (auto i = send_begin; i < send_end; ++i) {
+        auto length = i->getLength() + 1;
+        auto chars = i->getChars();
+        std::copy_n(chars, length, exchangeData.rawStrings.begin() + curPos);
+        curPos += length;
+        if constexpr (StringContainer::isIndexed)
+            exchangeData.indices[i - send_begin] = i->index;
+    }
+    const uint64_t ownCharsSize =
+        stringContainer.char_size() - exchangeData.rawStrings.size();
 
-    // uint64_t sendCounts = 0;
-    // for (auto i = send_begin; i < send_end; ++i) {
-    //    sendCounts += i->getLength() + 1;
-    //}
-    // std::vector<unsigned char> sendCharsContiguous(sendCounts);
-    // uint64_t curPos = 0;
-    // for (auto i = send_begin; i < send_end; ++i) {
-    //    auto length = i->getLength() + 1;
-    //    auto chars = i->getChars();
-    //    std::copy_n(chars, length, sendCharsContiguous.begin() + curPos);
-    //    curPos += length;
-    //}
-    // const uint64_t ownCharsSize =
-    //    stringContainer.char_size() - sendCharsContiguous.size();
+    uint64_t inbalance = std::abs(
+        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
+    measuringTool.add(inbalance, "inbalance", false);
 
-    // uint64_t inbalance = std::abs(
-    //    static_cast<int64_t>(stringContainer.size()) - (send_end -
-    //    send_begin));
-    // measuringTool.add(inbalance, "inbalance", false);
+    tracker.partition_t.stop();
+    measuringTool.stop("Splitter_partition");
 
-    // tracker.partition_t.stop();
-    // measuringTool.stop("Splitter_partition");
+    // Move elements to partner and receive elements for own group.
+    tracker.exchange_t.start(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_exchange_Barrier");
+        MPI_Barrier(comm);
+        measuringTool.stop("Splitter_exchange_Barrier");
+    }
+    measuringTool.start("Splitter_exchange");
 
-    //// Move elements to partner and receive elements for own group.
-    // tracker.exchange_t.start(comm);
-    // if constexpr (barrierActive) {
-    //    measuringTool.start("Splitter_exchange_Barrier");
-    //    MPI_Barrier(comm);
-    //    measuringTool.stop("Splitter_exchange_Barrier");
-    //}
-    // measuringTool.start("Splitter_exchange");
+    const auto partner = (myrank + (nprocs / 2)) % nprocs;
 
-    // const auto partner = (myrank + (nprocs / 2)) % nprocs;
-    // std::vector<unsigned char> recvRawStrings;
-    // exchange(sendCharsContiguous.data(),
-    //    sendCharsContiguous.data() + sendCharsContiguous.size(),
-    //    recvRawStrings, partner, mpi_type, tag, comm);
+    Data<StringContainer, StringContainer::isIndexed> recvData =
+        exchangeData.exchange(comm, partner, tag);
 
-    // StringContainer recvStrings(std::move(recvRawStrings));
+    StringContainer recvStrings = recvData.moveToContainer();
 
-    // tracker.exchange_t.stop();
-    // measuringTool.stop("Splitter_exchange");
-    //// Merge received elements with own elements.
-    // tracker.merge_t.start(comm);
-    // if constexpr (barrierActive) {
-    //    measuringTool.start("Splitter_merge_Barrier");
-    //    MPI_Barrier(comm);
-    //    measuringTool.stop("Splitter_merge_Barrier");
-    //}
-    // measuringTool.start("Splitter_merge");
+    tracker.exchange_t.stop();
+    measuringTool.stop("Splitter_exchange");
+    // Merge received elements with own elements.
+    tracker.merge_t.start(comm);
+    if constexpr (barrierActive) {
+        measuringTool.start("Splitter_merge_Barrier");
+        MPI_Barrier(comm);
+        measuringTool.stop("Splitter_merge_Barrier");
+    }
+    measuringTool.start("Splitter_merge");
 
-    // const auto num_elements = recvStrings.size() + (own_end - own_begin);
-    // std::vector<String> mergedStrings(num_elements);
-    // merge(own_begin, own_end, recvStrings.getStrings().begin(),
-    //    recvStrings.getStrings().end(), mergedStrings.begin(),
-    //    std::forward<Comp>(comp));
-    // std::vector<unsigned char> mergedRawStrings(
-    //    recvStrings.char_size() + ownCharsSize);
+    const auto num_elements = recvStrings.size() + (own_end - own_begin);
+    std::vector<String> mergedStrings(num_elements);
+    merge(own_begin, own_end, recvStrings.getStrings().begin(),
+        recvStrings.getStrings().end(), mergedStrings.begin(),
+        std::forward<Comp>(comp));
+    std::vector<unsigned char> mergedRawStrings(
+        recvStrings.char_size() + ownCharsSize);
 
-    // curPos = 0;
-    // for (auto str : mergedStrings) {
-    //    auto length = str.getLength() + 1;
-    //    auto chars = str.getChars();
-    //    std::copy_n(chars, length, mergedRawStrings.begin() + curPos);
-    //    curPos += length;
-    //}
-    // stringContainer.update(std::move(mergedRawStrings));
-    // measuringTool.stop("Splitter_merge");
-    // if constexpr (debugQuicksort) {
-    //    if (!stringContainer.isConsistent()) {
-    //        std::cout << "merged string cont not consistent " << std::endl;
-    //        std::abort();
-    //    }
-    //}
+    curPos = 0;
+    std::vector<uint64_t> mergedStringsIndices;
+    if constexpr (StringContainer::isIndexed) {
+        mergedStringsIndices.reserve(mergedStrings.size());
+    }
+    for (auto str : mergedStrings) {
+        auto length = str.getLength() + 1;
+        auto chars = str.getChars();
+        std::copy_n(chars, length, mergedRawStrings.begin() + curPos);
+        curPos += length;
+        if constexpr (StringContainer::isIndexed)
+            mergedStringsIndices.push_back(str.index);
+    }
+    if constexpr (StringContainer::isIndexed) {
+        stringContainer.update(
+            std::move(mergedRawStrings), mergedStringsIndices);
+        mergedStringsIndices.clear();
+        mergedStringsIndices.shrink_to_fit();
+    }
+    else {
+        stringContainer.update(std::move(mergedRawStrings));
+    }
+    measuringTool.stop("Splitter_merge");
+    if constexpr (debugQuicksort) {
+        if (!stringContainer.isConsistent()) {
+            std::cout << "merged string cont not consistent " << std::endl;
+            std::abort();
+        }
+    }
 
-    // if (nprocs >= 4) {
-    //    // Split communicator and solve subproblems.
-    //    if constexpr (barrierActive) {
-    //        measuringTool.start("Splitter_split_Barrier");
-    //        MPI_Barrier(comm);
-    //        measuringTool.stop("Splitter_split_Barrier");
-    //    }
-    //    measuringTool.start("Splitter_split");
-    //    tracker.comm_split_t.start(comm);
+    if (nprocs >= 4) {
+        // Split communicator and solve subproblems.
+        if constexpr (barrierActive) {
+            measuringTool.start("Splitter_split_Barrier");
+            MPI_Barrier(comm);
+            measuringTool.stop("Splitter_split_Barrier");
+        }
+        measuringTool.start("Splitter_split");
+        tracker.comm_split_t.start(comm);
 
-    //    MPI_Comm subcomm;
-    //    split(comm, &subcomm);
+        MPI_Comm subcomm;
+        split(comm, &subcomm);
 
-    //    tracker.comm_split_t.stop();
-    //    measuringTool.stop("Splitter_split");
+        tracker.comm_split_t.stop();
+        measuringTool.stop("Splitter_split");
 
-    //    auto res = sortRec<isIndexed>(gen, bit_store,
-    //    std::move(stringContainer),
-    //        std::forward<Comp>(comp), mpi_type, is_robust,
-    //        std::forward<Tracker>(tracker), tag, subcomm);
-    //    measuringTool.disableBarrier(false);
-    //    measuringTool.setRound(0);
-    //    return res;
-    //}
-    // measuringTool.disableBarrier(false);
-    // measuringTool.setRound(0);
+        auto res = sortRec<StringContainer::isIndexed>(gen, bit_store,
+            std::move(stringContainer), std::forward<Comp>(comp), mpi_type,
+            is_robust, std::forward<Tracker>(tracker), tag, subcomm);
+        measuringTool.disableBarrier(false);
+        measuringTool.setRound(0);
+        return res;
+    }
+    measuringTool.disableBarrier(false);
+    measuringTool.setRound(0);
+
     return std::move(stringContainer);
 }
 
@@ -776,6 +857,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     tracker.move_to_pow_of_two_t.start(comm);
 
     const auto pow = tlx::round_down_to_power_of_two(nprocs);
+    std::cout << "before exchange" << std::endl;
 
     // Send data to a smaller hypercube if the number of processes is
     // not a power of two.
@@ -785,7 +867,9 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
 
         const auto source = pow + myrank;
 
+        std::cout << "recv: " << myrank << std::endl;
         data.IReceiveAppend(comm, source, tag);
+        std::cout << "recv completed: " << myrank << std::endl;
         MPI_Comm sub_comm;
         // MPI_Comm_create_group(comm, &sub_comm, 0, pow - 1);
         MPI_Comm_split(comm, 0, myrank, &sub_comm);
@@ -796,7 +880,9 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         // hypercube.
 
         const auto target = myrank - pow;
+        std::cout << "send: " << myrank << std::endl;
         data.Send(comm, target, tag);
+        std::cout << "send completed: " << myrank << std::endl;
         data.clear();
 
         // This process is not part of 'sub_comm'. We call
@@ -806,7 +892,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         MPI_Comm_split(comm, 1, myrank, &sub_comm);
         comm = sub_comm;
         measuringTool.stop("Splitter_move_to_pow_of_two_t");
-        // measuringTool.disableBarrier(false);
+        measuringTool.disableBarrier(false);
 
         return StringContainer();
     }
@@ -839,6 +925,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         MPI_Barrier(comm);
         measuringTool.stop("splitter_shuffle_Barrier");
     }
+    std::cout << "before shuffle" << std::endl;
     tracker.parallel_shuffle_t.start(comm);
     measuringTool.start("Splitter_shuffle");
 

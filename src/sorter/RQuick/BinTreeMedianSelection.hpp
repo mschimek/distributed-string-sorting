@@ -153,9 +153,9 @@ int64_t selectMedian(
 } // namespace _internal
 
 template <class Data, class Comp, class Communicator>
-Data select(Data&& data, size_t n, Comp&& comp,
-    MPI_Datatype mpi_type, std::mt19937_64& async_gen, RandomBitStore& bit_gen,
-    int tag, Communicator& comm) {
+Data select(Data&& data, size_t n, Comp&& comp, MPI_Datatype mpi_type,
+    std::mt19937_64& async_gen, RandomBitStore& bit_gen, int tag,
+    Communicator& comm) {
     using StringContainer = typename Data::StringContainer;
     using StringSet = typename StringContainer::StringSet;
 
@@ -194,19 +194,14 @@ Data select(Data&& data, size_t n, Comp&& comp,
         if constexpr (StringContainer::isIndexed) {
             auto stringIndex = container.strings()[medianIndex].index;
             MPI_Bcast(&stringIndex, sizeof(stringIndex), MPI_BYTE, 0, comm);
-            returnData.index.push_back(stringIndex);
+            returnData.indices.push_back(stringIndex);
         }
         return returnData;
     }
     else {
         int target = myrank - (1 << tailing_zeros);
         // assert(v.size() <= n);
-        MPI_Send(data.rawStrings.data(), data.rawStrings.size(), MPI_BYTE,
-            target, tag, comm);
-        if constexpr (StringContainer::isIndexed)
-            MPI_Send(data.indices.data(),
-                data.indices.size() * sizeof(uint64_t), MPI_BYTE, target, tag,
-                comm);
+        data.Send(comm, target, tag);
 
         int32_t medianSize;
         MPI_Bcast(&medianSize, 1, MPI_INT, 0, comm);
@@ -214,8 +209,9 @@ Data select(Data&& data, size_t n, Comp&& comp,
         returnData.rawStrings.resize(medianSize);
         MPI_Bcast(returnData.rawStrings.data(), medianSize, MPI_BYTE, 0, comm);
         if constexpr (StringContainer::isIndexed) {
-          returnData.indices.resize(1);
-          MPI_Bcast(returnData.indices.data(), sizeof(uint64_t), MPI_BYTE, 0, comm);
+            returnData.indices.resize(1);
+            MPI_Bcast(
+                returnData.indices.data(), sizeof(uint64_t), MPI_BYTE, 0, comm);
         }
         return returnData;
     }

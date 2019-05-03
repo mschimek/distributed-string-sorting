@@ -16,6 +16,7 @@
 #include "strings/stringset.hpp"
 #include "util/measuringTool.hpp"
 #include "util/random_string_generator.hpp"
+#include "sorter/distributed/samplingStrategies.hpp"
 #include <tlx/cmdline_parser.hpp>
 #include <tlx/sort/strings/radix_sort.hpp>
 
@@ -23,6 +24,22 @@
     if (rank == 0) std::cout << msg << std::endl;
 
 struct StringComparator {
+    using String = dss_schimek::UCharLengthStringSet::String;
+    bool operator()(String lhs, String rhs) {
+        const unsigned char* lhsChars = lhs.string;
+        const unsigned char* rhsChars = rhs.string;
+        size_t counter = 0;
+        // std::cout << "lhs: " << lhsChars << " rhs: " << rhsChars <<
+        // std::endl;
+        while (*lhsChars == *rhsChars && *lhsChars != 0) {
+            ++lhsChars;
+            ++rhsChars;
+            counter++;
+        }
+        return *lhsChars < *rhsChars;
+    }
+};
+struct IndexStringComparator {
     using String = dss_schimek::UCharLengthIndexStringSet::String;
     bool operator()(String lhs, String rhs) {
         const unsigned char* lhsChars = lhs.string;
@@ -35,6 +52,8 @@ struct StringComparator {
             ++rhsChars;
             counter++;
         }
+        if (*lhsChars == 0 && *rhsChars == 0)
+          return lhs.index < rhs.index;
         return *lhsChars < *rhsChars;
     }
 };
@@ -98,8 +117,9 @@ int main(int argc, char** argv) {
 
         Container container;
         if (readFile) {
-          std::string path = "sampleInput/TMP_Sample_iteration_" + std::to_string(i) + "_"  + std::to_string(rank);
+          std::string path = "sampleInput/TMP_Sample";
           std::vector<unsigned char> input = readFilePerPE(path);
+          input.push_back(0);
           container.update(std::move(input));
         } else {
         container = Generator(numberOfStrings, stringLength, dToNRatio);
@@ -135,7 +155,6 @@ int main(int argc, char** argv) {
 
         // Sort data descending
 
-        StringComparator comp;
         PRINT_ROOT("Start sorting algorithm RQuick with MPI_Comm. "
                    << "RBC::Communicators are used internally.");
 
@@ -156,12 +175,22 @@ int main(int argc, char** argv) {
         measuringTool.stop("secondBarrier");
 
         using StringContainer = dss_schimek::StringContainer<StringSet>;
-        using IndexStringContainer = dss_schimek::StringContainer<dss_schimek::UCharLengthIndexStringSet>;
-        RQuick::Data<IndexStringContainer, true> data;
-
-        std::vector<uint64_t> indices(container.size(), 42);
+        using IndexStringContainer = dss_schimek::IndexStringContainer<dss_schimek::UCharLengthIndexStringSet>;
+        using SortingContainer = IndexStringContainer;
+        using SortingComparator = IndexStringComparator;
+        auto localOffset = dss_schimek::getLocalOffset(container.size()); 
+        std::cout << localOffset << std::endl;
+        RQuick::Data<SortingContainer, SortingContainer::isIndexed> data; std::vector<uint64_t> indices(container.size(), 42);
+        std::iota(indices.begin(), indices.end(), localOffset);
         data.rawStrings = container.raw_strings();
         data.indices = indices;
+       // dss_schimek::mpi::execute_in_order([&]() {
+       //     auto tmpstrings = container.raw_strings();
+       //     auto tmpindices = indices;
+       //     SortingContainer tmpCont(std::move(tmpstrings), tmpindices);
+       //     std::cout << "rank: " << env.rank() << std::endl;
+       //     sortedContainer.make_string_set().print();
+       //     });
 
         const bool isRobust = true;
         measuringTool.start("distributed_sort");
@@ -169,15 +198,28 @@ int main(int argc, char** argv) {
         
         MPI_Comm commInput = env.communicator();
         auto sortedContainer = RQuick::sort(
-            generator, std::move(data), MPI_BYTE, tag, commInput, comp, isRobust);
+            generator, std::move(data), MPI_BYTE, tag, commInput, SortingComparator(), isRobust);
         measuringTool.enable();
         measuringTool.stop("distributed_sort");
 
-        std::cout << "before barrier: " << env.rank() << std::endl;
         env.barrier();
-        std::cout << "after barrier: " << env.rank() << std::endl;
 
         if (check) {
+            if (sortedContainer.size() > 0) {
+            auto prevString = sortedContainer.strings()[0];
+            SortingComparator compTmp;
+            for (size_t i = 1; i < sortedContainer.size(); ++i) {
+              auto curString = sortedContainer.strings()[i];
+
+              if (!compTmp(prevString, curString))
+              {
+                std::cout << "error in index comparision" << std::endl;
+                std::abort();
+                prevString = curString;
+              }
+
+            }
+            }
             measuringTool.start("allgatherv");
             auto globalUnsortedRawStrings = allgatherv(rawStrings);
             measuringTool.stop("allgatherv");

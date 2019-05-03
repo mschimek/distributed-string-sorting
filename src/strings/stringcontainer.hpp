@@ -216,16 +216,17 @@ public:
     }
 
     bool isConsistent() {
-      for (size_t i = 0; i < strings_.size(); ++i) {
-        const auto adressEndByteOfString = strings_[i].getChars() + strings_[i].getLength();
-        if (adressEndByteOfString < raw_strings_->data() || adressEndByteOfString >= raw_strings_->data() + raw_strings_->size())  
-          return false;
-        if (*adressEndByteOfString != 0)
-          return false;
-      }
-      return true;
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            const auto adressEndByteOfString =
+                strings_[i].getChars() + strings_[i].getLength();
+            if (adressEndByteOfString < raw_strings_->data() ||
+                adressEndByteOfString >=
+                    raw_strings_->data() + raw_strings_->size())
+                return false;
+            if (*adressEndByteOfString != 0) return false;
+        }
+        return true;
     }
-
 
     String operator[](size_t i) { return strings_[i]; }
     String front() { return strings_.front(); }
@@ -556,6 +557,7 @@ public:
     using Char = typename StringSet::Char;
     using CharIterator = typename StringSet::CharIterator;
     using String = typename StringSet::String;
+    static constexpr bool isIndexed = false;
 
     StringContainer()
         : raw_strings_(std::make_unique<std::vector<Char>>()), strings_() {}
@@ -578,7 +580,8 @@ public:
     std::vector<Char>&& releaseRawStrings() { return std::move(*raw_strings_); }
 
     std::vector<unsigned char> getRawString(int64_t i) {
-        if (i < 0 || static_cast<uint64_t>(i) > size()) return std::vector<unsigned char>(1, 0);
+        if (i < 0 || static_cast<uint64_t>(i) > size())
+            return std::vector<unsigned char>(1, 0);
 
         const auto length = strings_[i].length + 1;
         std::vector<unsigned char> rawString(length);
@@ -624,14 +627,16 @@ public:
         raw_strings_.reset(orderedRawStrings);
     }
     bool isConsistent() {
-      for (size_t i = 0; i < strings_.size(); ++i) {
-        const auto adressEndByteOfString = strings_[i].getChars() + strings_[i].getLength();
-        if (adressEndByteOfString < raw_strings_->data() || adressEndByteOfString >= raw_strings_->data() + raw_strings_->size())  
-          return false;
-        if (*adressEndByteOfString != 0)
-          return false;
-      }
-      return true;
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            const auto adressEndByteOfString =
+                strings_[i].getChars() + strings_[i].getLength();
+            if (adressEndByteOfString < raw_strings_->data() ||
+                adressEndByteOfString >=
+                    raw_strings_->data() + raw_strings_->size())
+                return false;
+            if (*adressEndByteOfString != 0) return false;
+        }
+        return true;
     }
 
     void set(std::vector<Char>&& raw_strings) {
@@ -665,6 +670,142 @@ protected:
 
     void update_strings() {
         strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
+    }
+};
+
+template <typename StringSet_>
+class IndexStringContainer : private InitPolicy<StringSet_> {
+public:
+    using StringSet = StringSet_;
+    using Char = typename StringSet::Char;
+    using CharIterator = typename StringSet::CharIterator;
+    using String = typename StringSet::String;
+    static constexpr bool isIndexed = true;
+
+    IndexStringContainer()
+        : raw_strings_(std::make_unique<std::vector<Char>>()), strings_() {}
+
+    // IndexStringLcpContainer(std::vector<Char>&& raw_strings)
+    //    : raw_strings_(
+    //          std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
+    //    update_strings();
+    //    lcps_.resize(size(), 0);
+    //}
+
+    explicit IndexStringContainer(
+        std::vector<Char>&& raw_strings, std::vector<uint64_t>& indices)
+        : raw_strings_(
+              std::make_unique<std::vector<Char>>(std::move(raw_strings))) {
+        update_strings(indices);
+    }
+
+    String operator[](size_t i) { return strings_[i]; }
+    String front() { return strings_.front(); }
+    String back() { return strings_.back(); }
+    String* strings() { return strings_.data(); }
+    std::vector<String>& getStrings() { return strings_; }
+    size_t size() const { return strings_.size(); }
+    size_t char_size() const { return raw_strings_->size(); }
+    std::vector<Char>& raw_strings() { return *raw_strings_; }
+    const std::vector<Char>& raw_strings() const { return *raw_strings_; }
+    std::vector<unsigned char> getRawString(int64_t i) {
+        if (i < 0 || static_cast<uint64_t>(i) > size())
+            return std::vector<unsigned char>(1, 0);
+
+        const auto length = strings_[i].length + 1;
+        std::vector<unsigned char> rawString(length);
+        std::copy(
+            strings_[i].string, strings_[i].string + length, rawString.begin());
+        return rawString;
+    }
+    StringSet make_string_set() {
+        return StringSet(strings(), strings() + size());
+    }
+
+    tlx::sort_strings_detail::StringPtr<StringSet> make_string_ptr() {
+        return tlx::sort_strings_detail::StringPtr(make_string_set());
+    }
+
+    void deleteRawStrings() {
+        raw_strings_->clear();
+        raw_strings_->shrink_to_fit();
+    }
+
+    void deleteStrings() {
+        strings_.clear();
+        strings_.shrink_to_fit();
+    }
+
+    void deleteAll() {
+        deleteRawStrings();
+        deleteStrings();
+    }
+
+    void set(std::vector<Char>&& raw_strings) {
+        *raw_strings_ = std::move(raw_strings);
+    }
+    void set(std::vector<String>&& strings) { strings_ = std::move(strings); }
+
+    bool operator==(const StringLcpContainer<StringSet_>& other) {
+        return (raw_strings() == other.raw_strings());
+    }
+
+    void update(std::vector<Char>&& raw_strings) {
+        set(std::move(raw_strings));
+        update_strings();
+    }
+    void update(std::vector<Char>&& raw_strings, const std::vector<uint64_t>& indices) {
+        set(std::move(raw_strings));
+        update_strings(indices);
+    }
+
+public:
+    size_t sumOfCapacities() {
+        return raw_strings_->capacity() * sizeof(Char) +
+               strings_.capacity() * sizeof(String);
+    }
+    size_t sumOfSizes() {
+        return raw_strings_->size() * sizeof(Char) +
+               strings_.size() * sizeof(String);
+    }
+
+    void orderRawStrings() {
+        auto orderedRawStrings = new std::vector<unsigned char>(char_size());
+        uint64_t curPos = 0;
+        for (size_t i = 0; i < size(); ++i) {
+            auto chars = strings_[i].getChars();
+            auto length = strings_[i].getLength();
+            auto curAdress = orderedRawStrings->data() + curPos;
+            std::copy_n(chars, length + 1, curAdress);
+            strings_[i].setChars(curAdress);
+            curPos += length + 1;
+        }
+        raw_strings_.reset(orderedRawStrings);
+    }
+    bool isConsistent() {
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            const auto adressEndByteOfString =
+                strings_[i].getChars() + strings_[i].getLength();
+            if (adressEndByteOfString < raw_strings_->data() ||
+                adressEndByteOfString >=
+                    raw_strings_->data() + raw_strings_->size())
+                return false;
+            if (*adressEndByteOfString != 0) return false;
+        }
+        return true;
+    }
+
+protected:
+    static constexpr size_t approx_string_length = 10;
+    std::unique_ptr<std::vector<Char>> raw_strings_;
+    std::vector<String> strings_; // strings
+
+    void update_strings() {
+        strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_);
+    }
+
+    void update_strings(const std::vector<uint64_t>& indices) {
+        strings_ = InitPolicy<StringSet>::init_strings(*raw_strings_, indices);
     }
 };
 

@@ -177,7 +177,7 @@ public:
         }
         else {
             interval_sizes =
-                computePartition_<SampleSplittersPolicy, StringPtr>(
+                computePartition<SampleSplittersPolicy, StringPtr>(
                     local_string_ptr, globalLcpAvg, 2);
         }
         measuringTool.setPhase("string_exchange");

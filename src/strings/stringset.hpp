@@ -37,9 +37,9 @@
 #define PSS_SRC_TOOLS_STRINGSET_HEADER
 
 #include <cassert>
+#include <memory>
 #include <stdint.h>
 #include <vector>
-#include <memory>
 
 #include <tlx/logger.hpp>
 
@@ -51,8 +51,7 @@ typedef uintptr_t lcp_t;
 // CharIterator -> character group functions
 
 template <typename CharIterator>
-inline uint32_t get_char_uint32_bswap32(CharIterator str, size_t depth)
-{
+inline uint32_t get_char_uint32_bswap32(CharIterator str, size_t depth) {
     uint32_t v = __builtin_bswap32(*(uint32_t*)(str + depth));
     if ((v & 0xFF000000LU) == 0)
         return 0;
@@ -64,8 +63,7 @@ inline uint32_t get_char_uint32_bswap32(CharIterator str, size_t depth)
 }
 
 template <typename CharIterator>
-inline uint64_t get_char_uint64_bswap64(CharIterator str, size_t depth)
-{
+inline uint64_t get_char_uint64_bswap64(CharIterator str, size_t depth) {
     uint64_t v = __builtin_bswap64(*(uint64_t*)(str + depth));
     if ((v & 0xFF00000000000000LLU) == 0)
         return 0;
@@ -90,12 +88,10 @@ inline uint64_t get_char_uint64_bswap64(CharIterator str, size_t depth)
  * Base class for common string set functions, included via CRTP.
  */
 template <typename StringSet, typename Traits>
-class StringSetBase
-{
+class StringSetBase {
 public:
     //! index-based array access (readable and writable) to String objects.
-    typename Traits::String & at(size_t i) const
-    {
+    typename Traits::String& at(size_t i) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return *(ss.begin() + i);
     }
@@ -105,20 +101,18 @@ public:
 
     //! check equality of two strings a and b at char iterators ai and bi.
     bool is_equal(const typename Traits::String& a,
-                  const typename Traits::CharIterator& ai,
-                  const typename Traits::String& b,
-                  const typename Traits::CharIterator& bi) const
-    {
+        const typename Traits::CharIterator& ai,
+        const typename Traits::String& b,
+        const typename Traits::CharIterator& bi) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return !ss.is_end(a, ai) && !ss.is_end(b, bi) && (*ai == *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
     bool is_less(const typename Traits::String& a,
-                 const typename Traits::CharIterator& ai,
-                 const typename Traits::String& b,
-                 const typename Traits::CharIterator& bi) const
-    {
+        const typename Traits::CharIterator& ai,
+        const typename Traits::String& b,
+        const typename Traits::CharIterator& bi) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return ss.is_end(a, ai) ||
                (!ss.is_end(a, ai) && !ss.is_end(b, bi) && *ai < *bi);
@@ -126,10 +120,9 @@ public:
 
     //! check if string a is less or equal to string b at iterators ai and bi.
     bool is_leq(const typename Traits::String& a,
-                const typename Traits::CharIterator& ai,
-                const typename Traits::String& b,
-                const typename Traits::CharIterator& bi) const
-    {
+        const typename Traits::CharIterator& ai,
+        const typename Traits::String& b,
+        const typename Traits::CharIterator& bi) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return ss.is_end(a, ai) ||
                (!ss.is_end(a, ai) && !ss.is_end(b, bi) && *ai <= *bi);
@@ -140,18 +133,16 @@ public:
     //! \name Character Extractors
     //! \{
 
-    typename Traits::Char
-    get_char(const typename Traits::String& s, size_t depth) const
-    {
+    typename Traits::Char get_char(
+        const typename Traits::String& s, size_t depth) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return *ss.get_chars(s, depth);
     }
 
     //! Return up to 1 characters of string s at iterator i packed into a uint8
     //! (only works correctly for 8-bit characters)
-    uint8_t get_char_uint8_simple(
-        const typename Traits::String& s, typename Traits::CharIterator i) const
-    {
+    uint8_t get_char_uint8_simple(const typename Traits::String& s,
+        typename Traits::CharIterator i) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
 
         if (ss.is_end(s, i)) return 0;
@@ -160,9 +151,8 @@ public:
 
     //! Return up to 2 characters of string s at iterator i packed into a uint16
     //! (only works correctly for 8-bit characters)
-    uint16_t get_char_uint16_simple(
-        const typename Traits::String& s, typename Traits::CharIterator i) const
-    {
+    uint16_t get_char_uint16_simple(const typename Traits::String& s,
+        typename Traits::CharIterator i) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
 
         uint16_t v = 0;
@@ -176,9 +166,8 @@ public:
 
     //! Return up to 4 characters of string s at iterator i packed into a uint32
     //! (only works correctly for 8-bit characters)
-    uint32_t get_char_uint32_simple(
-        const typename Traits::String& s, typename Traits::CharIterator i) const
-    {
+    uint32_t get_char_uint32_simple(const typename Traits::String& s,
+        typename Traits::CharIterator i) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
 
         uint32_t v = 0;
@@ -198,9 +187,8 @@ public:
 
     //! Return up to 8 characters of string s at iterator i packed into a uint64
     //! (only works correctly for 8-bit characters)
-    uint64_t get_char_uint64_simple(
-        const typename Traits::String& s, typename Traits::CharIterator i) const
-    {
+    uint64_t get_char_uint64_simple(const typename Traits::String& s,
+        typename Traits::CharIterator i) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
 
         uint64_t v = 0;
@@ -230,26 +218,22 @@ public:
         return v;
     }
 
-    uint8_t get_uint8(const typename Traits::String& s, size_t depth) const
-    {
+    uint8_t get_uint8(const typename Traits::String& s, size_t depth) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return get_char_uint8_simple(s, ss.get_chars(s, depth));
     }
 
-    uint16_t get_uint16(const typename Traits::String& s, size_t depth) const
-    {
+    uint16_t get_uint16(const typename Traits::String& s, size_t depth) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return get_char_uint16_simple(s, ss.get_chars(s, depth));
     }
 
-    uint32_t get_uint32(const typename Traits::String& s, size_t depth) const
-    {
+    uint32_t get_uint32(const typename Traits::String& s, size_t depth) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return get_char_uint32_simple(s, ss.get_chars(s, depth));
     }
 
-    uint64_t get_uint64(const typename Traits::String& s, size_t depth) const
-    {
+    uint64_t get_uint64(const typename Traits::String& s, size_t depth) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return get_char_uint64_simple(s, ss.get_chars(s, depth));
     }
@@ -257,22 +241,19 @@ public:
     //! \}
 
     //! Subset this string set using begin and size range.
-    StringSet subr(const typename Traits::Iterator& begin, size_t size) const
-    {
+    StringSet subr(const typename Traits::Iterator& begin, size_t size) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return ss.sub(begin, begin + size);
     }
 
     //! Subset this string set using index range.
-    StringSet subi(size_t begin, size_t end) const
-    {
+    StringSet subi(size_t begin, size_t end) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
         return ss.sub(ss.begin() + begin, ss.begin() + end);
     }
 
     bool check_order(const typename Traits::String& s1,
-                     const typename Traits::String& s2) const
-    {
+        const typename Traits::String& s2) const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
 
         typename StringSet::CharIterator c1 = ss.get_chars(s1, 0);
@@ -281,23 +262,18 @@ public:
         while (ss.is_equal(s1, c1, s2, c2))
             ++c1, ++c2;
 
-        if (!ss.is_leq(s1, c1, s2, c2))
-            return false;
+        if (!ss.is_leq(s1, c1, s2, c2)) return false;
 
         return true;
     }
 
-    bool check_order() const
-    {
+    bool check_order() const {
         const StringSet& ss = *static_cast<const StringSet*>(this);
-        if (ss.size() == 0)
-          return true;
+        if (ss.size() == 0) return true;
 
-        for (typename Traits::Iterator pi = ss.begin() + 1;
-             pi != ss.end(); ++pi)
-        {
-            if (!check_order(ss[pi - 1], ss[pi]))
-                return false;
+        for (typename Traits::Iterator pi = ss.begin() + 1; pi != ss.end();
+             ++pi) {
+            if (!check_order(ss[pi - 1], ss[pi])) return false;
         }
 
         return true;
@@ -307,61 +283,51 @@ public:
 /*----------------------------------------------------------------------------*/
 
 template <typename Type>
-struct StringSetGetKeyHelper
-{
+struct StringSetGetKeyHelper {
     template <typename StringSet>
-    static Type get_key(const StringSet& ss,
-                        const typename StringSet::String& s, size_t depth);
+    static Type get_key(
+        const StringSet& ss, const typename StringSet::String& s, size_t depth);
 };
 
 template <>
-struct StringSetGetKeyHelper<uint8_t>
-{
+struct StringSetGetKeyHelper<uint8_t> {
     template <typename StringSet>
     static uint8_t get_key(const StringSet& ss,
-                           const typename StringSet::String& s, size_t depth)
-    {
+        const typename StringSet::String& s, size_t depth) {
         return ss.get_uint8(s, depth);
     }
 };
 
 template <>
-struct StringSetGetKeyHelper<uint16_t>
-{
+struct StringSetGetKeyHelper<uint16_t> {
     template <typename StringSet>
     static uint16_t get_key(const StringSet& ss,
-                           const typename StringSet::String& s, size_t depth)
-    {
+        const typename StringSet::String& s, size_t depth) {
         return ss.get_uint16(s, depth);
     }
 };
 
 template <>
-struct StringSetGetKeyHelper<uint32_t>
-{
+struct StringSetGetKeyHelper<uint32_t> {
     template <typename StringSet>
     static uint32_t get_key(const StringSet& ss,
-                           const typename StringSet::String& s, size_t depth)
-    {
+        const typename StringSet::String& s, size_t depth) {
         return ss.get_uint32(s, depth);
     }
 };
 
 template <>
-struct StringSetGetKeyHelper<uint64_t>
-{
+struct StringSetGetKeyHelper<uint64_t> {
     template <typename StringSet>
     static uint64_t get_key(const StringSet& ss,
-                           const typename StringSet::String& s, size_t depth)
-    {
+        const typename StringSet::String& s, size_t depth) {
         return ss.get_uint64(s, depth);
     }
 };
 
 template <typename Type, typename StringSet>
-Type get_key(const StringSet& ss,
-             const typename StringSet::String& s, size_t depth)
-{
+Type get_key(
+    const StringSet& ss, const typename StringSet::String& s, size_t depth) {
     return StringSetGetKeyHelper<Type>::get_key(ss, s, depth);
 }
 
@@ -372,8 +338,7 @@ Type get_key(const StringSet& ss,
  * strings.
  */
 template <typename CharType>
-class GenericCharStringSetTraits
-{
+class GenericCharStringSetTraits {
 public:
     //! exported alias for character type
     typedef CharType Char;
@@ -398,8 +363,7 @@ template <typename CharType>
 class GenericCharStringSet
     : public GenericCharStringSetTraits<CharType>,
       public StringSetBase<GenericCharStringSet<CharType>,
-                           GenericCharStringSetTraits<CharType> >
-{
+          GenericCharStringSetTraits<CharType>> {
 public:
     typedef GenericCharStringSetTraits<CharType> Traits;
 
@@ -411,13 +375,11 @@ public:
 
     //! Construct from begin and end string pointers
     GenericCharStringSet(Iterator begin, Iterator end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Construct from a string container
     explicit GenericCharStringSet(const Container& c)
-        : begin_(c.first), end_(c.first + c.second)
-    { }
+        : begin_(c.first), end_(c.first + c.second) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -427,54 +389,57 @@ public:
     Iterator end() const { return end_; }
 
     //! Iterator-based array access (readable and writable) to String objects.
-    String& operator [] (Iterator i) const
-    { return *i; }
+    String& operator[](Iterator i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belong to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (*i == 0); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (*i == 0);
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return std::string(reinterpret_cast<const char*>(s) + depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return std::string(reinterpret_cast<const char*>(s) + depth);
+    }
 
     //! Subset this string set using iterator range.
-    GenericCharStringSet sub(Iterator begin, Iterator end) const
-    { return GenericCharStringSet(begin, end); }
+    GenericCharStringSet sub(Iterator begin, Iterator end) const {
+        return GenericCharStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::make_pair(new String[n], n); }
+    static Container allocate(size_t n) {
+        return std::make_pair(new String[n], n);
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { delete[] c.first; c.first = NULL; }
+    static void deallocate(Container& c) {
+        delete[] c.first;
+        c.first = NULL;
+    }
 
     //! \name CharIterator Comparisons
     //! \{
 
     //! check equality of two strings a and b at char iterators ai and bi.
-    bool is_equal(const String&, const CharIterator& ai,
-                  const String&, const CharIterator& bi) const
-    {
+    bool is_equal(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai == *bi) && (*ai != 0);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_less(const String&, const CharIterator& ai,
-                 const String&, const CharIterator& bi) const
-    {
+    bool is_less(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai < *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_leq(const String&, const CharIterator& ai,
-                const String&, const CharIterator& bi) const
-    {
+    bool is_leq(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai <= *bi);
     }
 
@@ -485,42 +450,35 @@ public:
 
     //! Return up to 1 characters of string s at iterator i packed into a uint8
     //! (only works correctly for 8-bit characters)
-    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
-    {
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const {
         return uint8_t(*i);
     }
 
     //! \}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << *pi
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << *pi << " = " << get_string(*pi, 0);
         }
     }
 
     size_t get_length(const String& str) const {
-      size_t length = 0;
-      CharIterator it = get_chars(str, 0);
-      while(*it != 0) {
-        ++length;
-        ++it;
-      }
-      return length;
+        size_t length = 0;
+        CharIterator it = get_chars(str, 0);
+        while (*it != 0) {
+            ++length;
+            ++it;
+        }
+        return length;
     }
 
-    static String empty_string()
-    {
-      static Char zero = 0; 
-      return &zero;
+    static String empty_string() {
+        static Char zero = 0;
+        return &zero;
     }
 
-    static std::string getName() {
-      return "GenericCharStringSet";
-    }
+    static std::string getName() { return "GenericCharStringSet"; }
 
 protected:
     //! array of string pointers
@@ -532,26 +490,33 @@ typedef GenericCharStringSet<unsigned char> UCharStringSet;
 /******************************************************************************/
 
 template <typename String, typename Length = size_t>
-struct StringLengthIndex
-{
-  StringLengthIndex() : string(nullptr), length(0), index(0) {}
-  StringLengthIndex(const String string, const Length length, const uint64_t index) : string(string), length(length), index(index) {}
-  String string;
-  Length length;
-  uint64_t index;
+struct StringLengthIndex {
+    StringLengthIndex() : string(nullptr), length(0), index(0) {}
+    StringLengthIndex(
+        const String string, const Length length, const uint64_t index)
+        : string(string), length(length), index(index) {}
+    StringLengthIndex(const String string, const Length length)
+        : string(string), length(length), index(0) {}
+    String string;
+    Length length;
+    uint64_t index;
+    inline void setChars(String newString) { string = newString; }
+    inline String getChars() { return string; }
+    inline Length getLength() { return length; }
 };
 
 template <typename String, typename Length>
-std::ostream& operator<<(std::ostream& out, const StringLengthIndex<String, Length>& str_length) {
-  return out << "[" << str_length.string << "," << str_length.length <<  "," << str_length.index << "]";
+std::ostream& operator<<(
+    std::ostream& out, const StringLengthIndex<String, Length>& str_length) {
+    return out << "[" << str_length.string << "," << str_length.length << ","
+               << str_length.index << "]";
 }
 /*!
  * Traits class implementing StringSet concept for char* and unsigned char*
  * strings with additional length attribute.
  */
 template <typename CharType>
-class GenericCharLengthIndexStringSetTraits
-{
+class GenericCharLengthIndexStringSetTraits {
 public:
     //! exported alias for character type
     using Char = CharType;
@@ -570,14 +535,14 @@ public:
 };
 
 /*!
- * Class implementing StringSet concept for char* and unsigned char* strings with additional length attribute.
+ * Class implementing StringSet concept for char* and unsigned char* strings
+ * with additional length attribute.
  */
 template <typename CharType>
 class GenericCharLengthIndexStringSet
     : public GenericCharLengthIndexStringSetTraits<CharType>,
       public StringSetBase<GenericCharLengthIndexStringSet<CharType>,
-                           GenericCharLengthIndexStringSetTraits<CharType> >
-{
+          GenericCharLengthIndexStringSetTraits<CharType>> {
 public:
     typedef GenericCharLengthIndexStringSetTraits<CharType> Traits;
 
@@ -589,13 +554,11 @@ public:
 
     //! Construct from begin and end string pointers
     GenericCharLengthIndexStringSet(Iterator begin, Iterator end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Construct from a string container
     explicit GenericCharLengthIndexStringSet(const Container& c)
-        : begin_(c.first), end_(c.first + c.second)
-    { }
+        : begin_(c.first), end_(c.first + c.second) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -605,61 +568,62 @@ public:
     Iterator end() const { return end_; }
 
     //! Iterator-based array access (readable and writable) to String objects.
-    String& operator [] (Iterator i) const
-    { return *i; }
+    String& operator[](Iterator i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belong to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s.string + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s.string + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (*i == 0); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (*i == 0);
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return std::string(reinterpret_cast<const char*>(s.string) + depth);
+    }
 
     //! Subset this string set using iterator range.
-    GenericCharLengthIndexStringSet sub(Iterator begin, Iterator end) const
-    { return GenericCharLengthIndexStringSet(begin, end); }
+    GenericCharLengthIndexStringSet sub(Iterator begin, Iterator end) const {
+        return GenericCharLengthIndexStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::make_pair(new String[n], n); }
+    static Container allocate(size_t n) {
+        return std::make_pair(new String[n], n);
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { delete[] c.first; c.first = NULL; }
+    static void deallocate(Container& c) {
+        delete[] c.first;
+        c.first = NULL;
+    }
 
     //! \name CharIterator Comparisons
     //! \{
 
     //! check equality of two strings a and b at char iterators ai and bi.
-    bool is_equal(const String& a, const CharIterator& ai,
-                  const String& b, const CharIterator& bi) const
-    {
+    bool is_equal(const String& a, const CharIterator& ai, const String& b,
+        const CharIterator& bi) const {
         if (*ai == *bi && *ai == 0) {
-          return a.index == b.index; 
+            return a.index == b.index;
         }
         return (*ai == *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_less(const String& a, const CharIterator& ai,
-                 const String& b, const CharIterator& bi) const
-    {
-        if (*ai == 0 && *bi == 0)
-          return a.index < b.index;
+    bool is_less(const String& a, const CharIterator& ai, const String& b,
+        const CharIterator& bi) const {
+        if (*ai == 0 && *bi == 0) return a.index < b.index;
         return (*ai < *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_leq(const String& a, const CharIterator& ai,
-                const String& b, const CharIterator& bi) const
-    {
-        if (*ai == 0 && *bi == 0) 
-          return a.index <= b.index;
+    bool is_leq(const String& a, const CharIterator& ai, const String& b,
+        const CharIterator& bi) const {
+        if (*ai == 0 && *bi == 0) return a.index <= b.index;
         return (*ai <= *bi);
     }
 
@@ -670,80 +634,65 @@ public:
 
     //! Return up to 1 characters of string s at iterator i packed into a uint8
     //! (only works correctly for 8-bit characters)
-    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
-    {
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const {
         return uint8_t(*i);
     }
 
     //! \}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << (*pi)
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << (*pi) << " = "
+                 << get_string(*pi, 0);
         }
     }
 
-    static String empty_string()
-    {
-      static Char zeroChar = 0;
-      static String zero(&zeroChar, 0); 
-      return zero;
+    static String empty_string() {
+        static Char zeroChar = 0;
+        static String zero(&zeroChar, 0);
+        return zero;
     }
 
-    size_t get_length(const String& str) const {
-      return str.length;
-    }
+    size_t get_length(const String& str) const { return str.length; }
 
-    uint64_t get_index(const String& str) const {
-      return str.index;
-    }
+    uint64_t get_index(const String& str) const { return str.index; }
 
-    static std::string getName() {
-      return "GenericCharLengthIndexStringSet"; 
-    }
+    static std::string getName() { return "GenericCharLengthIndexStringSet"; }
 
 protected:
     //! array of string pointers
     Iterator begin_, end_;
 };
 typedef GenericCharLengthIndexStringSet<char> CharLengthIndexStringSet;
-typedef GenericCharLengthIndexStringSet<unsigned char> UCharLengthIndexStringSet;
+typedef GenericCharLengthIndexStringSet<unsigned char>
+    UCharLengthIndexStringSet;
 
 /******************************************************************************/
 
 template <typename String, typename Length = size_t>
-struct StringLength
-{
-  StringLength() : string(nullptr), length(0) {}
-  StringLength(const String string, const Length length) : string(string), length(length) {}
-  String string;
-  Length length;
-  inline void setChars(String newString) {
-    string = newString;
-  }
-  inline String getChars() {
-    return string;
-  }
-  inline Length getLength() {
-    return length;
-  }
+struct StringLength {
+    StringLength() : string(nullptr), length(0) {}
+    StringLength(const String string, const Length length)
+        : string(string), length(length) {}
+    String string;
+    Length length;
+    inline void setChars(String newString) { string = newString; }
+    inline String getChars() { return string; }
+    inline Length getLength() { return length; }
 };
 
 template <typename String, typename Length>
-std::ostream& operator<<(std::ostream& out, const StringLength<String, Length>& str_length) {
-  return out << "[" << str_length.string << "," << str_length.length << "]";
+std::ostream& operator<<(
+    std::ostream& out, const StringLength<String, Length>& str_length) {
+    return out << "[" << str_length.string << "," << str_length.length << "]";
 }
 /*!
  * Traits class implementing StringSet concept for char* and unsigned char*
  * strings with additional length attribute.
  */
 template <typename CharType>
-class GenericCharLengthStringSetTraits
-{
+class GenericCharLengthStringSetTraits {
 public:
     //! exported alias for character type
     using Char = CharType;
@@ -762,14 +711,14 @@ public:
 };
 
 /*!
- * Class implementing StringSet concept for char* and unsigned char* strings with additional length attribute.
+ * Class implementing StringSet concept for char* and unsigned char* strings
+ * with additional length attribute.
  */
 template <typename CharType>
 class GenericCharLengthStringSet
     : public GenericCharLengthStringSetTraits<CharType>,
       public StringSetBase<GenericCharLengthStringSet<CharType>,
-                           GenericCharLengthStringSetTraits<CharType> >
-{
+          GenericCharLengthStringSetTraits<CharType>> {
 public:
     typedef GenericCharLengthStringSetTraits<CharType> Traits;
 
@@ -781,13 +730,11 @@ public:
 
     //! Construct from begin and end string pointers
     GenericCharLengthStringSet(Iterator begin, Iterator end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Construct from a string container
     explicit GenericCharLengthStringSet(const Container& c)
-        : begin_(c.first), end_(c.first + c.second)
-    { }
+        : begin_(c.first), end_(c.first + c.second) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -797,54 +744,57 @@ public:
     Iterator end() const { return end_; }
 
     //! Iterator-based array access (readable and writable) to String objects.
-    String& operator [] (Iterator i) const
-    { return *i; }
+    String& operator[](Iterator i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belong to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s.string + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s.string + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (*i == 0); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (*i == 0);
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return std::string(reinterpret_cast<const char*>(s.string) + depth);
+    }
 
     //! Subset this string set using iterator range.
-    GenericCharLengthStringSet sub(Iterator begin, Iterator end) const
-    { return GenericCharLengthStringSet(begin, end); }
+    GenericCharLengthStringSet sub(Iterator begin, Iterator end) const {
+        return GenericCharLengthStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::make_pair(new String[n], n); }
+    static Container allocate(size_t n) {
+        return std::make_pair(new String[n], n);
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { delete[] c.first; c.first = NULL; }
+    static void deallocate(Container& c) {
+        delete[] c.first;
+        c.first = NULL;
+    }
 
     //! \name CharIterator Comparisons
     //! \{
 
     //! check equality of two strings a and b at char iterators ai and bi.
-    bool is_equal(const String&, const CharIterator& ai,
-                  const String&, const CharIterator& bi) const
-    {
+    bool is_equal(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai == *bi) && (*ai != 0);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_less(const String&, const CharIterator& ai,
-                 const String&, const CharIterator& bi) const
-    {
+    bool is_less(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai < *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_leq(const String&, const CharIterator& ai,
-                const String&, const CharIterator& bi) const
-    {
+    bool is_leq(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai <= *bi);
     }
 
@@ -855,46 +805,36 @@ public:
 
     //! Return up to 1 characters of string s at iterator i packed into a uint8
     //! (only works correctly for 8-bit characters)
-    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
-    {
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const {
         return uint8_t(*i);
     }
 
     //! \}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << (*pi)
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << (*pi) << " = "
+                 << get_string(*pi, 0);
         }
     }
-    void print(const std::string& prefix) const
-    {
+    void print(const std::string& prefix) const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << prefix << "[" << i++ << "] = " << (*pi)
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << prefix << "[" << i++ << "] = " << (*pi) << " = "
+                 << get_string(*pi, 0);
         }
     }
 
-    static String empty_string()
-    {
-      static Char zeroChar = 0;
-      static String zero(&zeroChar, 0); 
-      return zero;
+    static String empty_string() {
+        static Char zeroChar = 0;
+        static String zero(&zeroChar, 0);
+        return zero;
     }
 
-    size_t get_length(const String& str) const {
-      return str.length;
-    }
+    size_t get_length(const String& str) const { return str.length; }
 
-    static std::string getName() {
-      return "GenericCharLengthStringSet"; 
-    }
+    static std::string getName() { return "GenericCharLengthStringSet"; }
 
 protected:
     //! array of string pointers
@@ -904,30 +844,31 @@ protected:
 typedef GenericCharLengthStringSet<char> CharLengthStringSet;
 typedef GenericCharLengthStringSet<unsigned char> UCharLengthStringSet;
 
-
 /******************************************************************************/
 
 template <typename String>
 struct StringStringIndexPEIndex {
-  StringStringIndexPEIndex() : string(nullptr), stringIndex(0), PEIndex(0) {}
-  StringStringIndexPEIndex(const String string, const size_t stringIndex, const size_t PEIndex) 
-    : string(string), stringIndex(stringIndex), PEIndex(PEIndex) {}
-  String string;
-  size_t stringIndex;
-  size_t PEIndex;
+    StringStringIndexPEIndex() : string(nullptr), stringIndex(0), PEIndex(0) {}
+    StringStringIndexPEIndex(
+        const String string, const size_t stringIndex, const size_t PEIndex)
+        : string(string), stringIndex(stringIndex), PEIndex(PEIndex) {}
+    String string;
+    size_t stringIndex;
+    size_t PEIndex;
 };
 
 template <typename String>
-std::ostream& operator<<(std::ostream& out, const StringStringIndexPEIndex<String>& str) {
-  return out << "[" << str.string << "," << str.stringIndex << ", " << str.PEIndex << "]";
+std::ostream& operator<<(
+    std::ostream& out, const StringStringIndexPEIndex<String>& str) {
+    return out << "[" << str.string << "," << str.stringIndex << ", "
+               << str.PEIndex << "]";
 }
 /*!
  * Traits class implementing StringSet concept for char* and unsigned char*
  * strings with additional length attribute.
  */
 template <typename CharType>
-class GenericCharIndexPEIndexStringSetTraits
-{
+class GenericCharIndexPEIndexStringSetTraits {
 public:
     //! exported alias for character type
     using Char = CharType;
@@ -946,14 +887,14 @@ public:
 };
 
 /*!
- * Class implementing StringSet concept for char* and unsigned char* strings with additional length attribute.
+ * Class implementing StringSet concept for char* and unsigned char* strings
+ * with additional length attribute.
  */
 template <typename CharType>
 class GenericCharIndexPEIndexStringSet
     : public GenericCharIndexPEIndexStringSetTraits<CharType>,
       public StringSetBase<GenericCharIndexPEIndexStringSet<CharType>,
-                           GenericCharIndexPEIndexStringSetTraits<CharType> >
-{
+          GenericCharIndexPEIndexStringSetTraits<CharType>> {
 public:
     typedef GenericCharIndexPEIndexStringSetTraits<CharType> Traits;
 
@@ -965,13 +906,11 @@ public:
 
     //! Construct from begin and end string pointers
     GenericCharIndexPEIndexStringSet(Iterator begin, Iterator end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Construct from a string container
     explicit GenericCharIndexPEIndexStringSet(const Container& c)
-        : begin_(c.first), end_(c.first + c.second)
-    { }
+        : begin_(c.first), end_(c.first + c.second) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -981,54 +920,57 @@ public:
     Iterator end() const { return end_; }
 
     //! Iterator-based array access (readable and writable) to String objects.
-    String& operator [] (Iterator i) const
-    { return *i; }
+    String& operator[](Iterator i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belong to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s.string + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s.string + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (*i == 0); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (*i == 0);
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return std::string(reinterpret_cast<const char*>(s.string) + depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return std::string(reinterpret_cast<const char*>(s.string) + depth);
+    }
 
     //! Subset this string set using iterator range.
-    GenericCharIndexPEIndexStringSet sub(Iterator begin, Iterator end) const
-    { return GenericCharIndexPEIndexStringSet(begin, end); }
+    GenericCharIndexPEIndexStringSet sub(Iterator begin, Iterator end) const {
+        return GenericCharIndexPEIndexStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::make_pair(new String[n], n); }
+    static Container allocate(size_t n) {
+        return std::make_pair(new String[n], n);
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { delete[] c.first; c.first = NULL; }
+    static void deallocate(Container& c) {
+        delete[] c.first;
+        c.first = NULL;
+    }
 
     //! \name CharIterator Comparisons
     //! \{
 
     //! check equality of two strings a and b at char iterators ai and bi.
-    bool is_equal(const String&, const CharIterator& ai,
-                  const String&, const CharIterator& bi) const
-    {
+    bool is_equal(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai == *bi) && (*ai != 0);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_less(const String&, const CharIterator& ai,
-                 const String&, const CharIterator& bi) const
-    {
+    bool is_less(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai < *bi);
     }
 
     //! check if string a is less or equal to string b at iterators ai and bi.
-    bool is_leq(const String&, const CharIterator& ai,
-                const String&, const CharIterator& bi) const
-    {
+    bool is_leq(const String&, const CharIterator& ai, const String&,
+        const CharIterator& bi) const {
         return (*ai <= *bi);
     }
 
@@ -1039,50 +981,40 @@ public:
 
     //! Return up to 1 characters of string s at iterator i packed into a uint8
     //! (only works correctly for 8-bit characters)
-    uint8_t get_char_uint8_simple(const String&, CharIterator i) const
-    {
+    uint8_t get_char_uint8_simple(const String&, CharIterator i) const {
         return uint8_t(*i);
     }
 
     //! \}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << (*pi)
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << (*pi) << " = "
+                 << get_string(*pi, 0);
         }
     }
 
-    static String empty_string()
-    {
-      static String zero(0, 0, 0); 
-      return zero;
+    static String empty_string() {
+        static String zero(0, 0, 0);
+        return zero;
     }
 
     size_t get_length(const String& str) const {
-      size_t length = 0;
-      CharIterator it = get_chars(str, 0);
-      while(*it != 0) {
-        ++length;
-        ++it;
-      }
-      return length;
+        size_t length = 0;
+        CharIterator it = get_chars(str, 0);
+        while (*it != 0) {
+            ++length;
+            ++it;
+        }
+        return length;
     }
 
-    size_t getIndex(const String& str) const {
-      return str.stringIndex;  
-    }
-    
-    size_t getPEIndex(const String& str) const {
-      return str.PEIndex;  
-    }
+    size_t getIndex(const String& str) const { return str.stringIndex; }
 
-    static std::string getName() {
-      return "GenericCharIndexPEIndexStringSet"; 
-    }
+    size_t getPEIndex(const String& str) const { return str.PEIndex; }
+
+    static std::string getName() { return "GenericCharIndexPEIndexStringSet"; }
 
 protected:
     //! array of string pointers
@@ -1090,15 +1022,14 @@ protected:
 };
 
 typedef GenericCharIndexPEIndexStringSet<char> CharIndexPEIndexStringSet;
-typedef GenericCharIndexPEIndexStringSet<unsigned char> UCharIndexPEIndexStringSet;
-
+typedef GenericCharIndexPEIndexStringSet<unsigned char>
+    UCharIndexPEIndexStringSet;
 
 /*!
  * Class implementing StringSet concept for a std::vector containing std::string
  * objects.
  */
-class VectorStringSetTraits
-{
+class VectorStringSetTraits {
 public:
     //! exported alias for assumed string container
     typedef std::vector<std::string> Container;
@@ -1122,13 +1053,11 @@ public:
  */
 class VectorStringSet
     : public VectorStringSetTraits,
-      public StringSetBase<VectorStringSet, VectorStringSetTraits>
-{
+      public StringSetBase<VectorStringSet, VectorStringSetTraits> {
 public:
     //! Construct from begin and end string pointers
     VectorStringSet(const Iterator& begin, const Iterator& end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -1138,45 +1067,44 @@ public:
     Iterator end() const { return end_; }
 
     //! Array access (readable and writable) to String objects.
-    String& operator [] (const Iterator& i) const
-    { return *i; }
+    String& operator[](const Iterator& i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belongs to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s.begin() + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s.begin() + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String& s, const CharIterator& i) const
-    { return (i >= s.end()); }
+    bool is_end(const String& s, const CharIterator& i) const {
+        return (i >= s.end());
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return s.substr(depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return s.substr(depth);
+    }
 
     //! Subset this string set using iterator range.
-    VectorStringSet sub(Iterator begin, Iterator end) const
-    { return VectorStringSet(begin, end); }
+    VectorStringSet sub(Iterator begin, Iterator end) const {
+        return VectorStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::move(Container(n)); }
+    static Container allocate(size_t n) { return std::move(Container(n)); }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { Container v; v.swap(c); }
+    static void deallocate(Container& c) {
+        Container v;
+        v.swap(c);
+    }
 
     //! Construct from a string container
-    explicit VectorStringSet(Container& c)
-        : begin_(c.begin()), end_(c.end())
-    { }
+    explicit VectorStringSet(Container& c) : begin_(c.begin()), end_(c.end()) {}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << *pi
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << *pi << " = " << get_string(*pi, 0);
         }
     }
 
@@ -1191,11 +1119,10 @@ protected:
  * Class implementing StringSet concept for a std::vector containing
  * std::unique_ptr<std::string> objects, which are non-copyable.
  */
-class VectorPtrStringSetTraits
-{
+class VectorPtrStringSetTraits {
 public:
     //! exported alias for assumed string container
-    typedef std::vector<std::unique_ptr<std::string> > Container;
+    typedef std::vector<std::unique_ptr<std::string>> Container;
 
     //! exported alias for character type
     typedef std::string::value_type Char;
@@ -1216,13 +1143,11 @@ public:
  */
 class VectorPtrStringSet
     : public VectorPtrStringSetTraits,
-      public StringSetBase<VectorPtrStringSet, VectorPtrStringSetTraits>
-{
+      public StringSetBase<VectorPtrStringSet, VectorPtrStringSetTraits> {
 public:
     //! Construct from begin and end string pointers
     VectorPtrStringSet(const Iterator& begin, const Iterator& end)
-        : begin_(begin), end_(end)
-    { }
+        : begin_(begin), end_(end) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -1232,45 +1157,46 @@ public:
     Iterator end() const { return end_; }
 
     //! Array access (readable and writable) to String objects.
-    String& operator [] (const Iterator& i) const
-    { return *i; }
+    String& operator[](const Iterator& i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belongs to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return s->begin() + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return s->begin() + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String& s, const CharIterator& i) const
-    { return (i >= s->end()); }
+    bool is_end(const String& s, const CharIterator& i) const {
+        return (i >= s->end());
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return s->substr(depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return s->substr(depth);
+    }
 
     //! Subset this string set using iterator range.
-    VectorPtrStringSet sub(Iterator begin, Iterator end) const
-    { return VectorPtrStringSet(begin, end); }
+    VectorPtrStringSet sub(Iterator begin, Iterator end) const {
+        return VectorPtrStringSet(begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    static Container allocate(size_t n)
-    { return std::move(Container(n)); }
+    static Container allocate(size_t n) { return std::move(Container(n)); }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { Container v; v.swap(c); }
+    static void deallocate(Container& c) {
+        Container v;
+        v.swap(c);
+    }
 
     //! Construct from a string container
     explicit VectorPtrStringSet(Container& c)
-        : begin_(c.begin()), end_(c.end())
-    { }
+        : begin_(c.begin()), end_(c.end()) {}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << pi->get()
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << pi->get() << " = "
+                 << get_string(*pi, 0);
         }
     }
 
@@ -1285,8 +1211,7 @@ protected:
  * Class implementing StringSet concept for suffix sorting indexes of an
  * unsigned char* text object.
  */
-class UCharSuffixSetTraits
-{
+class UCharSuffixSetTraits {
 public:
     //! exported alias for assumed text container
     typedef const unsigned char* Text;
@@ -1314,15 +1239,12 @@ public:
  */
 class UCharSuffixSet
     : public UCharSuffixSetTraits,
-      public StringSetBase<UCharSuffixSet, UCharSuffixSetTraits>
-{
+      public StringSetBase<UCharSuffixSet, UCharSuffixSetTraits> {
 public:
     //! Construct from begin and end string pointers
     UCharSuffixSet(const Text& text, const Text& text_end,
-                   const Iterator& begin, const Iterator& end)
-        : text_(text), text_end_(text_end),
-          begin_(begin), end_(end)
-    { }
+        const Iterator& begin, const Iterator& end)
+        : text_(text), text_end_(text_end), begin_(begin), end_(end) {}
 
     //! Return size of string array
     size_t size() const { return end_ - begin_; }
@@ -1332,49 +1254,46 @@ public:
     Iterator end() const { return end_; }
 
     //! Array access (readable and writable) to String objects.
-    String& operator [] (const Iterator& i) const
-    { return *i; }
+    String& operator[](const Iterator& i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belongs to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return text_ + s + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return text_ + s + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (i >= text_end_); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (i >= text_end_);
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    {
+    std::string get_string(const String& s, size_t depth = 0) const {
         return std::string(reinterpret_cast<const char*>(text_ + s + depth),
-                           reinterpret_cast<const char*>(text_end_));
+            reinterpret_cast<const char*>(text_end_));
     }
 
     //! Subset this string set using iterator range.
-    UCharSuffixSet sub(Iterator begin, Iterator end) const
-    { return UCharSuffixSet(text_, text_end_, begin, end); }
+    UCharSuffixSet sub(Iterator begin, Iterator end) const {
+        return UCharSuffixSet(text_, text_end_, begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    Container allocate(size_t n) const
-    { return std::make_tuple(text_, text_end_, new String[n], n); }
+    Container allocate(size_t n) const {
+        return std::make_tuple(text_, text_end_, new String[n], n);
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { delete[] std::get<2>(c); }
+    static void deallocate(Container& c) { delete[] std::get<2>(c); }
 
     //! Construct from a string container
     explicit UCharSuffixSet(Container& c)
         : text_(std::get<0>(c)), text_end_(std::get<1>(c)),
-          begin_(std::get<2>(c)), end_(std::get<2>(c) + std::get<3>(c))
-    { }
+          begin_(std::get<2>(c)), end_(std::get<2>(c) + std::get<3>(c)) {}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << *pi
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << *pi << " = " << get_string(*pi, 0);
         }
     }
 
@@ -1392,8 +1311,7 @@ protected:
  * Class implementing StringSet concept for suffix sorting indexes of a
  * std::string text object.
  */
-class StringSuffixSetTraits
-{
+class StringSuffixSetTraits {
 public:
     //! exported alias for assumed string container
     typedef std::string Text;
@@ -1412,7 +1330,7 @@ public:
     typedef std::string::const_iterator CharIterator;
 
     //! exported alias for assumed string container
-    typedef std::tuple<Text, std::vector<String> > Container;
+    typedef std::tuple<Text, std::vector<String>> Container;
 };
 
 /*!
@@ -1421,20 +1339,16 @@ public:
  */
 class StringSuffixSet
     : public StringSuffixSetTraits,
-      public StringSetBase<StringSuffixSet, StringSuffixSetTraits>
-{
+      public StringSetBase<StringSuffixSet, StringSuffixSetTraits> {
 public:
     //! Construct from begin and end string pointers
-    StringSuffixSet(const Text& text,
-                    const Iterator& begin, const Iterator& end)
-        : text_(&text),
-          begin_(begin), end_(end)
-    { }
+    StringSuffixSet(
+        const Text& text, const Iterator& begin, const Iterator& end)
+        : text_(&text), begin_(begin), end_(end) {}
 
     //! Initializing constructor which fills output vector sa with indices.
-    static StringSuffixSet
-    Initialize(const Text& text, std::vector<String>& sa)
-    {
+    static StringSuffixSet Initialize(
+        const Text& text, std::vector<String>& sa) {
         sa.resize(text.size());
         for (size_t i = 0; i < text.size(); ++i)
             sa[i] = i;
@@ -1449,46 +1363,48 @@ public:
     Iterator end() const { return end_; }
 
     //! Array access (readable and writable) to String objects.
-    String& operator [] (const Iterator& i) const
-    { return *i; }
+    String& operator[](const Iterator& i) const { return *i; }
 
     //! Return CharIterator for referenced string, which belongs to this set.
-    CharIterator get_chars(const String& s, size_t depth) const
-    { return text_->begin() + s + depth; }
+    CharIterator get_chars(const String& s, size_t depth) const {
+        return text_->begin() + s + depth;
+    }
 
     //! Returns true if CharIterator is at end of the given String
-    bool is_end(const String&, const CharIterator& i) const
-    { return (i >= text_->end()); }
+    bool is_end(const String&, const CharIterator& i) const {
+        return (i >= text_->end());
+    }
 
     //! Return complete string (for debugging purposes)
-    std::string get_string(const String& s, size_t depth = 0) const
-    { return text_->substr(s + depth); }
+    std::string get_string(const String& s, size_t depth = 0) const {
+        return text_->substr(s + depth);
+    }
 
     //! Subset this string set using iterator range.
-    StringSuffixSet sub(Iterator begin, Iterator end) const
-    { return StringSuffixSet(*text_, begin, end); }
+    StringSuffixSet sub(Iterator begin, Iterator end) const {
+        return StringSuffixSet(*text_, begin, end);
+    }
 
     //! Allocate a new temporary string container with n empty Strings
-    Container allocate(size_t n) const
-    { return std::make_tuple(*text_, std::move(std::vector<String>(n))); }
+    Container allocate(size_t n) const {
+        return std::make_tuple(*text_, std::move(std::vector<String>(n)));
+    }
 
     //! Deallocate a temporary string container
-    static void deallocate(Container& c)
-    { std::vector<String> v; v.swap(std::get<1>(c)); }
+    static void deallocate(Container& c) {
+        std::vector<String> v;
+        v.swap(std::get<1>(c));
+    }
 
     //! Construct from a string container
     explicit StringSuffixSet(Container& c)
-        : text_(&std::get<0>(c)),
-          begin_(std::get<1>(c).begin()), end_(std::get<1>(c).end())
-    { }
+        : text_(&std::get<0>(c)), begin_(std::get<1>(c).begin()),
+          end_(std::get<1>(c).end()) {}
 
-    void print() const
-    {
+    void print() const {
         size_t i = 0;
-        for (Iterator pi = begin(); pi != end(); ++pi)
-        {
-            LOG1 << "[" << i++ << "] = " << *pi
-                 << " = " << get_string(*pi, 0);
+        for (Iterator pi = begin(); pi != end(); ++pi) {
+            LOG1 << "[" << i++ << "] = " << *pi << " = " << get_string(*pi, 0);
         }
     }
 
@@ -1500,7 +1416,7 @@ protected:
     Iterator begin_, end_;
 };
 
-} // namespace parallel_string_sorting
+} // namespace dss_schimek
 
 #endif // !PSS_SRC_TOOLS_STRINGSET_HEADER
 
