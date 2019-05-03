@@ -248,7 +248,7 @@ public:
 
         auto interval_sizes =
             computePartition<SampleSplittersPolicy, StringPtr>(
-                local_string_ptr, globalLcpAvg, 50);
+                local_string_ptr, globalLcpAvg * 10, 2);
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
