@@ -172,21 +172,28 @@ struct AllToAllHashesGolomb {
         measuringTool.start("bloomfilter_golombEncoding");
         std::vector<size_t> encodedValuesSizes;
         std::vector<size_t> encodedValues;
-        encodedValues.reserve(sendData.size() + 2);
+        encodedValues.reserve(sendData.size() + 2 + env.size());
 
         auto begin = sendData.begin();
 
+        if (intervalSizes.size() != env.size()) {
+          std::cout << "not same size" << std::endl;
+          std::abort();
+        }
         for (size_t j = 0; j < intervalSizes.size(); ++j) {
             const auto intervalSize = intervalSizes[j];
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
             const size_t bFromBook = getB(bloomFilterSize, intervalSize);
+            encodedValues.push_back(0); // dummy value
+            auto refToSize = encodedValues.size() - 1; 
             encodedValues.push_back(bFromBook);
 
             getDeltaEncoding(
                 begin, end, std::back_inserter(encodedValues), bFromBook);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
+            encodedValues[refToSize] = sizeEncodedValues - 1;
             encodedValuesSizes.push_back(sizeEncodedValues);
             begin = end;
         }
@@ -195,18 +202,19 @@ struct AllToAllHashesGolomb {
 
         std::vector<size_t> recvEncodedValues =
             AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
+        //std::vector<size_t> recvEncodedValuesSizes =
+        //    dss_schimek::mpi::alltoall(encodedValuesSizes);
+        measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.add(encodedValues.size() * sizeof(size_t),
             "bloomfilter_sentEncodedValues");
-        std::vector<size_t> recvEncodedValuesSizes =
-            dss_schimek::mpi::alltoall(encodedValuesSizes);
-        measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
 
         decodedValues.reserve(recvEncodedValues.size());
         auto curDecodeIt = recvEncodedValues.begin();
 
-        for (const size_t encodedIntervalSizes : recvEncodedValuesSizes) {
+        for (size_t i = 0; i < env.size(); ++i) {
+            const size_t encodedIntervalSizes = *(curDecodeIt++);
             const auto end = curDecodeIt + encodedIntervalSizes;
             const size_t bFromBook = *(curDecodeIt++);
             getDeltaDecoding(
@@ -906,7 +914,7 @@ class BloomfilterTest {
     }
 
     struct ContainerSizesIndices {
-        using Container = dss_schimek::StringLcpContainer<StringSet>;
+        using Container = dss_schimek::StringContainer<StringSet>;
         Container container;
         std::vector<size_t> intervalSizes;
         std::vector<size_t> stringIndices;
