@@ -903,7 +903,6 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         uint64_t numberOfRounds = static_cast<uint64_t>(std::log2(nprocs));
         for (size_t i = 0; i < numberOfRounds; ++i) {
 
-          std::cout << i << std::endl;
         measuringTool.setRound(i);
         measuringTool.start("Splitter_median_select_Barrier");
         measuringTool.stop("Splitter_median_select_Barrier");
@@ -927,7 +926,6 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         measuringTool.start("Splitter_split");
         measuringTool.stop("Splitter_split");
         }
-        std::cout << "all added" << std::endl;
         }
         measuringTool.setRound(0);
         measuringTool.disableBarrier(false);
