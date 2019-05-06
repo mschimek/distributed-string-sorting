@@ -527,8 +527,10 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
 
     Data<StringContainer, StringContainer::isIndexed> recvData =
         exchangeData.exchange(comm, partner, tag);
+    exchangeData.clear();
 
     StringContainer recvStrings = recvData.moveToContainer();
+    recvData.clear();
 
     tracker.exchange_t.stop();
     measuringTool.stop("Splitter_exchange");
@@ -578,6 +580,10 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
             std::abort();
         }
     }
+
+    mergedStrings.clear();
+    mergedStrings.shrink_to_fit();
+    recvStrings.deleteAll();
 
     if (nprocs >= 4) {
         // Split communicator and solve subproblems.
@@ -907,6 +913,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     }
 
     StringContainer container = data.moveToContainer();
+    data.clear();
     measuringTool.stop("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.stop();
 
