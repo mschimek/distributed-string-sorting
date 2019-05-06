@@ -413,7 +413,7 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     static uint64_t iteration = 0;
     ++iteration;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    // measuringTool.setRound(iteration);
+    measuringTool.setRound(iteration);
     if constexpr (barrierActive) {
         measuringTool.start("Splitter_median_select_Barrier");
         MPI_Barrier(comm);
@@ -507,9 +507,9 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     const uint64_t ownCharsSize =
         stringContainer.char_size() - exchangeData.rawStrings.size();
 
-    uint64_t inbalance = std::abs(
-        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
-    measuringTool.add(inbalance, "inbalance", false);
+//    uint64_t inbalance = std::abs(
+//        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
+//measuringTool.add(inbalance, "inbalance", false);
 
     tracker.partition_t.stop();
     measuringTool.stop("Splitter_partition");
@@ -890,6 +890,46 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         MPI_Comm_split(comm, 1, myrank, &sub_comm);
         comm = sub_comm;
         measuringTool.stop("Splitter_move_to_pow_of_two_t");
+
+        
+        measuringTool.start("splitter_shuffle_Barrier");
+        measuringTool.stop("splitter_shuffle_Barrier");
+        measuringTool.start("Splitter_shuffle");
+        measuringTool.stop("Splitter_shuffle");
+        measuringTool.start("Splitter_sortLocally_Barrier");
+        measuringTool.stop("Splitter_sortLocally_Barrier");
+        measuringTool.start("Splitter_sortLocally");
+        measuringTool.stop("Splitter_sortLocally");
+        uint64_t numberOfRounds = static_cast<uint64_t>(std::log2(nprocs));
+        for (size_t i = 0; i < numberOfRounds; ++i) {
+
+          std::cout << i << std::endl;
+        measuringTool.setRound(i);
+        measuringTool.start("Splitter_median_select_Barrier");
+        measuringTool.stop("Splitter_median_select_Barrier");
+        measuringTool.start("Splitter_median_select");
+        measuringTool.stop("Splitter_median_select");
+        measuringTool.start("Splitter_partition_Barrier");
+        measuringTool.stop("Splitter_partition_Barrier");
+        measuringTool.start("Splitter_partition");
+        measuringTool.stop("Splitter_partition");
+        measuringTool.start("Splitter_exchange_Barrier");
+        measuringTool.stop("Splitter_exchange_Barrier");
+        measuringTool.start("Splitter_exchange");
+        measuringTool.stop("Splitter_exchange");
+        measuringTool.start("Splitter_merge_Barrier");
+        measuringTool.stop("Splitter_merge_Barrier");
+        measuringTool.start("Splitter_merge");
+        measuringTool.stop("Splitter_merge");
+        if (i + 1 < numberOfRounds) {
+        measuringTool.start("Splitter_split_Barrier");
+        measuringTool.stop("Splitter_split_Barrier");
+        measuringTool.start("Splitter_split");
+        measuringTool.stop("Splitter_split");
+        }
+        std::cout << "all added" << std::endl;
+        }
+        measuringTool.setRound(0);
         measuringTool.disableBarrier(false);
 
         return StringContainer();
