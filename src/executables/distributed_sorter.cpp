@@ -111,8 +111,11 @@ void execute_sorter(size_t numOfStrings, const bool check,
     env.barrier();
 
     measuringTool.start("sorting_overall");
-    using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps,
-        StringSet, MPIAllToAllRoutine, ByteEncoder>;
+    // using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps,
+    //    StringSet, MPIAllToAllRoutine, ByteEncoder>;
+    using AllToAllPolicy =
+        dss_schimek::mpi::AllToAllStringImplOnlyRawStrings<StringSet,
+            MPIAllToAllRoutine>;
     DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy>
         sorter;
     StringLcpContainer<StringSet> sorted_string_cont =
@@ -339,7 +342,8 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.byteEncoder_) {
     case PolicyEnums::ByteEncoder::emptyByteEncoderCopy: {
         using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
-        //sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+        // sixthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
         break;
     }
@@ -351,19 +355,22 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::ByteEncoder::sequentialDelayedByteEncoder: {
         using ByteEncoder = dss_schimek::SequentialDelayedByteEncoder;
-        //sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+        // sixthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::sequentialByteEncoder: {
         using ByteEncoder = dss_schimek::SequentialByteEncoder;
-        //sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+        // sixthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::interleavedByteEncoder: {
         using ByteEncoder = dss_schimek::InterleavedByteEncoder;
-        //sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+        // sixthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
         break;
     }
@@ -380,13 +387,15 @@ void fourthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.mpiRoutineAllToAll_) {
     case PolicyEnums::MPIRoutineAllToAll::small: {
         using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvSmall;
-        //fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
+        // fifthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll>(
         //    key, args);
         break;
     }
     case PolicyEnums::MPIRoutineAllToAll::directMessages: {
         using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvDirectMessages;
-        //fifthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll>(
+        // fifthArg<StringSet, StringGenerator, SampleString,
+        // MPIRoutineAllToAll>(
         //    key, args);
         break;
     }
@@ -498,7 +507,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_unsigned(
         's', "size", numberOfStrings, " number of strings to be generated");
     cp.add_unsigned('p', "sampleStringsPolicy", sampleStringsPolicy,
-        "0 = NumStrings, 1 = NumChars, 2 = IndexedNumStrings, 3 = IndexedNumChars");
+        "0 = NumStrings, 1 = NumChars, 2 = IndexedNumStrings, 3 = "
+        "IndexedNumChars");
     cp.add_unsigned('b', "byteEncoder", byteEncoder,
         "emptyByteEncoderCopy = 0, emptyByteEncoderMemCpy = 1, "
         "sequentialDelayedByteEncoder = 2, sequentialByteEncoder = 3, "

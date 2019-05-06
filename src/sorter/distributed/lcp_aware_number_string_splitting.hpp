@@ -20,6 +20,7 @@
 #include "merge/stringtools.hpp"
 
 #include "util/measuringTool.hpp"
+#include <tlx/container/loser_tree.hpp>
 #include <tlx/sort/strings/radix_sort.hpp>
 #include <tlx/sort/strings/string_ptr.hpp>
 
@@ -122,6 +123,64 @@ static constexpr bool debug = false;
 //    return StringLcpContainer();
 //}
 
+struct string_compare {
+    using String = dss_schimek::UCharLengthStringSet::String;
+    bool operator()(String a, String b) {
+        auto charsA = a.string;
+        auto charsB = b.string;
+        while (*charsA == *charsB && *charsA != 0) {
+            ++charsA;
+            ++charsB;
+        }
+        return *charsA < *charsB;
+    }
+}; // struct string_compare
+
+template <typename StringContainer, typename Ranges>
+StringContainer noLcpMerge(
+    StringContainer&& stringContainer, const Ranges& ranges) {
+    dss_schimek::mpi::environment env;
+    using StringSet = typename StringContainer::StringSet;
+    using String = typename StringSet::String;
+    tlx::LoserTreeCopy<false, String, dss_schimek::string_compare> lt(
+        env.size());
+    std::size_t filled_sources = 0;
+    std::vector<String*> string_it;
+    std::vector<String*> end_it;
+    uint64_t curPos = 0;
+    for (auto [start, size] : ranges) {
+        string_it.push_back(stringContainer.strings() + curPos);
+        end_it.push_back(stringContainer.strings() + curPos + size);
+        curPos += size;
+    }
+    for (std::uint32_t i = 0; i < env.size(); ++i) {
+        if (string_it[i] == end_it[i]) {
+            lt.insert_start(nullptr, i, true);
+        }
+        else {
+            lt.insert_start(&*string_it[i], i, false);
+            ++filled_sources;
+        }
+    }
+    lt.init();
+    std::vector<String> result;
+    result.reserve(stringContainer.size());
+    while (filled_sources) {
+        std::int32_t source = lt.min_source();
+        result.push_back(*string_it[source]);
+        ++string_it[source];
+        if (string_it[source] != end_it[source]) {
+            lt.delete_min_insert(&*string_it[source], false);
+        }
+        else {
+            lt.delete_min_insert(nullptr, true);
+            --filled_sources;
+        }
+    }
+    stringContainer.set(std::move(result));
+    return std::move(stringContainer);
+}
+
 template <typename StringPtr, typename SampleSplittersPolicy,
     typename AllToAllStringPolicy>
 class DistributedMergeSort : private SampleSplittersPolicy,
@@ -176,9 +235,8 @@ public:
                 local_string_ptr, globalLcpAvg, 2);
         }
         else {
-            interval_sizes =
-                computePartition<SampleSplittersPolicy, StringPtr>(
-                    local_string_ptr, globalLcpAvg, 2);
+            interval_sizes = computePartition<SampleSplittersPolicy, StringPtr>(
+                local_string_ptr, globalLcpAvg, 2);
         }
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
@@ -206,10 +264,10 @@ public:
             compute_ranges_and_set_lcp_at_start_of_range(
                 recv_string_cont, receiving_interval_sizes);
         measuringTool.stop("compute_ranges");
-
         measuringTool.start("merge_ranges");
-        auto sorted_container = choose_merge<AllToAllStringPolicy>(
-            std::move(recv_string_cont), ranges, num_recv_elems);
+        // auto sorted_container = choose_merge<AllToAllStringPolicy>(
+        //    std::move(recv_string_cont), ranges, num_recv_elems);
+        auto sorted_container = noLcpMerge(std::move(recv_string_cont), ranges);
         measuringTool.stop("merge_ranges");
         measuringTool.setPhase("none");
         return sorted_container;
