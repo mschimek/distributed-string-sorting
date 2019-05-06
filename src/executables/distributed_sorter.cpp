@@ -239,7 +239,8 @@ enum class ByteEncoder {
     sequentialDelayedByteEncoder = 2,
     sequentialByteEncoder = 3,
     interleavedByteEncoder = 4,
-    emptyLcpByteEncoderMemCpy = 5
+    emptyLcpByteEncoderMemCpy = 5,
+    noLcps = 6
 };
 ByteEncoder getByteEncoder(size_t i) {
     switch (i) {
@@ -255,6 +256,8 @@ ByteEncoder getByteEncoder(size_t i) {
         return ByteEncoder::interleavedByteEncoder;
     case 5:
         return ByteEncoder::emptyLcpByteEncoderMemCpy;
+    case 6:
+        return ByteEncoder::noLcps;
     default:
         std::cout << "Enum ByteEncoder not defined" << std::endl;
         std::abort();
@@ -341,7 +344,7 @@ template <typename StringSet, typename StringGenerator, typename SampleString,
 void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.byteEncoder_) {
     case PolicyEnums::ByteEncoder::emptyByteEncoderCopy: {
-        using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
+        //using ByteEncoder = dss_schimek::EmptyByteEncoderCopy;
         // sixthArg<StringSet, StringGenerator, SampleString,
         // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
@@ -354,7 +357,7 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         break;
     }
     case PolicyEnums::ByteEncoder::sequentialDelayedByteEncoder: {
-        using ByteEncoder = dss_schimek::SequentialDelayedByteEncoder;
+        //using ByteEncoder = dss_schimek::SequentialDelayedByteEncoder;
         // sixthArg<StringSet, StringGenerator, SampleString,
         // MPIRoutineAllToAll,
         //    ByteEncoder>(key, args);
@@ -380,20 +383,26 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
             ByteEncoder>(key, args);
         break;
     }
+    case PolicyEnums::ByteEncoder::noLcps: {
+        using ByteEncoder = dss_schimek::NoLcps;
+        sixthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+            ByteEncoder>(key, args);
+        break;
+    }
     };
 }
 template <typename StringSet, typename StringGenerator, typename SampleString>
 void fourthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.mpiRoutineAllToAll_) {
     case PolicyEnums::MPIRoutineAllToAll::small: {
-        using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvSmall;
+        //using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvSmall;
         // fifthArg<StringSet, StringGenerator, SampleString,
         // MPIRoutineAllToAll>(
         //    key, args);
         break;
     }
     case PolicyEnums::MPIRoutineAllToAll::directMessages: {
-        using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvDirectMessages;
+        //using MPIRoutineAllToAll = dss_schimek::mpi::AllToAllvDirectMessages;
         // fifthArg<StringSet, StringGenerator, SampleString,
         // MPIRoutineAllToAll>(
         //    key, args);
@@ -442,8 +451,8 @@ template <typename StringSet>
 void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     switch (key.stringGenerator_) {
     case PolicyEnums::StringGenerator::skewedRandomStringLcpContainer: {
-        using StringGenerator =
-            dss_schimek::SkewedRandomStringLcpContainer<StringSet>;
+        //using StringGenerator =
+        //    dss_schimek::SkewedRandomStringLcpContainer<StringSet>;
         // thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
@@ -458,7 +467,7 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         break;
     }
     case PolicyEnums::StringGenerator::Suffix: {
-        using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+        //using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
         // thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
