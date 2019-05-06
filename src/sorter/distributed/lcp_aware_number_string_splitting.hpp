@@ -197,8 +197,8 @@ public:
         using namespace dss_schimek::measurement;
 
         using StringSet = typename StringPtr::StringSet;
-        using IndexStringSet = UCharLengthIndexStringSet;
-        using Char = typename StringSet::Char;
+        //using IndexStringSet = UCharLengthIndexStringSet;
+        //using Char = typename StringSet::Char;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
@@ -215,7 +215,13 @@ public:
         // sort locally
         env.barrier();
         measuringTool.start("sort_locally");
-        tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
+        if constexpr (AllToAllStringPolicy::Lcps) {
+            tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
+        }
+        else {
+            tlx::sort_strings_detail::radixsort_CI3(
+                local_string_container.make_string_ptr(), 0, 0);
+        }
 
         // dss_schimek::radixsort_CI3(local_string_ptr, 0, 0);
         measuringTool.stop("sort_locally");
@@ -230,14 +236,9 @@ public:
         measuringTool.stop("avg_lcp");
 
         std::vector<uint64_t> interval_sizes;
-        if constexpr (SampleSplittersPolicy::isIndexed) {
             interval_sizes = computePartition<SampleSplittersPolicy, StringPtr>(
-                local_string_ptr, globalLcpAvg, 2);
-        }
-        else {
-            interval_sizes = computePartition<SampleSplittersPolicy, StringPtr>(
-                local_string_ptr, globalLcpAvg, 2);
-        }
+                local_string_ptr, 100 * globalLcpAvg, 2);
+
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
         std::vector<std::size_t> receiving_interval_sizes =
@@ -253,10 +254,6 @@ public:
         measuringTool.add(recv_string_cont.size(), "num_recv_strings", false);
         measuringTool.setPhase("merging");
 
-        size_t num_recv_elems =
-            std::accumulate(receiving_interval_sizes.begin(),
-                receiving_interval_sizes.end(), static_cast<size_t>(0u));
-
         assert(num_recv_elems == recv_string_cont.size());
 
         measuringTool.start("compute_ranges");
@@ -265,13 +262,23 @@ public:
                 recv_string_cont, receiving_interval_sizes);
         measuringTool.stop("compute_ranges");
         measuringTool.start("merge_ranges");
-        auto sorted_container = choose_merge<AllToAllStringPolicy>(
-            std::move(recv_string_cont), ranges, num_recv_elems);
-        // auto sorted_container = noLcpMerge(std::move(recv_string_cont),
-        // ranges);
-        measuringTool.stop("merge_ranges");
-        measuringTool.setPhase("none");
-        return sorted_container;
+        if constexpr (AllToAllStringPolicy::Lcps) {
+            size_t num_recv_elems =
+                std::accumulate(receiving_interval_sizes.begin(),
+                    receiving_interval_sizes.end(), static_cast<size_t>(0u));
+            auto sorted_container = choose_merge<AllToAllStringPolicy>(
+                std::move(recv_string_cont), ranges, num_recv_elems);
+            measuringTool.stop("merge_ranges");
+            measuringTool.setPhase("none");
+            return sorted_container;
+        }
+        else {
+            auto sorted_container =
+                noLcpMerge(std::move(recv_string_cont), ranges);
+            measuringTool.stop("merge_ranges");
+            measuringTool.setPhase("none");
+            return sorted_container;
+        }
     }
 };
 

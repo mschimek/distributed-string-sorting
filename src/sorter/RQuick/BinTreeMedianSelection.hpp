@@ -157,7 +157,7 @@ Data select(Data&& data, size_t n, Comp&& comp, MPI_Datatype mpi_type,
     std::mt19937_64& async_gen, RandomBitStore& bit_gen, int tag,
     Communicator& comm) {
     using StringContainer = typename Data::StringContainer;
-    using StringSet = typename StringContainer::StringSet;
+    //using StringSet = typename StringContainer::StringSet;
 
     int32_t myrank, nprocs;
     MPI_Comm_rank(comm, &myrank);

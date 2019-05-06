@@ -824,7 +824,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     MPI_Datatype mpi_type, int tag, Communicator comm, Tracker&& tracker,
     Comp&& comp, bool is_robust) {
     using StringContainer = typename Data::StringContainer;
-    using StringSet = typename StringContainer::StringSet;
+    //using StringSet = typename StringContainer::StringSet;
     using dss_schimek::measurement::MeasuringTool;
 
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -926,6 +926,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         measuringTool.start("Splitter_split");
         measuringTool.stop("Splitter_split");
         }
+
         }
         measuringTool.setRound(0);
         measuringTool.disableBarrier(false);

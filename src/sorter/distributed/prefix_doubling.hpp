@@ -210,7 +210,7 @@ public:
         using dss_schimek::measurement::MeasuringTool;
 
         using StringSet = typename StringPtr::StringSet;
-        using Char = typename StringSet::Char;
+        //using Char = typename StringSet::Char;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         const StringSet& ss = local_string_ptr.active();
@@ -248,7 +248,7 @@ public:
 
         auto interval_sizes =
             computePartition<SampleSplittersPolicy, StringPtr>(
-                local_string_ptr, globalLcpAvg * 10, 2);
+                local_string_ptr, globalLcpAvg * 100, 2);
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");

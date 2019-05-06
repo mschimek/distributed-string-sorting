@@ -24,7 +24,7 @@ template <typename StringLcpPtr>
 std::vector<std::pair<uint64_t, uint64_t>> getDuplicateRanges(
     StringLcpPtr strptr) {
     using StartEnd = std::pair<uint64_t, uint64_t>;
-    using String = typename StringLcpPtr::StringSet::String;
+    //using String = typename StringLcpPtr::StringSet::String;
     std::vector<StartEnd> intervals;
 
     if (strptr.size() == 0) return intervals;

@@ -402,6 +402,11 @@ public:
     }
 };
 
+class NoLcps {
+public:
+    static std::string getName() { return "NoLcps"; }
+};
+
 class InterleavedByteEncoder {
     /*
      * Encoding:

@@ -430,6 +430,7 @@ inline std::vector<uint64_t> sendLcps(std::vector<uint64_t>& lcps,
 template <bool compressLcps, typename StringSet, typename AllToAllPolicy,
     typename ByteEncoderPolicy>
 struct AllToAllStringImpl {
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = false;
 
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -492,6 +493,7 @@ struct AllToAllStringImpl {
 template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
 struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyByteEncoderCopy> {
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = false;
 
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -564,8 +566,11 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
             std::move(receive_buffer_char), std::move(recvLcpValues));
     }
 };
-template <typename StringSet, typename AllToAllPolicy>
-struct AllToAllStringImplOnlyRawStrings {
+
+template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
+struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
+    dss_schimek::NoLcps> {
+    static constexpr bool Lcps = false;
     static constexpr bool PrefixCompression = false;
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
         dss_schimek::StringLcpContainer<StringSet>& send_data,
@@ -640,6 +645,7 @@ struct AllToAllStringImplOnlyRawStrings {
 template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
 struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyByteEncoderMemCpy> {
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = false;
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
         dss_schimek::StringLcpContainer<StringSet>& send_data,
@@ -721,6 +727,7 @@ struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
 template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
 struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::EmptyLcpByteEncoderMemCpy> {
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = true;
 
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -814,6 +821,7 @@ struct RecvDataAllToAll {
 template <bool compressLcps, typename StringSet, typename AllToAllPolicy>
 struct AllToAllStringImpl<compressLcps, StringSet, AllToAllPolicy,
     dss_schimek::SequentialDelayedByteEncoder> {
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = false;
 
     dss_schimek::StringLcpContainer<StringSet> alltoallv(
@@ -899,6 +907,7 @@ struct AllToAllStringImplPrefixDoubling {
 
     using StringSet = typename StringLcpPtr::StringSet;
     using ReturnStringSet = dss_schimek::UCharIndexPEIndexStringSet;
+    static constexpr bool Lcps = true;
     static constexpr bool PrefixCompression = true;
 
     dss_schimek::StringLcpContainer<ReturnStringSet> alltoallv(

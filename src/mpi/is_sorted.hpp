@@ -69,6 +69,7 @@ public:
                 globalSortedRawStrings_ == globalInputRawStrings_;
             std::cout << globalSortedRawStrings_.size() << " "
                       << globalInputRawStrings_.size() << std::endl;
+            std::cout << lcpsCorrect << ", " << sortedCorrectly << std::endl;
             bool overallCorrect = lcpsCorrect && sortedCorrectly;
             return dss_schimek::mpi::allreduce_and(overallCorrect);
         }
