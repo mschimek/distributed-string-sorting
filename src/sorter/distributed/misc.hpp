@@ -396,7 +396,7 @@ template <typename StringSet> // TODO
 inline std::vector<size_t> compute_interval_binary_index(const StringSet& ss,
     const UCharLengthIndexStringSet& splitters, const uint64_t localOffset,
     dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
-    using CharIt = typename StringSet::CharIterator;
+    //using CharIt = typename StringSet::CharIterator;
     std::vector<size_t> interval_sizes;
     interval_sizes.reserve(splitters.size() + 1);
 
@@ -485,7 +485,7 @@ computePartition(
     measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
     std::vector<unsigned char> raw_splitters =
-        Sampler::sample_splitters(ss, globalLcpAvg, samplingFactor);
+        Sampler::sample_splitters(ss, 2 * globalLcpAvg, samplingFactor);
     measuringTool.stop("sample_splitters");
 
     // measuringTool.add(raw_splitters.size(),
@@ -536,7 +536,7 @@ computePartition(
     using Comparator = dss_schimek::IndexStringComparator;
     using namespace dss_schimek;
     using namespace measurement;
-    using IndexStringSet = UCharLengthIndexStringSet;
+    //using IndexStringSet = UCharLengthIndexStringSet;
     mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
