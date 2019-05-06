@@ -111,11 +111,11 @@ void execute_sorter(size_t numOfStrings, const bool check,
     env.barrier();
 
     measuringTool.start("sorting_overall");
-    // using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps,
-    //    StringSet, MPIAllToAllRoutine, ByteEncoder>;
-    using AllToAllPolicy =
-        dss_schimek::mpi::AllToAllStringImplOnlyRawStrings<StringSet,
-            MPIAllToAllRoutine>;
+     using AllToAllPolicy = dss_schimek::mpi::AllToAllStringImpl<compressLcps,
+        StringSet, MPIAllToAllRoutine, ByteEncoder>;
+    //using AllToAllPolicy =
+    //    dss_schimek::mpi::AllToAllStringImplOnlyRawStrings<StringSet,
+    //        MPIAllToAllRoutine>;
     DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy>
         sorter;
     StringLcpContainer<StringSet> sorted_string_cont =
@@ -362,16 +362,16 @@ void fifthArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     }
     case PolicyEnums::ByteEncoder::sequentialByteEncoder: {
         using ByteEncoder = dss_schimek::SequentialByteEncoder;
-        // sixthArg<StringSet, StringGenerator, SampleString,
-        // MPIRoutineAllToAll,
-        //    ByteEncoder>(key, args);
+         sixthArg<StringSet, StringGenerator, SampleString,
+         MPIRoutineAllToAll,
+            ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::interleavedByteEncoder: {
         using ByteEncoder = dss_schimek::InterleavedByteEncoder;
-        // sixthArg<StringSet, StringGenerator, SampleString,
-        // MPIRoutineAllToAll,
-        //    ByteEncoder>(key, args);
+         sixthArg<StringSet, StringGenerator, SampleString,
+         MPIRoutineAllToAll,
+            ByteEncoder>(key, args);
         break;
     }
     case PolicyEnums::ByteEncoder::emptyLcpByteEncoderMemCpy: {

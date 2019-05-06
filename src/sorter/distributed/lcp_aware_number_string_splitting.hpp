@@ -265,9 +265,10 @@ public:
                 recv_string_cont, receiving_interval_sizes);
         measuringTool.stop("compute_ranges");
         measuringTool.start("merge_ranges");
-        // auto sorted_container = choose_merge<AllToAllStringPolicy>(
-        //    std::move(recv_string_cont), ranges, num_recv_elems);
-        auto sorted_container = noLcpMerge(std::move(recv_string_cont), ranges);
+        auto sorted_container = choose_merge<AllToAllStringPolicy>(
+            std::move(recv_string_cont), ranges, num_recv_elems);
+        // auto sorted_container = noLcpMerge(std::move(recv_string_cont),
+        // ranges);
         measuringTool.stop("merge_ranges");
         measuringTool.setPhase("none");
         return sorted_container;
