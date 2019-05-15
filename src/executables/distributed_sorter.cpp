@@ -41,7 +41,7 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
 
 template <typename StringSet, typename StringGenerator,
     typename SampleSplittersPolicy, typename MPIAllToAllRoutine,
-    typename ByteEncoder, bool compressLcps>
+    typename ByteEncoder, bool compressLcps, bool sortSampleSequential>
 
 void execute_sorter(size_t numOfStrings, const bool check,
     const bool exhaustiveCheck, size_t iteration, const bool strongScaling,
@@ -116,7 +116,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     //using AllToAllPolicy =
     //    dss_schimek::mpi::AllToAllStringImplOnlyRawStrings<StringSet,
     //        MPIAllToAllRoutine>;
-    DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy>
+    DistributedMergeSort<StringLcpPtr, SampleSplittersPolicy, AllToAllPolicy, sortSampleSequential>
         sorter;
     StringLcpContainer<StringSet> sorted_string_cont =
         sorter.sort(rand_string_ptr, std::move(generatedContainer));
@@ -269,11 +269,12 @@ namespace PolicyEnums {
 struct CombinationKey {
     CombinationKey(StringSet stringSet, StringGenerator stringGenerator,
         SampleString sampleStringPolicy, MPIRoutineAllToAll mpiAllToAllRoutine,
-        ByteEncoder byteEncoder, bool compressLcps)
+        ByteEncoder byteEncoder, bool compressLcps, bool sortSampleSequential)
         : stringSet_(stringSet), stringGenerator_(stringGenerator),
           sampleStringPolicy_(sampleStringPolicy),
           mpiRoutineAllToAll_(mpiAllToAllRoutine), byteEncoder_(byteEncoder),
-          compressLcps_(compressLcps) {}
+          compressLcps_(compressLcps),
+          sortSampleSequential_(sortSampleSequential){}
 
     StringSet stringSet_;
     StringGenerator stringGenerator_;
@@ -281,6 +282,7 @@ struct CombinationKey {
     MPIRoutineAllToAll mpiRoutineAllToAll_;
     ByteEncoder byteEncoder_;
     bool compressLcps_;
+    bool sortSampleSequential_;
 
     bool operator==(const CombinationKey& other) {
         return stringSet_ == other.stringSet_ &&
@@ -311,8 +313,8 @@ struct SorterArgs {
 };
 
 template <typename StringSet, typename StringGenerator, typename SampleString,
-    typename MPIRoutineAllToAll, typename ByteEncoder, bool compressLcps>
-void seventhArg(
+    typename MPIRoutineAllToAll, typename ByteEncoder, bool compressLcps, bool sortSampleSequential>
+void eighthArg(
     const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
     // execute_sorter<StringSet,
     //               StringGenerator,
@@ -322,9 +324,22 @@ void seventhArg(
     //               Timer>(args.size, args.checkInput, args.iteration,
     //               args.strongScaling, args.generatorArgs);
     execute_sorter<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
-        ByteEncoder, compressLcps>(args.size, args.checkInput,
+        ByteEncoder, compressLcps, sortSampleSequential>(args.size, args.checkInput,
         args.exhaustiveCheckInput, args.iteration, args.strongScaling,
         args.generatorArgs);
+}
+
+template <typename StringSet, typename StringGenerator, typename SampleString,
+    typename MPIRoutineAllToAll, typename ByteEncoder, bool compressLcps>
+void seventhArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
+    if (key.sortSampleSequential_) {
+        eighthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+            ByteEncoder, compressLcps, true>(key, args);
+    }
+    else {
+        eighthArg<StringSet, StringGenerator, SampleString, MPIRoutineAllToAll,
+            ByteEncoder, compressLcps, false>(key, args);
+    }
 }
 template <typename StringSet, typename StringGenerator, typename SampleString,
     typename MPIRoutineAllToAll, typename ByteEncoder>
@@ -506,6 +521,7 @@ int main(std::int32_t argc, char const* argv[]) {
     unsigned int stringLength = 50;
     double dToNRatio = 0.5;
     bool compressLcps = false;
+    bool sortSampleSequential = false;
     std::string path = "";
 
     tlx::CmdlineParser cp;
@@ -531,6 +547,8 @@ int main(std::int32_t argc, char const* argv[]) {
     cp.add_flag('x', "strongScaling", strongScaling, " ");
     cp.add_flag('v', "compressLcps", compressLcps,
         " compress lcp values in alltoall string exchange ");
+    cp.add_flag('u', "sortSampleSequential", sortSampleSequential,
+        " sort samples sequentially ");
     cp.add_unsigned('a', "stringLength", stringLength, " string Length ");
 
     if (!cp.process(argc, argv)) {
@@ -542,7 +560,7 @@ int main(std::int32_t argc, char const* argv[]) {
         PolicyEnums::getStringGenerator(generator),
         PolicyEnums::getSampleString(sampleStringsPolicy),
         PolicyEnums::getMPIRoutineAllToAll(mpiRoutineAllToAll),
-        PolicyEnums::getByteEncoder(byteEncoder), compressLcps);
+        PolicyEnums::getByteEncoder(byteEncoder), compressLcps, sortSampleSequential);
     GeneratedStringsArgs generatorArgs;
     generatorArgs.numOfStrings = numberOfStrings;
     generatorArgs.stringLength = stringLength;

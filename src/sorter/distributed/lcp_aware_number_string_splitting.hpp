@@ -182,7 +182,7 @@ StringContainer noLcpMerge(
 }
 
 template <typename StringPtr, typename SampleSplittersPolicy,
-    typename AllToAllStringPolicy>
+    typename AllToAllStringPolicy, bool sortSampleSequential>
 class DistributedMergeSort : private SampleSplittersPolicy,
                              private AllToAllStringPolicy {
 public:
@@ -236,8 +236,13 @@ public:
         measuringTool.stop("avg_lcp");
 
         std::vector<uint64_t> interval_sizes;
+        if constexpr(sortSampleSequential) {
+            interval_sizes = computePartitionSequentialSort<SampleSplittersPolicy, StringPtr>(
+                local_string_ptr, 100 * globalLcpAvg, 2);
+        } else {
             interval_sizes = computePartition<SampleSplittersPolicy, StringPtr>(
                 local_string_ptr, 100 * globalLcpAvg, 2);
+        }
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
