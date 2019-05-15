@@ -152,7 +152,7 @@ struct AllToAllHashesNaive {
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.add(sendData.size() * sizeof(DataType),
-            "bloomfilter_sentEncodedValues");
+            "bloomfilter_sentEncodedValues", false);
         return result;
     }
     static std::string getName() { return "noGolombEncoding"; }
@@ -205,8 +205,8 @@ struct AllToAllHashesGolomb {
         //std::vector<size_t> recvEncodedValuesSizes =
         //    dss_schimek::mpi::alltoall(encodedValuesSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
-        measuringTool.add(encodedValues.size() * sizeof(size_t),
-            "bloomfilter_sentEncodedValues");
+        measuringTool.add(std::accumulate(encodedValuesSizes.begin(), encodedValuesSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
+            "bloomfilter_sentEncodedValues", false);
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
 
@@ -583,7 +583,7 @@ struct FindDuplicates {
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         dss_schimek::mpi::environment env;
 
-        measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues");
+        measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues", false);
         env.barrier();
         measuringTool.start("bloomfilter_findDuplicatesOverallIntern");
         measuringTool.start("bloomfilter_findDuplicatesSetup");
