@@ -151,7 +151,7 @@ struct AllToAllHashesNaive {
         measuringTool.start("bloomfilter_sendEncodedValues");
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
-        measuringTool.add(sendData.size() * sizeof(DataType),
+        measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(DataType),
             "bloomfilter_sentEncodedValues", false);
         return result;
     }
