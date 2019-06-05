@@ -1,0 +1,13 @@
+[
+[{
+"path":"forHLR1/2019_06_05_H07_50_merge_sort200000000_500_detailsNoBarrierIntelMPI",
+"filter":[{"name":"Variant1", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"}]
+}],
+[{
+"path":"forHLR1/2019_06_05_H07_50_merge_sort200000000_500_detailsNoBarrierIntelMPI",
+"filter":[{"name":"Variant2", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"Variant3", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"}
+         ]
+}]
+]
+
