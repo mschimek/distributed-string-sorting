@@ -1,0 +1,13 @@
+[
+[{
+"path":"forHLR1/2019_05_06_H16_19_mergeSort_400000000_500_NoLcp",
+"filter":[{"name":"NoLcp", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"}
+         ]
+}],
+[{
+"path":"forHLR1/2019_05_04_H08_29_mergeSort_400000000_500",
+"filter":[{"name":"Lcp", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"}
+         ]
+}]
+]
+
