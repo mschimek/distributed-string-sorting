@@ -1,0 +1,20 @@
+{
+  "isDToN":"FALSE",
+    "title":"WikiEN",
+    "data":[
+      [{
+        "path":"forHLR1/2019_05_05_H21_46_merge_sort_file.sh_enwiki-20190301-pages-articles-multistream.xml.txt",
+        "filter":[{"name":"NoLCPCompSBased", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"LCPCompSBased", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"NoLCPCompCBased", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"LCPCompCBased", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+        ]
+      }],
+    [{
+      "path":"forHLR1/2019_05_05_H21_46_prefix_doubling_file.sh_enwiki-20190301-pages-articles-multistream.xml.txt",
+      "filter":[{"name":"PDSBasedNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+      {"name":"PDSBasedGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
+      ]
+    }]
+    ]
+}
