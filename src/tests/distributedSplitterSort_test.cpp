@@ -80,7 +80,9 @@ int main(int argc, char** argv) {
     bool readFile = false;
     unsigned int samplingFactor = 2;
     unsigned int stringLength = 100;
+    std::string path = "";
     double lcpFactor = 1.0;
+    cp.add_string('z', "path", path, " ");
     cp.add_flag('e', "readFile", readFile, " ");
     cp.add_double('b', "lcpFactor", lcpFactor, " ");
     cp.add_flag('b', "splitterMode", splitterMode, " ");
@@ -117,9 +119,9 @@ int main(int argc, char** argv) {
 
         Container container;
         if (readFile) {
-          std::string path = "sampleInput/TMP_Sample";
-          std::vector<unsigned char> input = readFilePerPE(path);
-          input.push_back(0);
+	  auto readcont = dss_schimek::FileDistributer<dss_schimek::UCharLengthStringSet>(path);
+          std::vector<unsigned char> input = readcont.raw_strings();//readFilePerPE(path);
+          //input.push_back(0);
           container.update(std::move(input));
         } else {
         container = Generator(numberOfStrings, stringLength, dToNRatio);
@@ -176,14 +178,14 @@ int main(int argc, char** argv) {
 
         using StringContainer = dss_schimek::StringContainer<StringSet>;
         using IndexStringContainer = dss_schimek::IndexStringContainer<dss_schimek::UCharLengthIndexStringSet>;
-        using SortingContainer = IndexStringContainer;
-        using SortingComparator = IndexStringComparator;
-        auto localOffset = dss_schimek::getLocalOffset(container.size()); 
-        std::cout << localOffset << std::endl;
-        RQuick::Data<SortingContainer, SortingContainer::isIndexed> data; std::vector<uint64_t> indices(container.size(), 42);
-        std::iota(indices.begin(), indices.end(), localOffset);
+        using SortingContainer = StringContainer;
+        using SortingComparator = StringComparator;
+        //auto localOffset = dss_schimek::getLocalOffset(container.size()); 
+        //std::cout << localOffset << std::endl;
+        RQuick::Data<SortingContainer, SortingContainer::isIndexed> data; //std::vector<uint64_t> indices(container.size(), 42);
+        //std::iota(indices.begin(), indices.end(), localOffset);
         data.rawStrings = container.raw_strings();
-        data.indices = indices;
+       // data.indices = indices;
        // dss_schimek::mpi::execute_in_order([&]() {
        //     auto tmpstrings = container.raw_strings();
        //     auto tmpindices = indices;
@@ -194,12 +196,12 @@ int main(int argc, char** argv) {
 
         const bool isRobust = true;
         measuringTool.start("distributed_sort");
-        measuringTool.disable();
+        //measuringTool.disable();
         
         MPI_Comm commInput = env.communicator();
         auto sortedContainer = RQuick::sort(
             generator, std::move(data), MPI_BYTE, tag, commInput, SortingComparator(), isRobust);
-        measuringTool.enable();
+        //measuringTool.enable();
         measuringTool.stop("distributed_sort");
 
         env.barrier();

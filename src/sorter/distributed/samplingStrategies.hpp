@@ -37,7 +37,8 @@ public:
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char> raw_splitters;
-        raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        //raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        raw_splitters.reserve(nr_splitters * (100 + 1u));
 
         for (size_t i = 1; i <= nr_splitters; ++i) {
             const String splitter =
@@ -90,7 +91,8 @@ public:
         const double splitter_dist = static_cast<double>(local_num_strings) /
                                      static_cast<double>(nr_splitters + 1);
         std::vector<Char>& raw_splitters = sampleIndices.sample;
-        raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        //raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        raw_splitters.reserve(nr_splitters * (100 + 1u));
         std::vector<uint64_t>& splitterIndices = sampleIndices.indices;
         splitterIndices.resize(nr_splitters, localOffset);
 
@@ -137,7 +139,8 @@ public:
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
 
         std::vector<Char>& raw_splitters = sampleIndices.sample;
-        raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        //raw_splitters.reserve(nr_splitters * (maxLength + 1u));
+        raw_splitters.reserve(nr_splitters * (100 + 1u));
         std::vector<uint64_t>& splitterIndices = sampleIndices.indices;
         splitterIndices.resize(nr_splitters, localOffset);
 
@@ -189,7 +192,8 @@ public:
             getNumberSplitter(env.size(), local_num_strings, samplingFactor);
         const size_t splitter_dist = num_chars / (nr_splitters + 1);
         std::vector<Char> raw_splitters;
-        raw_splitters.reserve(nr_splitters * (maxLength + 1));
+        //raw_splitters.reserve(nr_splitters * (maxLength + 1));
+        raw_splitters.reserve(nr_splitters * (100 + 1));
 
         size_t string_index = 0;
         for (size_t i = 1;

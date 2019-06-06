@@ -560,10 +560,10 @@ computePartition(
         sampleData;
     sampleData.rawStrings = std::move(sampleIndices.sample); // TODO
     sampleData.indices = std::move(sampleIndices.indices);   // TODO better way?
-    measuringTool.disable();
+    //measuringTool.disable();
     IndexStringContainer sortedLocalSample =
         splitterSort(std::move(sampleData), generator, comp);
-    measuringTool.enable();
+    //measuringTool.enable();
     measuringTool.stop("sort_splitter");
 
     measuringTool.start("choose_splitters");
