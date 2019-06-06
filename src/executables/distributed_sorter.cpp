@@ -95,10 +95,6 @@ void execute_sorter(size_t numOfStrings, const bool check,
         numGeneratedChars - numGeneratedStrings, "InputChars", false);
     measuringTool.add(numGeneratedStrings, "InputStrings", false);
 
-    // dss_schimek::mpi::execute_in_order([&]() {
-    //    std::cout << "print: rank: " << env.rank() << std::endl;
-    //    rand_string_ptr.active().print();
-    //});
 
     /*
      * MPI WARMUP
@@ -108,6 +104,7 @@ void execute_sorter(size_t numOfStrings, const bool check,
     /*
      * END MPI WARMUP
      */
+
     env.barrier();
 
     measuringTool.start("sorting_overall");
@@ -121,25 +118,12 @@ void execute_sorter(size_t numOfStrings, const bool check,
     StringLcpContainer<StringSet> sorted_string_cont =
         sorter.sort(rand_string_ptr, std::move(generatedContainer));
 
-    measuringTool.stop("sorting_overall");
-
-    // dss_schimek::mpi::execute_in_order([&]() {
-    //    std::cout << "print sorted: rank: " << env.rank() << std::endl;
-    //    auto sorted = sorted_string_cont.make_string_set();
-    //    for (size_t i = 0; i < 15; ++i) {
-    //
-    //      auto str = sorted[sorted.begin() + i];
-    //      std::cout <<sorted.get_chars(str, 0) << std::endl;
-    //
-    //    }
-    //    sorted_string_cont.make_string_set().print();
-    //});
-
     measuringTool.start("prefix_decompression");
     if (AllToAllPolicy::PrefixCompression && env.size() > 1)
         sorted_string_cont.extendPrefix(sorted_string_cont.make_string_set(),
             sorted_string_cont.savedLcps());
     measuringTool.stop("prefix_decompression");
+    measuringTool.stop("sorting_overall");
 
     if (check || exhaustiveCheck) {
         const StringLcpPtr sorted_strptr =

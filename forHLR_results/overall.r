@@ -40,31 +40,42 @@ for (i in c(1:length)){
 
 barPlotWhitelist <- function(datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
   isD2N <- TRUE
-  localSets <- vector("list", length(datasets))
   set <- "dummy"
   print(paste("length data set: ", length(datasets)))
+  counter <- 0
+  for (i in c(1:length(datasets))) {
+    numberFilters <- nrow(filters[[i]][[1]])
+    counter <- counter + numberFilters
+  }
+  print(paste("counter: ", counter))
+  localSets <- vector("list", counter)
+  counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
-    df = filters[[i]][[1]]
-    print(df)
-    names <- colnames(df)
-    localSets[[i]] <- filter(data[[i]], operation == operation_, type == type_)
-    for (j in c(2:length(names))){
-      localSets[[i]] <- filter(localSets[[i]], UQ(as.name(names[j])) == df[1,j], operation == operation_)
+    numberFilters <- nrow(filters[[i]][[1]])
+    print(paste("numberFilters: ", numberFilters))
+    for (k in c(1:numberFilters)){
+
+      df = filters[[i]][[1]]
+      names <- colnames(df)
+      localSets[[counter]] <- filter(data[[i]], operation == operation_, type == type_)
+      for (j in c(2:length(names))){
+        localSets[[counter]] <- filter(localSets[[counter]], UQ(as.name(names[j])) == df[k,j])
+      }
+      localSets[[counter]] <- mutate(localSets[[counter]], name = df[k, 1])
+      if (i == 1)
+        set <- localSets[[counter]]
+      else {
+        set <- rbind(set, localSets[[counter]])
+      }
     }
-    localSets[[i]] <- mutate(localSets[[i]], name = df[1, 1])
-    if (i == 1)
-      set <- localSets[[i]]
-    else {
-      set <- rbind(set, localSets[[i]])
-    }
+    counter <- counter + 1
    
 
     }
     set$numberProcessors <- as.factor(set$numberProcessors)
     groupByIterations <- group_by(set, numberProcessors, dToNRatio, samplePolicy, ByteEncoder, size, operation, type, name)
     valueMean <- summarise(groupByIterations, value = mean(value, rm.na = TRUE))
-    print(as.data.frame(valueMean))
     valueMean$value <- valueMean$value / 10^9
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name))
   #plot <- plot + geom_bar(mapping = aes(x = numberProcessors, y = value, fill = name), stat="identity", position="dodge", colour="black", width=0.5)
@@ -73,7 +84,7 @@ barPlotWhitelist <- function(datasets, operation_, type_ = "maxTime", title = " 
   plot <- plot + theme_light()
   plot <- plot + geom_point()
   plot <- plot + geom_line()
-  plot <- plot + theme(panel.margin = unit(-1.25, "lines"))
+  plot <- plot + theme(panel.spacing = unit(1.25, "lines"))
   if (isD2N) {
   plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
   } else {
