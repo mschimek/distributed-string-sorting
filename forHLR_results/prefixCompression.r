@@ -383,7 +383,7 @@ pureDirName <- str_sub(args, start = 1, end = -2)
 pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=5)
 
 communicationVolume(allData, "communication volume ")
-scatterPlot(allData, c("num_received_chars"), "number", 0.1, "Number of recv. characters")
+#scatterPlot(allData, c("num_received_chars"), "number", 0.1, "Number of recv. characters")
 numberPlot(allData, "charactersInSet", "number characters to sort")
 
  operations <- c("prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally")

@@ -561,13 +561,16 @@ for (dToNRatio_ in sort(dToNRatios)) {
   print(communicationVolume(localData, title))
 }
 
-scatterPlot(data, c("num_received_chars"), "number", 0.1, "Number of recv. characters")
-scatterPlot(data, c("num_recv_strings"), "number", 0.1, "Number of recv. strings")
+#scatterPlot(data, c("num_received_chars"), "number", 0.1, "Number of recv. characters")
+#scatterPlot(data, c("num_recv_strings"), "number", 0.1, "Number of recv. strings")
+#scatterPlot(data, c("bloomfilter_sentEncodedValues"), "number", 0.1, "sent encoded values")
 
 #scatterPlotPerRound(filter(data, GolombEncoding == "noGolombEncoding"), "bloomfilter_numberCandidates", "number", 0.1, " number candidates per Round ")
-scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), "bloomfilter_numberCandidates", "number", 0.1, " number candidates per Round ")
+#scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), "bloomfilter_numberCandidates", "number", 0.1, " number candidates per Round ")
+#scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), "bloomfilter_sentEncodedValues", "number", 0.1, " sent encoded values per Round ")
 #scatterPlotPerRound(filter(data, GolombEncoding == "GolombPipelined"), "bloomfilter_numberCandidates", "number", 0.1, " number candidates per Round ")
-#scatterPlotPerRound(filter(data, GolombEncoding == "noGolombEncoding"), "bloomfilter_recvHashValues", "number", 0.1, " number recv hash values per Round ")
+#scatterPlotPerRound(filter(data, GolombEncoding == "noGolombEncoding"), "bloomfilter_recvHashValues", "number", 0.1, " number recv hash values per Round noGolombEncoding")
+#scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), "bloomfilter_recvHashValues", "number", 0.1, " number recv hash values per Round sequentialGolombEncoding")
 #numberPlot(data, "string_exchange_bytes_sent", "bytes sent in string exchange")
 #numberPlot(data, "localL", "Sum of local L")
 #numberPlot(data, "localD", "Sum of Local D")
@@ -583,9 +586,16 @@ scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), 
  barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxTime", title = "overall work noGolombEncoding", TRUE)
  barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxLoss", title = "overall Loss noGolombEncoding")
  barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxLoss", title = "overall Loss Work noGolombEncoding", TRUE)
+ operations <- c("sort_splitter")
+ localData <- filter(data, GolombEncoding == "noGolombEncoding")
+ barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxTime", title = "overall Time noGolombEncoding")
+ barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "avgTime", title = "overall avg Time noGolombEncoding")
+ barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxTime", title = "overall work noGolombEncoding", TRUE)
+ barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxLoss", title = "overall Loss noGolombEncoding")
+ barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxLoss", title = "overall Loss Work noGolombEncoding", TRUE)
 
 
- operations <- c("writeback_permutation", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "bloomfilter_overall", "sort_locally")
+ operations <- c("sort_splitter","writeback_permutation", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "bloomfilter_overall", "sort_locally")
  localData <- filter(data, GolombEncoding == "noGolombEncoding")
  barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "maxTime", title = "overall Time noGolombEncoding")
  barPlotWhitelist(data_ = localData, operations_ = operations, type_ = "avgTime", title = "overall avg Time noGolombEncoding")
@@ -632,7 +642,7 @@ scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), 
      print(barPlotBloomfilterWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals Loss Work with dToN: ", i), TRUE))
    }
  }
-   bloomfilterOuterOps <- c("bloomfilter_sendToFilterSetup", "bloomfilter_sendEncodedValuesOverall")
+   bloomfilterOuterOps <- c("bloomfilter_sendToFilterSetup", "bloomfilter_sendEncodedValuesOverall", "bloomfilter_golombEncoding", "bloomfilter_sendEncodedValues", "bloomfilter_golombDecoding")
  for (i in dToNRatios) {
 
    localData <- filter(data, dToNRatio == i, samplePolicy == "IndexedNumStrings")
@@ -667,7 +677,7 @@ scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), 
 #     print(barPlotBloomfilterWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals max Loss Work with dToN: ", i), TRUE))
 #   }
 # }
-#   bloomfilterOuterOps <- c("bloomfilter_generateHashStringIndices", "bloomfilter_sortHashStringIndices", "bloomfilter_indicesOfLocalDuplicates", "bloomfilter_ReducedHashStringIndices", "bloomfilter_sendHashStringIndices", "bloomfilter_addPEIndex","bloomfilter_getIndices", "bloomfilter_setDepth", "bloomfilter_findDuplicatesOverallIntern")
+#   bloomfilterOuterOps <- c("bloomfilter_sendToFilterSetup", "bloomfilter_sendEncodedValuesOverall", "bloomfilter_golombEncoding", "bloomfilter_sendEncodedValues", "bloomfilter_golombDecoding","bloomfilter_generateHashStringIndices", "bloomfilter_sortHashStringIndices", "bloomfilter_indicesOfLocalDuplicates", "bloomfilter_ReducedHashStringIndices", "bloomfilter_sendHashStringIndices", "bloomfilter_addPEIndex","bloomfilter_getIndices", "bloomfilter_setDepth", "bloomfilter_findDuplicatesOverallIntern")
 # procs <- unique(data$numberProcessors)
 # procs <- procs[procs != 1] 
 # print(procs) 
@@ -679,22 +689,18 @@ scatterPlotPerRound(filter(data, GolombEncoding == "sequentialGolombEncoding"), 
 #     if (length (dToNRatios) == 1) {
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxTime", title = paste("Bloomfilter Internals max Time" )))
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = cnumbers, type = "number", title = paste("Bloomfilter Internals" )))
-#       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals max Loss" )))
 #     } else {
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxTime", title = paste("Bloomfilter Internals max Time with dToN: ", text)))
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = cnumbers, type = "number", title = paste("Bloomfilter Internals with dToN: ", text)))
-#       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals max Loss" )))
 #     }
 #     localData <- filter(data, dToNRatio == i, numberProcessors == j, GolombEncoding == "sequentialGolombEncoding", samplePolicy == "IndexedNumStrings")
 #     cnumbers <- c("bloomfilter_findDuplicatesSendDups")
 #     if (length(dToNRatios) == 1) {
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxTime", title = paste("Bloomfilter Internals max Time" )))
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = cnumbers, type = "number", title = paste("Bloomfilter Internals Time" )))
-#       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals max Loss" )))
 #     } else {
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxTime", title = paste("Bloomfilter Internals max Time with dToN: ", text)))
 #       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = cnumbers, type = "number", title = paste("Bloomfilter Internals  with dToN: ", text)))
-#       print(barPlotBloomfilterRoundWhitelist(data_ = localData, operations_ = bloomfilterOuterOps, type = "maxLoss", title = paste("Bloomfilter Internals max Loss" )))
 #     }
 #   }
 # }

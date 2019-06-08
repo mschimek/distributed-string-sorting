@@ -3,6 +3,8 @@ library(tidyverse)
 library(magrittr)
 library(jsonlite)
 library(latex2exp)
+library(cowplot)
+library(gridExtra)
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -106,6 +108,7 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work 
   plot <- plot + theme(plot.title = element_text(hjust = 0.5))
   plot <- plot + theme(strip.background =element_rect(fill="white"))
   plot <- plot + theme(strip.text = element_text(colour = 'black'))
+  #plot <- plot + theme(legend.position = "none")
   if (isD2N) {
   plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
   } 
@@ -179,15 +182,33 @@ stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime",
   return (plot)
 
 }
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
 
 pdf(paste("evaluation/", pdfTitle, ".pdf",sep=""), width=10, height=5)
-lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
+l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
+s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
+l
+l <- l + theme(legend.direction = "horizontal")
+l <- l + theme(legend.box.background = element_rect(colour = "black"))
+l <- l + theme(legend.title = element_blank()) 
+
+s
+legend <- get_legend(l)
+s <- s + theme(legend.position = "none")
+l <- l + theme(legend.position = "none")
+#plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
+grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
+             widths = c(2.7, 2.7), heights = c(2.2, 0.4))
 if (isD2N) {
   for (d in unique(data[[i]]$dToNRatio)) {
     print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
   }
-} else {
-  print(stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title))
-}
+} 
+
 
