@@ -308,12 +308,14 @@ void sort(SorterArgs sorterArgs) {
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
     measuringTool.setPrefix(prefix);
 
+    if (!sorterArgs.strongScaling) genStringArgs.numOfStrings *= env.size();
+
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
 
     std::vector<unsigned char> rawStrings;
     if (sorterArgs.check) {
-       rawStrings = generatedContainer.raw_strings();
+        rawStrings = generatedContainer.raw_strings();
     }
 
     measuringTool.start("sorting_overall");
@@ -328,6 +330,8 @@ void sort(SorterArgs sorterArgs) {
     using SortingComparator = StringComparator;
     RQuick::Data<StringContainer, StringContainer::isIndexed> data;
     data.rawStrings = generatedContainer.raw_strings();
+    std::cout << "rank: " << env.rank() << " " << generatedContainer.size()
+              << std::endl;
     const bool isRobust = true;
 
     MPI_Comm commInput = env.communicator();
