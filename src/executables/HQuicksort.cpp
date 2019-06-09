@@ -40,6 +40,24 @@ struct StringComparator {
         return *lhsChars < *rhsChars;
     }
 };
+
+struct StringComparatorLE {
+  using String = dss_schimek::UCharLengthStringSet::String;
+  bool operator()(String lhs, String rhs) {
+    const unsigned char* lhsChars = lhs.string;
+    const unsigned char* rhsChars = rhs.string;
+    size_t counter = 0;
+    // std::cout << "lhs: " << lhsChars << " rhs: " << rhsChars <<
+    // std::endl;
+    while (*lhsChars == *rhsChars && *lhsChars != 0) {
+      ++lhsChars;
+      ++rhsChars;
+      counter++;
+    }
+    return *lhsChars <= *rhsChars;
+  }
+};
+
 struct IndexStringComparator {
     using String = dss_schimek::UCharLengthIndexStringSet::String;
     bool operator()(String lhs, String rhs) {
@@ -342,7 +360,7 @@ void sort(SorterArgs sorterArgs) {
     if (sorterArgs.check) {
         if (sortedContainer.size() > 0) {
             auto prevString = sortedContainer.strings()[0];
-            SortingComparator compTmp;
+            StringComparatorLE compTmp;
             for (size_t i = 1; i < sortedContainer.size(); ++i) {
                 auto curString = sortedContainer.strings()[i];
 
