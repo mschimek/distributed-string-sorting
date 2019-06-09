@@ -224,7 +224,7 @@ struct Data {
 
 namespace _internal {
 constexpr bool debugQuicksort = false;
-constexpr bool barrierActive = true;
+constexpr bool barrierActive = false;
 
 uint64_t initialSize = 0;
 template <class Communicator>
@@ -853,7 +853,7 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
 
     if constexpr (barrierActive) {
         //measuringTool.start("Splitter_move_to_pow_of_two_t_Barrier");
-        MPI_Barrier(comm);
+        //MPI_Barrier(comm);
         //measuringTool.stop("Splitter_move_to_pow_of_two_t_Barrier");
     }
     //measuringTool.start("Splitter_move_to_pow_of_two_t");
