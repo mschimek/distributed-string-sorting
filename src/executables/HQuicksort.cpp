@@ -348,8 +348,6 @@ void sort(SorterArgs sorterArgs) {
     using SortingComparator = StringComparator;
     RQuick::Data<StringContainer, StringContainer::isIndexed> data;
     data.rawStrings = generatedContainer.raw_strings();
-    std::cout << "rank: " << env.rank() << " " << generatedContainer.size()
-              << std::endl;
     const bool isRobust = true;
 
     MPI_Comm commInput = env.communicator();
