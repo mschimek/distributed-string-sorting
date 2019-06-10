@@ -432,7 +432,6 @@ public:
         //      if (env.rank() == 0)
         //	std::cout << "reached end of sending" << std::endl;
         MPI_Waitall(2 * (env.size() - 1), requests.data(), MPI_STATUSES_IGNORE);
-        env.barrier();
         for (size_t* ptr : recvBuffers) {
             delete[] ptr;
         }
@@ -584,7 +583,6 @@ struct FindDuplicates {
         dss_schimek::mpi::environment env;
 
         measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues", false);
-        env.barrier();
         measuringTool.start("bloomfilter_findDuplicatesOverallIntern");
         measuringTool.start("bloomfilter_findDuplicatesSetup");
         std::vector<IteratorPair> iteratorPairs;

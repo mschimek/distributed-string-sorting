@@ -165,6 +165,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
     dss_schimek::mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
+    measuringTool.disable();
     measuringTool.start(std::string("bloomfilter_init"));
     StringSet ss = local_string_ptr.active();
     BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>,
@@ -192,6 +193,7 @@ std::vector<size_t> computeDistinguishingPrefixes(
         candidates = bloomFilter.filter(
             local_string_ptr, startDepth + i, candidates, results);
     }
+    measuringTool.enable();
     measuringTool.setRound(0);
     return results;
 }
