@@ -5,7 +5,7 @@ module load mpi/impi/2018
 
 
 executable="../build/src/executables/hQuicksort"
-size=500000
+size=200000000
 stringLength=500
 numberOfIterations=6
 samplingFactor=2
@@ -14,6 +14,6 @@ generator=1
 
 for dToNRatio in 0.0 0.25 0.5 0.75 1.0 
 do
-		mpiexec.hydra -bootstrap slurm $executable --size $size --stringLength $stringLength --numberOfIterations $numberOfIterations --dToNRatio $dToNRatio  --generator $generator
+		mpiexec.hydra -bootstrap slurm $executable --size $size --stringLength $stringLength --numberOfIterations $numberOfIterations --dToNRatio $dToNRatio  --generator $generator --strongScaling
 		#mpirun --bind-to core --map-by core  $executable --size $size --stringLength $stringLength --numberOfIterations $numberOfIterations --dToNRatio $dToNRatio  
 done
