@@ -1,10 +1,10 @@
 #!/bin/bash
 #module load mpi/openmpi/3.1
-module load mpi/impi/2019
+module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
 executable="../build/src/executables/prefix_doubling"
-numOfStrings=200000000
+numOfStrings=500000
 numOfIterations=6
 sampler=2
 byteEncoder=5
@@ -18,6 +18,6 @@ do
 	do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
 		#mpirun --bind-to core --map-by core $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --golombEncodingPolicy $golombEncoding --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
-		mpiexec.hydra -bootstrap slurm $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --golombEncodingPolicy $golombEncoding --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps --strongScaling
+		mpiexec.hydra -bootstrap slurm $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --golombEncodingPolicy $golombEncoding --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps
 	done
 done

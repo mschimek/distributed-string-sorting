@@ -1,6 +1,6 @@
 #!/bin/bash
 #module load mpi/openmpi/3.1
-module load mpi/impi/2019
+module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
 executable="/home/fh1-project-kalb/gw1960/kurpiczModified/build/benchmark/dss"
