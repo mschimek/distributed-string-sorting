@@ -465,8 +465,8 @@ int main(std::int32_t argc, char const* argv[]) {
             sort<StringSet, StringGenerator>(args);
             break;
         }
-        case PolicyEnums::StringGenerator::Suffix: {
-            using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+        case PolicyEnums::StringGenerator::SkewedDNRatioGenerator: {
+            using StringGenerator = dss_schimek::SkewedDNRatioGenerator<StringSet>;
             sort<StringSet, StringGenerator>(args);
             break;
         }

@@ -30,8 +30,8 @@ StringGenerator getGeneratedStringContainer(const GeneratedStringsArgs& args) {
         return dss_schimek::FileDistributer<StringSet>(args.path);
     }
     else if constexpr (std::is_same_v<StringGenerator,
-                           dss_schimek::SuffixGenerator<StringSet>>) {
-        return dss_schimek::SuffixGenerator<StringSet>(args.path);
+                           dss_schimek::SkewedDNRatioGenerator<StringSet>>) {
+        return dss_schimek::SkewedDNRatioGenerator<StringSet>(args.numOfStrings, args.stringLength, args.dToNRatio);
     }
     else {
         return StringGenerator(
@@ -80,6 +80,8 @@ void execute_sorter(size_t numOfStrings, const bool check,
     // std::cout << " string generation start " << std::endl;
     StringGenerator generatedContainer =
         getGeneratedStringContainer<StringGenerator, StringSet>(genStringArgs);
+    //if (env.rank() == 0)
+    //  generatedContainer.make_string_set().print();
     if (check || exhaustiveCheck)
         checker.storeLocalInput(generatedContainer.raw_strings());
 
@@ -168,7 +170,7 @@ enum class StringGenerator {
     skewedRandomStringLcpContainer = 0,
     DNRatioGenerator = 1,
     File = 2,
-    Suffix = 3
+    SkewedDNRatioGenerator = 3
 };
 StringGenerator getStringGenerator(size_t i) {
     switch (i) {
@@ -179,7 +181,7 @@ StringGenerator getStringGenerator(size_t i) {
     case 2:
         return StringGenerator::File;
     case 3:
-        return StringGenerator::Suffix;
+        return StringGenerator::SkewedDNRatioGenerator;
     default:
         std::abort();
     }
@@ -465,9 +467,9 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
-    case PolicyEnums::StringGenerator::Suffix: {
-        //using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
-        // thirdArg<StringSet, StringGenerator>(key, args);
+    case PolicyEnums::StringGenerator::SkewedDNRatioGenerator: {
+       using StringGenerator = dss_schimek::SkewedDNRatioGenerator<StringSet>;
+         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
     };

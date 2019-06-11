@@ -297,8 +297,8 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
-    case PolicyEnums::StringGenerator::Suffix: {
-        using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+    case PolicyEnums::StringGenerator::SkewedDNRatioGenerator: {
+        using StringGenerator = dss_schimek::SkewedDNRatioGenerator<StringSet>;
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }

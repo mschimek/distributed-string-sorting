@@ -61,80 +61,117 @@ public:
     static std::string getName() { return "FileDistributer"; }
 };
 
-template <typename StringSet>
-class SuffixGenerator : public StringLcpContainer<StringSet> {
-    using String = typename StringSet::String;
-
-private:
-    std::vector<unsigned char> readFile(const std::string& path) {
-        using dss_schimek::RawStringsLines;
-        RawStringsLines data;
-        const size_t fileSize = getFileSize(path);
-        std::ifstream in(path);
-        std::vector<unsigned char>& rawStrings = data.rawStrings;
-        rawStrings.reserve(1.5 * fileSize);
-
-        std::string line;
-        data.lines = 0u;
-        while (std::getline(in, line)) {
-            ++data.lines;
-            for (unsigned char curChar : line)
-                rawStrings.push_back(curChar);
-        }
-        rawStrings.push_back(0);
-        in.close();
-        return rawStrings;
-    }
-
-    auto distributeSuffixes(const std::vector<unsigned char>& text) {
-        dss_schimek::mpi::environment env;
-
-        const size_t textSize = text.size();
-        const size_t estimatedTotalCharCount =
-            textSize * (textSize + 1) / 2 + textSize;
-        const size_t estimatedCharCount = estimatedTotalCharCount / env.size();
-        const size_t globalSeed = 0;
-        std::mt19937 randGen(globalSeed);
-        std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
-        std::vector<unsigned char> rawStrings;
-        rawStrings.reserve(estimatedCharCount);
-
-        size_t numGenStrings = 0;
-        for (size_t i = 0; i < textSize; ++i) {
-            size_t PEIndex = dist(randGen);
-            if (PEIndex == env.rank()) {
-                // only create your own strings
-                ++numGenStrings;
-                std::copy(text.begin() + i, text.end(),
-                    std::back_inserter(rawStrings));
-                // Assume that text is zero terminated
-            }
-        }
-        rawStrings.shrink_to_fit();
-        return std::make_pair(std::move(rawStrings), numGenStrings);
-    }
-
-public:
-    SuffixGenerator(const std::string& path) {
-        std::vector<unsigned char> text = readFile(path);
-        auto [rawStrings, genStrings] = distributeSuffixes(text);
-        this->update(std::move(rawStrings));
-        String* begin = this->strings();
-        std::random_device randSeedGenerator;
-        std::mt19937 rand_gen(randSeedGenerator());
-        auto rand = [&](size_t n) { return rand_gen() % n; };
-        std::random_shuffle(begin, begin + genStrings, rand);
-    }
-
-    static std::string getName() { return "SuffixGenerator"; }
-};
-
 //template <typename StringSet>
-//class EmptyRanks : public StringLcpContainer<StringSet> {
-//    using Char = typename StringSet::Char;
+//class SuffixGenerator : public StringLcpContainer<StringSet> {
 //    using String = typename StringSet::String;
 //
 //public:
+//    SuffixGenerator(
+//        const size_t numberStrings, const size_t constantPrefixLength) {
+//        std::cout << numberStrings << " contant " << constantPrefixLength
+//                  << std::endl;
+//        using Char = unsigned char;
+//        std::vector<Char> randomString;
+//        randomString.reserve(numberStrings + 1 + constantPrefixLength);
+//        dss_schimek::mpi::environment env;
+//        size_t seed = 11143 + 4 * env.rank();
+//        std::mt19937 rand_gen(seed); // rand_seed());
+//        std::uniform_int_distribution<Char> charDis(65, 90);
+//        for (size_t i = 0; i < constantPrefixLength; ++i)
+//            randomString.push_back(65);
+//        for (size_t i = 0; i < numberStrings; ++i) {
+//            randomString.push_back(charDis(rand_gen));
+//        }
+//        randomString.push_back(0);
+//        std::vector<Char> rawStrings;
+//        rawStrings.reserve(randomString.size() * randomString.size() / 2);
+//        for (size_t i = 0; i + 1 < randomString.size(); ++i) {
+//            std::copy(randomString.begin() + i, randomString.end(),
+//                std::back_inserter(rawStrings));
+//        }
+//
+//        this->update(std::move(rawStrings));
+//        String* begin = this->strings();
+//        std::random_device randSeedGenerator;
+//        auto rand = [&](size_t n) { return rand_gen() % n; };
+//        std::random_shuffle(begin, begin + randomString.size() - 1, rand);
+//    }
+//
+//    static std::string getName() { return "SuffixGenerator"; }
+//};
+// template <typename StringSet>
+// class SuffixGenerator : public StringLcpContainer<StringSet> {
+//    using String = typename StringSet::String;
+//
+// private:
+//    std::vector<unsigned char> readFile(const std::string& path) {
+//        using dss_schimek::RawStringsLines;
+//        RawStringsLines data;
+//        const size_t fileSize = getFileSize(path);
+//        std::ifstream in(path);
+//        std::vector<unsigned char>& rawStrings = data.rawStrings;
+//        rawStrings.reserve(1.5 * fileSize);
+//
+//        std::string line;
+//        data.lines = 0u;
+//        while (std::getline(in, line)) {
+//            ++data.lines;
+//            for (unsigned char curChar : line)
+//                rawStrings.push_back(curChar);
+//        }
+//        rawStrings.push_back(0);
+//        in.close();
+//        return rawStrings;
+//    }
+//
+//    auto distributeSuffixes(const std::vector<unsigned char>& text) {
+//        dss_schimek::mpi::environment env;
+//
+//        const size_t textSize = text.size();
+//        const size_t estimatedTotalCharCount =
+//            textSize * (textSize + 1) / 2 + textSize;
+//        const size_t estimatedCharCount = estimatedTotalCharCount /
+//        env.size(); const size_t globalSeed = 0; std::mt19937
+//        randGen(globalSeed); std::uniform_int_distribution<size_t> dist(0,
+//        env.size() - 1); std::vector<unsigned char> rawStrings;
+//        rawStrings.reserve(estimatedCharCount);
+//
+//        size_t numGenStrings = 0;
+//        for (size_t i = 0; i < textSize; ++i) {
+//            size_t PEIndex = dist(randGen);
+//            if (PEIndex == env.rank()) {
+//                // only create your own strings
+//                ++numGenStrings;
+//                std::copy(text.begin() + i, text.end(),
+//                    std::back_inserter(rawStrings));
+//                // Assume that text is zero terminated
+//            }
+//        }
+//        rawStrings.shrink_to_fit();
+//        return std::make_pair(std::move(rawStrings), numGenStrings);
+//    }
+//
+// public:
+//    SuffixGenerator(const std::string& path) {
+//        std::vector<unsigned char> text = readFile(path);
+//        auto [rawStrings, genStrings] = distributeSuffixes(text);
+//        this->update(std::move(rawStrings));
+//        String* begin = this->strings();
+//        std::random_device randSeedGenerator;
+//        std::mt19937 rand_gen(randSeedGenerator());
+//        auto rand = [&](size_t n) { return rand_gen() % n; };
+//        std::random_shuffle(begin, begin + genStrings, rand);
+//    }
+//
+//    static std::string getName() { return "SuffixGenerator"; }
+//};
+
+// template <typename StringSet>
+// class EmptyRanks : public StringLcpContainer<StringSet> {
+//    using Char = typename StringSet::Char;
+//    using String = typename StringSet::String;
+//
+// public:
 //    std::vector<unsigned char> getRawStrings(size_t numStrings,
 //        size_t desiredStringLength,
 //        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
@@ -154,7 +191,7 @@ public:
 //        return rawStrings;
 //    }
 //
-//public:
+// public:
 //    EmptyRanks(const size_t size, const size_t stringLength = 40, ) {
 //        std::vector<Char> rawStrings = getRawStrings(size, stringLength);
 //        this->update(std::move(rawStrings));
@@ -311,7 +348,7 @@ public:
         std::mt19937 rand_gen(randSeedGenerator());
         auto rand = [&](size_t n) { return rand_gen() % n; };
         std::random_shuffle(begin, begin + genStrings, rand);
-	this->orderRawStrings();
+        this->orderRawStrings();
     }
 
     static std::string getName() { return "DNRatioGenerator"; }
@@ -426,5 +463,87 @@ public:
     }
 
     static std::string getName() { return "SkewedStringGenerator"; }
+};
+
+template <typename StringSet>
+class SkewedDNRatioGenerator : public StringLcpContainer<StringSet> {
+    using String = typename StringSet::String;
+    std::tuple<std::vector<unsigned char>, size_t, size_t>
+
+    getRawStringsTimoStyle(size_t numStrings, size_t desiredStringLength,
+        double dToN,
+        dss_schimek::mpi::environment env = dss_schimek::mpi::environment()) {
+        const size_t minInternChar = 65;
+        const size_t maxInternChar = 90;
+
+        const size_t numberInternChars = maxInternChar - minInternChar + 1;
+        const size_t k = std::max(desiredStringLength * dToN,
+            std::ceil(std::log(numStrings) / std::log(numberInternChars)));
+        const size_t stringLength = std::max(desiredStringLength, k);
+        std::vector<unsigned char>
+            rawStrings; //(numStrings * (stringLength + 1), minInternChar);
+        rawStrings.reserve(numStrings * (stringLength + 1) / env.size());
+
+        const size_t globalSeed = 0; 
+        std::mt19937 randGen(globalSeed);
+        const size_t randomChar =
+            minInternChar + (randGen() % numberInternChars);
+        std::uniform_int_distribution<size_t> dist(0, env.size() - 1);
+
+        size_t numGenStrings = 0;
+        size_t curOffset = 0;
+        const size_t longStringMaxIndex = 0.2 * numStrings;
+        const size_t longStringLength = stringLength * 4;
+        for (size_t i = 0; i < numStrings; ++i) {
+            size_t PEIndex = dist(randGen);
+            if (PEIndex == env.rank()) {
+                // only create your own strings
+                ++numGenStrings;
+                size_t curIndex = i;
+                for (size_t j = 0; j < k; ++j) {
+                    rawStrings.push_back(minInternChar);
+                }
+                for (size_t j = 0; j < k; ++j) {
+                    if (curIndex == 0) break;
+                    rawStrings[curOffset + k - 1 - j] =
+                        minInternChar + (curIndex % numberInternChars);
+                    curIndex /= numberInternChars;
+                }
+                for (size_t j = k; j < stringLength; ++j)
+                    rawStrings.push_back(randomChar);
+                if (i < longStringMaxIndex) {
+                for (size_t j = k; j < longStringLength + k; ++j)
+                    rawStrings.push_back(randomChar);
+                curOffset += longStringLength;
+                }
+                rawStrings.push_back(0);
+                curOffset += stringLength + 1;
+            }
+        }
+        rawStrings.resize(curOffset);
+
+        return make_tuple(rawStrings, numGenStrings, stringLength);
+    }
+
+public:
+    
+    SkewedDNRatioGenerator(const size_t size, const size_t stringLength = 40,
+        const double dToN = 0.5) {
+        size_t genStrings = 0;
+        size_t genStringLength = 0;
+        std::vector<unsigned char> rawStrings;
+        std::tie(rawStrings, genStrings, genStringLength) =
+            getRawStringsTimoStyle(size, stringLength, dToN);
+        this->update(std::move(rawStrings));
+        String* begin = this->strings();
+        std::random_device randSeedGenerator;
+        std::mt19937 rand_gen(randSeedGenerator());
+        auto rand = [&](size_t n) { return rand_gen() % n; };
+        std::random_shuffle(begin, begin + genStrings, rand);
+        this->orderRawStrings();
+    }
+
+
+    static std::string getName() { return "SkewedDNRatioGenerator"; }
 };
 } // namespace dss_schimek
