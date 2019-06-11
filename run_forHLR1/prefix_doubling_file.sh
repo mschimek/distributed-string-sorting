@@ -4,7 +4,7 @@ module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
 path=DummyPath
-executable="../build/src/executables/prefix_doubling"
+executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/prefix_doubling"
 numOfStrings=5000000
 numOfIterations=5
 byteEncoder=5

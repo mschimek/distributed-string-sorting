@@ -3,7 +3,7 @@
 module load mpi/impi/2018
 
 path=DummyPath
-executable="../build/src/executables/distributed_sorter"
+executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
 numOfStrings=5000000
 numOfIterations=5
 byteEncoder=0
