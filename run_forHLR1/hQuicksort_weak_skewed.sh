@@ -10,7 +10,7 @@ stringLength=500
 numberOfIterations=6
 samplingFactor=2
 dToNRatio=0.5
-generator=1
+generator=3
 
 for dToNRatio in 0.0 0.25 0.5 0.75 1.0 
 do

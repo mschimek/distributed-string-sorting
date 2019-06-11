@@ -3,26 +3,18 @@
 module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
-executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
-numOfStrings=500000
+path=DummyPath
+executable="/home/fh1-project-kalb/gw1960/kurpiczModified/build/benchmark/dss"
+numOfStrings=200000000
 numOfIterations=6
-generator=1
+generator=2
+dToNRatio=0.5
 stringLength=500
-MPIRoutine=2
-sampler=2
+echo "path: $path"
 
-for dToNRatio in 0.0 0.25 0.5 0.75 1.0
-do
-	for byteEncoder in 1 5 
-	do
-		for sampler in 2 3
-		do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
-                mpiexec.hydra -bootstrap slurm  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps --check
+                mpiexec.hydra -bootstrap slurm  $executable --size $numOfStrings -i $numOfIterations --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --generator $generator --path $path 
 		#mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps
-		done
-	done
-done
 #mpirun -np 2 $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength
 #
 #dToNRatio=0.4

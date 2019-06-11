@@ -6,7 +6,7 @@ module load mpi/impi/2018
 executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
 numOfStrings=500000
 numOfIterations=6
-generator=1
+generator=3
 stringLength=500
 MPIRoutine=2
 sampler=2

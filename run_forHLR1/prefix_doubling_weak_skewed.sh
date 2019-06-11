@@ -9,7 +9,7 @@ numOfIterations=6
 sampler=2
 byteEncoder=5
 MPIRoutine=2
-generator=1
+generator=3
 stringLength=500
 
 for dToNRatio in 0.0 0.25 0.5 0.75 1.0
