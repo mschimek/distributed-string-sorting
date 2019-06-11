@@ -203,7 +203,7 @@ public:
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const StringSet& ss = local_string_ptr.active();
-        const size_t lcpSummand = 25u;
+        const size_t lcpSummand = 250000u;
 
         size_t charactersInSet = 0;
         for (const auto& str : ss) {
@@ -213,7 +213,6 @@ public:
         measuringTool.add(charactersInSet, "charactersInSet");
 
         // sort locally
-        env.barrier();
         measuringTool.start("sort_locally");
         if constexpr (AllToAllStringPolicy::Lcps) {
             tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);

@@ -225,7 +225,6 @@ public:
 
         measuringTool.add(charactersInSet, "charactersInSet");
         // sort locally
-        env.barrier();
         measuringTool.start("sort_locally");
         tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
         measuringTool.stop("sort_locally");
