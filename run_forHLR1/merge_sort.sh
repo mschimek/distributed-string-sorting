@@ -3,7 +3,7 @@
 module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
-executable="../build/src/executables/distributed_sorter"
+executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
 numOfStrings=200000000
 numOfIterations=6
 generator=1

@@ -1,13 +1,15 @@
 #!/bin/bash
 
-echo "dir: $0"
 prefix="\/work\/fh1-project-kalb\/gw1960\/data\/"
 #prefix="\.\.\/upload\/"
-mkdir jobIds
+dir="./jobIds"
+
+mkdir $dir
 
 for inputFile in $(cat $2)
 do
-	jobIds="jobIds/$1_${inputFile}.txt"
+	jobIds="./jobIds/$1_${inputFile}.txt"
+	echo "jobIds: $jobIds"
         touch $jobIds
         rm $jobIds
         touch $jobIds
@@ -15,8 +17,10 @@ do
 	echo $completeInputFilePath
 	outputFile="./tmpScripts/${inputFile}_tmpScripts.sh"
 	echo "outputFile:  $outputFile"
+	
+	executable="../$1"
 
-	sed s/DummyPath/"$completeInputFilePath"/ $1 > $outputFile
+	sed s/DummyPath/"$completeInputFilePath"/ $executable > $outputFile
 
 	sbatch --partition develop  --ntasks=2   --time=00:05:00 $outputFile >> $jobIds
 	#sbatch --partition singlenode  --ntasks=2    --time=08:40:00 $outputFile >> $jobIds
