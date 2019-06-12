@@ -302,6 +302,11 @@ void secondArg(const PolicyEnums::CombinationKey& key, const SorterArgs& args) {
         thirdArg<StringSet, StringGenerator>(key, args);
         break;
     }
+    case PolicyEnums::StringGenerator::SuffixGenerator: {
+        using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+        thirdArg<StringSet, StringGenerator>(key, args);
+        break;
+    }
     };
 }
 

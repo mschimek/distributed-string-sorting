@@ -470,6 +470,11 @@ int main(std::int32_t argc, char const* argv[]) {
             sort<StringSet, StringGenerator>(args);
             break;
         }
+        case PolicyEnums::StringGenerator::SuffixGenerator: {
+            using StringGenerator = dss_schimek::SuffixGenerator<StringSet>;
+            sort<StringSet, StringGenerator>(args);
+            break;
+        }
         };
     }
     env.finalize();
