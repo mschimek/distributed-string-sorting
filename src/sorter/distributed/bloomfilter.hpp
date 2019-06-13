@@ -151,7 +151,9 @@ struct AllToAllHashesNaive {
         measuringTool.start("bloomfilter_sendEncodedValues");
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
-        measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(DataType),
+        measuringTool.add(std::accumulate(intervalSizes.begin(),
+                              intervalSizes.end(), static_cast<uint64_t>(0)) *
+                              sizeof(DataType),
             "bloomfilter_sentEncodedValues", false);
         return result;
     }
@@ -163,7 +165,7 @@ struct AllToAllHashesGolomb {
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize,
-        const size_t b = 4294967296) {
+        const size_t b = 1048576) {
         using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
             dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
@@ -177,20 +179,25 @@ struct AllToAllHashesGolomb {
         auto begin = sendData.begin();
 
         if (intervalSizes.size() != env.size()) {
-          std::cout << "not same size" << std::endl;
-          std::abort();
+            std::cout << "not same size" << std::endl;
+            std::abort();
         }
         for (size_t j = 0; j < intervalSizes.size(); ++j) {
             const auto intervalSize = intervalSizes[j];
+            if (intervalSize == 0) {
+                encodedValuesSizes.push_back(0);
+                continue;
+            }
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
-            //const size_t bFromBook = getB(bloomFilterSize / env.size(), intervalSize);
+            const size_t bFromBook =
+                getB(bloomFilterSize / env.size(), intervalSize);
             encodedValues.push_back(0); // dummy value
-            auto refToSize = encodedValues.size() - 1; 
-            //encodedValues.push_back(bFromBook);
+            auto refToSize = encodedValues.size() - 1;
+            encodedValues.push_back(bFromBook);
 
             getDeltaEncoding(
-                begin, end, std::back_inserter(encodedValues), b);
+                begin, end, std::back_inserter(encodedValues), bFromBook);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
             encodedValues[refToSize] = sizeEncodedValues - 1;
@@ -202,12 +209,16 @@ struct AllToAllHashesGolomb {
 
         std::vector<size_t> recvEncodedValues =
             AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
-        //std::vector<size_t> recvEncodedValuesSizes =
+        // std::vector<size_t> recvEncodedValuesSizes =
         //    dss_schimek::mpi::alltoall(encodedValuesSizes);
         measuringTool.stop("bloomfilter_sendEncodedValues");
-        measuringTool.add(std::accumulate(encodedValuesSizes.begin(), encodedValuesSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
+        measuringTool.add(
+            std::accumulate(encodedValuesSizes.begin(),
+                encodedValuesSizes.end(), static_cast<uint64_t>(0)) *
+                sizeof(size_t),
             "bloomfilter_sentEncodedValues", false);
-        //measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
+        // measuringTool.add(std::accumulate(intervalSizes.begin(),
+        // intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
         //    "bloomfilter_unencodedValues", false);
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
@@ -218,9 +229,9 @@ struct AllToAllHashesGolomb {
         for (size_t i = 0; i < env.size(); ++i) {
             const size_t encodedIntervalSizes = *(curDecodeIt++);
             const auto end = curDecodeIt + encodedIntervalSizes;
-            //const size_t bFromBook = *(curDecodeIt++);
+            const size_t bFromBook = *(curDecodeIt++);
             getDeltaDecoding(
-                curDecodeIt, end, std::back_inserter(decodedValues), b);
+                curDecodeIt, end, std::back_inserter(decodedValues), bFromBook);
             curDecodeIt = end;
         }
         measuringTool.stop("bloomfilter_golombDecoding");
@@ -584,7 +595,8 @@ struct FindDuplicates {
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         dss_schimek::mpi::environment env;
 
-        measuringTool.add(hashPEIndices.size(), "bloomfilter_recvHashValues", false);
+        measuringTool.add(
+            hashPEIndices.size(), "bloomfilter_recvHashValues", false);
         measuringTool.start("bloomfilter_findDuplicatesOverallIntern");
         measuringTool.start("bloomfilter_findDuplicatesSetup");
         std::vector<IteratorPair> iteratorPairs;
@@ -682,15 +694,18 @@ struct FindDuplicates {
         std::vector<size_t> sortedIndicesOfRemoteDuplicates;
         sortedIndicesOfRemoteDuplicates.reserve(remoteDuplicates.size());
         dss_schimek::mpi::environment env;
-	
-	//std::cout << "rank: " << env.rank() << " localhashDuplicates: " << localHashDuplicates.size() << " localDuplicates: " << localDuplicates.size() << " remoteDuplicates: " << remoteDuplicates.size() << " originalMapping: " << originalMapping.size() << std::endl;
+
+        // std::cout << "rank: " << env.rank() << " localhashDuplicates: " <<
+        // localHashDuplicates.size() << " localDuplicates: " <<
+        // localDuplicates.size() << " remoteDuplicates: " <<
+        // remoteDuplicates.size() << " originalMapping: " <<
+        // originalMapping.size() << std::endl;
         // Assumption localHashDuplicates and localDuplicates are sorted
 
         // indicesOfAllDuplicates.reserve(localDuplicates.size() +
         // remoteDuplicates.size());
         for (size_t i = 0; i < remoteDuplicates.size(); ++i) {
             const size_t curIndex = remoteDuplicates[i];
-
 
             bool isAlsoLocalDuplicate =
                 originalMapping[curIndex].isLocalDuplicateButSendAnyway;
@@ -703,8 +718,7 @@ struct FindDuplicates {
 
         ips4o::sort(sortedIndicesOfRemoteDuplicates.begin(),
             sortedIndicesOfRemoteDuplicates.end());
-        ips4o::sort(localHashDuplicates.begin(),
-            localHashDuplicates.end());
+        ips4o::sort(localHashDuplicates.begin(), localHashDuplicates.end());
         using Iterator = std::vector<size_t>::iterator;
         std::vector<std::pair<Iterator, Iterator>> iteratorPairs;
         iteratorPairs.emplace_back(
@@ -719,7 +733,7 @@ struct FindDuplicates {
         std::vector<size_t> mergedElements(elementsToMerge);
         tlx::multiway_merge(iteratorPairs.begin(), iteratorPairs.end(),
             mergedElements.begin(), elementsToMerge);
-	
+
         return mergedElements;
     }
     static std::vector<size_t> getIndicesOfDuplicates(const size_t size,
@@ -1060,8 +1074,8 @@ public:
         std::vector<size_t> eosCandidates;
         GeneratedHashesLocalDupsEOSCandidates(
 
-            std::vector<T>&& data, std::vector<size_t>&& localDups, std::vector<size_t>&& eosCandidates
-            )
+            std::vector<T>&& data, std::vector<size_t>&& localDups,
+            std::vector<size_t>&& eosCandidates)
             : data(std::move(data)), localDups(std::move(localDups)),
               eosCandidates(std::move(eosCandidates)) {}
     };
@@ -1112,12 +1126,14 @@ public:
             else if (prevCandidate + 1 == curCandidate &&
                      lcps[curCandidate] >= depth) {
                 localDups.push_back(curCandidate);
-		if (hashStringIndices.back().stringIndex + 1 == curCandidate) {
-			hashStringIndices.back().isLcpLocalRoot = true;
-			if (env.rank() == 25 && curCandidate == 197869) {
-				std::cout << "generation: " << hashStringIndices.back().stringIndex << std::endl;
-			}
-		}
+                if (hashStringIndices.back().stringIndex + 1 == curCandidate) {
+                    hashStringIndices.back().isLcpLocalRoot = true;
+                    if (env.rank() == 25 && curCandidate == 197869) {
+                        std::cout << "generation: "
+                                  << hashStringIndices.back().stringIndex
+                                  << std::endl;
+                    }
+                }
             }
             else {
                 const size_t curHash = HashPolicy::hash(
@@ -1219,8 +1235,8 @@ public:
             }
             else if (lcps[curCandidate] >= depth) {
                 localDups.push_back(curCandidate);
-		if (hashStringIndices.back().stringIndex + 1 == curCandidate) 
-			hashStringIndices.back().isLcpLocalRoot = true;
+                if (hashStringIndices.back().stringIndex + 1 == curCandidate)
+                    hashStringIndices.back().isLcpLocalRoot = true;
             }
             else {
                 const size_t curHash = HashPolicy::hash(
@@ -1263,21 +1279,22 @@ public:
                         hashStringIndices[j].stringIndex);
                     ++j;
                 }
-            } else if (pivotHashStringIndex.isLcpLocalRoot) {
+            }
+            else if (pivotHashStringIndex.isLcpLocalRoot) {
                 pivotHashStringIndex.isLocalDuplicate = true;
                 pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
                 indicesOfLocalDuplicates.push_back(
                     pivotHashStringIndex.stringIndex);
-	    }
+            }
             i = j;
         }
-	if (hashStringIndices.back().isLcpLocalRoot) {
-		auto& pivotHashStringIndex = hashStringIndices.back();
-                pivotHashStringIndex.isLocalDuplicate = true;
-                pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
-                indicesOfLocalDuplicates.push_back(
-                    pivotHashStringIndex.stringIndex);
-	}
+        if (hashStringIndices.back().isLcpLocalRoot) {
+            auto& pivotHashStringIndex = hashStringIndices.back();
+            pivotHashStringIndex.isLocalDuplicate = true;
+            pivotHashStringIndex.isLocalDuplicateButSendAnyway = true;
+            indicesOfLocalDuplicates.push_back(
+                pivotHashStringIndex.stringIndex);
+        }
         return indicesOfLocalDuplicates;
     }
 
