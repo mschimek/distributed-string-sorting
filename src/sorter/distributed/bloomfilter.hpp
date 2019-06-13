@@ -163,7 +163,7 @@ struct AllToAllHashesGolomb {
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes, const size_t bloomFilterSize,
-        const size_t b = 1048576) {
+        const size_t b = 4294967296) {
         using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
             dss_schimek::mpi::AllToAllvSmall>;
         using namespace dss_schimek::measurement;
@@ -207,8 +207,8 @@ struct AllToAllHashesGolomb {
         measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.add(std::accumulate(encodedValuesSizes.begin(), encodedValuesSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
             "bloomfilter_sentEncodedValues", false);
-        measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
-            "bloomfilter_unencodedValues", false);
+        //measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
+        //    "bloomfilter_unencodedValues", false);
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
 
