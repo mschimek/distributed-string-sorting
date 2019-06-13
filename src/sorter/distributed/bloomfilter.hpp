@@ -184,13 +184,13 @@ struct AllToAllHashesGolomb {
             const auto intervalSize = intervalSizes[j];
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
-            const size_t bFromBook = getB(bloomFilterSize / env.size(), intervalSize);
+            //const size_t bFromBook = getB(bloomFilterSize / env.size(), intervalSize);
             encodedValues.push_back(0); // dummy value
             auto refToSize = encodedValues.size() - 1; 
-            encodedValues.push_back(bFromBook);
+            //encodedValues.push_back(bFromBook);
 
             getDeltaEncoding(
-                begin, end, std::back_inserter(encodedValues), bFromBook);
+                begin, end, std::back_inserter(encodedValues), b);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
             encodedValues[refToSize] = sizeEncodedValues - 1;
@@ -218,9 +218,9 @@ struct AllToAllHashesGolomb {
         for (size_t i = 0; i < env.size(); ++i) {
             const size_t encodedIntervalSizes = *(curDecodeIt++);
             const auto end = curDecodeIt + encodedIntervalSizes;
-            const size_t bFromBook = *(curDecodeIt++);
+            //const size_t bFromBook = *(curDecodeIt++);
             getDeltaDecoding(
-                curDecodeIt, end, std::back_inserter(decodedValues), bFromBook);
+                curDecodeIt, end, std::back_inserter(decodedValues), b);
             curDecodeIt = end;
         }
         measuringTool.stop("bloomfilter_golombDecoding");
