@@ -226,7 +226,7 @@ struct AllToAllHashesGolomb {
         decodedValues.reserve(recvEncodedValues.size());
         auto curDecodeIt = recvEncodedValues.begin();
 
-        for (size_t i = 0; i < env.size(); ++i) {
+        for (size_t i = 0; i < env.size() && curDecodeIt != recvEncodedValues.end(); ++i) {
             const size_t encodedIntervalSizes = *(curDecodeIt++);
             const auto end = curDecodeIt + encodedIntervalSizes;
             const size_t bFromBook = *(curDecodeIt++);
