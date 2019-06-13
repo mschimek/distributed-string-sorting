@@ -184,7 +184,7 @@ struct AllToAllHashesGolomb {
             const auto intervalSize = intervalSizes[j];
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
-            const size_t bFromBook = getB(bloomFilterSize, intervalSize);
+            const size_t bFromBook = getB(bloomFilterSize / env.size(), intervalSize);
             encodedValues.push_back(0); // dummy value
             auto refToSize = encodedValues.size() - 1; 
             encodedValues.push_back(bFromBook);
@@ -207,6 +207,8 @@ struct AllToAllHashesGolomb {
         measuringTool.stop("bloomfilter_sendEncodedValues");
         measuringTool.add(std::accumulate(encodedValuesSizes.begin(), encodedValuesSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
             "bloomfilter_sentEncodedValues", false);
+        //measuringTool.add(std::accumulate(intervalSizes.begin(), intervalSizes.end(), static_cast<uint64_t>(0)) * sizeof(size_t),
+        //    "bloomfilter_unencodedValues", false);
         measuringTool.start("bloomfilter_golombDecoding");
         std::vector<size_t> decodedValues;
 
