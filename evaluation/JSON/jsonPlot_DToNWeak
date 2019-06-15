@@ -1,0 +1,29 @@
+{
+  "isDToN":"TRUE",
+  "title":"DToNGenerator(500.000, 500) weak scaling",
+  "data":
+[
+[{
+"path":"DToNWeak/ms",
+"filter":[{"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
+          {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings" }
+         ]
+}],
+[{
+"path":"DToNWeak/pd",
+"filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+          {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
+         ]
+}],
+[{
+"path":"DToNWeak/kurpicz",
+"filter":[{"name":"kurpicz"}
+         ]
+}],
+[{
+"path":"DToNWeak/hquick",
+"filter":[{"name":"hQuick"}
+         ]
+}]
+]}
