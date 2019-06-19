@@ -41,7 +41,7 @@ inline std::vector<DataType> alltoall(
     const std::vector<DataType>& send_data, environment env = environment()) {
     using dss_schimek::measurement::MeasuringTool;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    const size_t sentItems = send_data.size() - 1;
+    const size_t sentItems = send_data.size();
     measuringTool.addRawCommunication(sentItems * sizeof(DataType), "alltoall");
 
     std::vector<DataType> receive_data(send_data.size(), 0);
@@ -98,8 +98,7 @@ inline std::vector<DataType> alltoallv_small(
     }
     const size_t sentItems =
         std::accumulate(real_send_counts.begin(), real_send_counts.end(),
-            static_cast<size_t>(0u)) -
-        real_send_counts[env.rank()];
+            static_cast<size_t>(0u)) ;
     measuringTool.addRawCommunication(
         sentItems * sizeof(DataType), "alltoallv_small");
 
@@ -162,8 +161,7 @@ public:
 
         const size_t elemToSend =
             std::accumulate(send_counts.begin(), send_counts.end(),
-                static_cast<size_t>(0u)) -
-            send_counts[env.rank()];
+                static_cast<size_t>(0u));
         measuringTool.addRawCommunication(
             elemToSend * sizeof(DataType), "alltoallv_small");
 
@@ -274,8 +272,7 @@ public:
 
             const size_t elemToSend =
                 std::accumulate(send_counts.begin(), send_counts.end(),
-                    static_cast<size_t>(0u)) -
-                send_counts[env.rank()];
+                    static_cast<size_t>(0u));
             measuringTool.addRawCommunication(
                 elemToSend * sizeof(DataType), "alltoallv_combined");
 

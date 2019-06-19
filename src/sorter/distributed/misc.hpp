@@ -484,7 +484,6 @@ computePartition(
 
     auto ss = stringptr.active();
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
     std::vector<unsigned char> raw_splitters =
         Sampler::sample_splitters(ss, 2 * globalLcpAvg, samplingFactor);

@@ -3,11 +3,27 @@
 #include "mpi/environment.hpp"
 #include "util/nonTimer.hpp"
 #include "util/timer.hpp"
+#include "util/leanNonTimer.hpp"
+
 #include <ostream>
 #include <vector>
 
 namespace dss_schimek {
 namespace measurement {
+
+struct PhaseValue {
+  using PseudoKey = std::string;
+
+  std::string phase;
+  size_t value;
+
+  PhaseValue(const std::string& phase, const size_t value) : phase(phase), value(value) {}
+  const std::string& pseudoKey() const { return phase; }
+  void setValue(size_t value_) { value = value_; }
+  size_t getValue() const { return value; }
+
+
+};
 
 struct PhaseCounterPerPhaseRoundDescriptionTypeRawCommunicationSumUpValue {
     using PseudoKey = std::string;
@@ -152,6 +168,7 @@ public:
     void reset() {
         timer = Timer<TimerKey, TimerValue>();
         nonTimer = NonTimer<NonTimerRecord>();
+        leanNonTimer = LeanNonTimer<PhaseValue>();
         disabled = false;
         verbose = false;
         prefix = "";
@@ -160,23 +177,22 @@ public:
     }
 
     void add(size_t value) {
-        if (disabled) return;
-        add(value, "unkown");
+        //if (disabled) return;
+        //add(value, "unkown");
     }
 
     void add(
         size_t value, const std::string& description, const bool sumUp = true) {
-        if (disabled) return;
-        if (verbose && env.rank() == 0) std::cout << description << std::endl;
-        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description,
-            "number", false, sumUp, value));
+        //if (disabled) return;
+        //if (verbose && env.rank() == 0) std::cout << description << std::endl;
+        //nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description,
+        //    "number", false, sumUp, value));
     }
 
     void addRawCommunication(size_t value, const std::string& description) {
-        if (disabled) return;
+        //if (disabled) return;
         if (verbose && env.rank() == 0) std::cout << description << std::endl;
-        nonTimer.add(NonTimerRecord(curPhase, 0u, curRound, description,
-            "number", true, "true", value));
+        leanNonTimer.add(PhaseValue(curPhase, value));
     }
 
     void start(const std::string& description) {
@@ -199,12 +215,16 @@ public:
         std::vector<OutputFormat> data;
         data.reserve(10 * numMeasurements);
         std::vector<NonTimerRecord> nonTimerRecords;
+        std::vector<PhaseValue> leanNonTimerRecords;
         std::vector<std::pair<TimerKey, TimerValue>> timerRecords;
         nonTimerRecords.reserve(numMeasurements);
+        leanNonTimerRecords.reserve(numMeasurements);
         timerRecords.reserve(6 * numMeasurements);
 
         nonTimer.collect(std::back_inserter(nonTimerRecords));
+        leanNonTimer.collect(std::back_inserter(leanNonTimerRecords));
         timer.collect(std::back_inserter(timerRecords));
+
 
         for (const auto& nonTimerRecord : nonTimerRecords)
             data.push_back(
@@ -212,6 +232,15 @@ public:
                     nonTimerRecord.round, nonTimerRecord.description,
                     nonTimerRecord.type, nonTimerRecord.rawCommunication,
                     nonTimerRecord.sumUp, nonTimerRecord.value});
+
+        for (const auto& leanNonTimerRecord : leanNonTimerRecords)
+          data.push_back(
+              {prefix, leanNonTimerRecord.phase, 0,
+              0, "commVolume",
+              "number", true,
+              false, leanNonTimerRecord.value});
+
+
 
         for (const auto& [timerKey, timerValue] : timerRecords)
             data.push_back({prefix, timerKey.phase, timerValue.counterPerPhase,
@@ -249,6 +278,7 @@ private:
     std::string curPhase = "none";
     size_t curRound = 0;
     NonTimer<NonTimerRecord> nonTimer;
+    LeanNonTimer<PhaseValue> leanNonTimer;
     Timer<TimerKey, TimerValue> timer;
 };
 } // namespace measurement

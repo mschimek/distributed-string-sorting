@@ -82,8 +82,11 @@ struct Data {
     }
 
     Data exchange(MPI_Comm comm, int32_t target, int32_t tag) {
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         if constexpr (!isIndexed) {
             MPI_Request requests[2];
+            measuringTool.addRawCommunication(rawStrings.size(), "");
             MPI_Isend(rawStrings.data(), rawStrings.size(), MPI_BYTE, target,
                 tag, comm, requests);
 
@@ -102,8 +105,11 @@ struct Data {
         else {
             int32_t tagIndices = tag + 1;
             MPI_Request requests[4];
+            measuringTool.addRawCommunication(rawStrings.size(), "");
             MPI_Isend(rawStrings.data(), rawStrings.size(), MPI_BYTE, target,
                 tag, comm, requests);
+            measuringTool.addRawCommunication(
+                indices.size() * sizeof(uint64_t), "");
             MPI_Isend(indices.data(), indices.size() * sizeof(uint64_t),
                 MPI_BYTE, target, tagIndices, comm, requests + 1);
 
@@ -212,10 +218,15 @@ struct Data {
         }
     }
     void Send(MPI_Comm comm, int32_t target, int32_t tag) {
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+        measuringTool.addRawCommunication(rawStrings.size(), "");
         MPI_Send(
             rawStrings.data(), rawStrings.size(), MPI_BYTE, target, tag, comm);
         if constexpr (isIndexed) {
             int32_t tagIndices = tag + 1;
+            measuringTool.addRawCommunication(
+                indices.size() * sizeof(uint64_t), "");
             MPI_Send(indices.data(), indices.size() * sizeof(uint64_t),
                 MPI_BYTE, target, tagIndices, comm);
         }
@@ -412,14 +423,14 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     using dss_schimek::measurement::MeasuringTool;
     static uint64_t iteration = 0;
     ++iteration;
-    //MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    //measuringTool.setRound(iteration);
-    //if constexpr (barrierActive) {
+    // MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+    // measuringTool.setRound(iteration);
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_median_select_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_median_select_Barrier");
     //}
-    //measuringTool.start("Splitter_median_select");
+    // measuringTool.start("Splitter_median_select");
     tracker.median_select_t.start(comm);
 
     int32_t nprocs;
@@ -447,16 +458,16 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     String pivotString(pivot.rawStrings.data(), pivot.rawStrings.size() - 1);
     if constexpr (StringContainer::isIndexed)
         pivotString.index = pivot.indices.front();
-    //measuringTool.stop("Splitter_median_select");
+    // measuringTool.stop("Splitter_median_select");
 
     // Partition data into small elements and large elements.
 
-    //if constexpr (barrierActive) {
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_partition_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_partition_Barrier");
     //}
-    //measuringTool.start("Splitter_partition");
+    // measuringTool.start("Splitter_partition");
     tracker.partition_t.start(comm);
 
     const auto* separator = locateSplitter(stringContainer.getStrings(),
@@ -507,21 +518,22 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     const uint64_t ownCharsSize =
         stringContainer.char_size() - exchangeData.rawStrings.size();
 
-//    uint64_t inbalance = std::abs(
-//        static_cast<int64_t>(stringContainer.size()) - (send_end - send_begin));
-//measuringTool.add(inbalance, "inbalance", false);
+    //    uint64_t inbalance = std::abs(
+    //        static_cast<int64_t>(stringContainer.size()) - (send_end -
+    //        send_begin));
+    // measuringTool.add(inbalance, "inbalance", false);
 
     tracker.partition_t.stop();
-    //measuringTool.stop("Splitter_partition");
+    // measuringTool.stop("Splitter_partition");
 
     // Move elements to partner and receive elements for own group.
     tracker.exchange_t.start(comm);
-    //if constexpr (barrierActive) {
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_exchange_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_exchange_Barrier");
     //}
-    //measuringTool.start("Splitter_exchange");
+    // measuringTool.start("Splitter_exchange");
 
     const auto partner = (myrank + (nprocs / 2)) % nprocs;
 
@@ -533,15 +545,15 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     recvData.clear();
 
     tracker.exchange_t.stop();
-    //measuringTool.stop("Splitter_exchange");
+    // measuringTool.stop("Splitter_exchange");
     // Merge received elements with own elements.
     tracker.merge_t.start(comm);
-    //if constexpr (barrierActive) {
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_merge_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_merge_Barrier");
     //}
-    //measuringTool.start("Splitter_merge");
+    // measuringTool.start("Splitter_merge");
 
     const auto num_elements = recvStrings.size() + (own_end - own_begin);
     std::vector<String> mergedStrings(num_elements);
@@ -573,7 +585,7 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
     else {
         stringContainer.update(std::move(mergedRawStrings));
     }
-    //measuringTool.stop("Splitter_merge");
+    // measuringTool.stop("Splitter_merge");
     if constexpr (debugQuicksort) {
         if (!stringContainer.isConsistent()) {
             std::cout << "merged string cont not consistent " << std::endl;
@@ -587,29 +599,29 @@ StringContainer sortRec(std::mt19937_64& gen, RandomBitStore& bit_store,
 
     if (nprocs >= 4) {
         // Split communicator and solve subproblems.
-        //if constexpr (barrierActive) {
+        // if constexpr (barrierActive) {
         //    measuringTool.start("Splitter_split_Barrier");
         //    MPI_Barrier(comm);
         //    measuringTool.stop("Splitter_split_Barrier");
         //}
-        //measuringTool.start("Splitter_split");
+        // measuringTool.start("Splitter_split");
         tracker.comm_split_t.start(comm);
 
         MPI_Comm subcomm;
         split(comm, &subcomm);
 
         tracker.comm_split_t.stop();
-        //measuringTool.stop("Splitter_split");
+        // measuringTool.stop("Splitter_split");
 
         auto res = sortRec<StringContainer::isIndexed>(gen, bit_store,
             std::move(stringContainer), std::forward<Comp>(comp), mpi_type,
             is_robust, std::forward<Tracker>(tracker), tag, subcomm);
-        //measuringTool.disableBarrier(false);
-        //measuringTool.setRound(0);
+        // measuringTool.disableBarrier(false);
+        // measuringTool.setRound(0);
         return res;
     }
-    //measuringTool.disableBarrier(false);
-    //measuringTool.setRound(0);
+    // measuringTool.disableBarrier(false);
+    // measuringTool.setRound(0);
 
     return std::move(stringContainer);
 }
@@ -824,17 +836,17 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     MPI_Datatype mpi_type, int tag, Communicator comm, Tracker&& tracker,
     Comp&& comp, bool is_robust) {
     using StringContainer = typename Data::StringContainer;
-    //using StringSet = typename StringContainer::StringSet;
+    // using StringSet = typename StringContainer::StringSet;
     using dss_schimek::measurement::MeasuringTool;
 
-    //MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    //measuringTool.disableBarrier(true);
-    //if constexpr (barrierActive) {
+    // MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+    // measuringTool.disableBarrier(true);
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_baseCase_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_baseCase_Barrier");
     //}
-    //measuringTool.start("Splitter_baseCase");
+    // measuringTool.start("Splitter_baseCase");
     int32_t nprocs;
     int32_t myrank;
     MPI_Comm_size(comm, &nprocs);
@@ -846,17 +858,17 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
 
         sortLocally(container);
         tracker.local_sort_t.stop();
-        //measuringTool.stop("Splitter_baseCase");
+        // measuringTool.stop("Splitter_baseCase");
         return container;
     }
-    //measuringTool.stop("Splitter_baseCase");
+    // measuringTool.stop("Splitter_baseCase");
 
     if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_move_to_pow_of_two_t_Barrier");
-        //MPI_Barrier(comm);
-        //measuringTool.stop("Splitter_move_to_pow_of_two_t_Barrier");
+        // measuringTool.start("Splitter_move_to_pow_of_two_t_Barrier");
+        // MPI_Barrier(comm);
+        // measuringTool.stop("Splitter_move_to_pow_of_two_t_Barrier");
     }
-    //measuringTool.start("Splitter_move_to_pow_of_two_t");
+    // measuringTool.start("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.start(comm);
 
     const auto pow = tlx::round_down_to_power_of_two(nprocs);
@@ -889,61 +901,60 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
         MPI_Comm sub_comm;
         MPI_Comm_split(comm, 1, myrank, &sub_comm);
         comm = sub_comm;
-        //measuringTool.stop("Splitter_move_to_pow_of_two_t");
+        // measuringTool.stop("Splitter_move_to_pow_of_two_t");
 
-        
-	//if constexpr (barrierActive) {
+        // if constexpr (barrierActive) {
         ////measuringTool.start("splitter_shuffle_Barrier");
-        //measuringTool.stop("splitter_shuffle_Barrier");
-	//}
-        //measuringTool.start("Splitter_shuffle");
-        //measuringTool.stop("Splitter_shuffle");
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_sortLocally_Barrier");
-        //measuringTool.stop("Splitter_sortLocally_Barrier");
-	//}
-        //measuringTool.start("Splitter_sortLocally");
-        //measuringTool.stop("Splitter_sortLocally");
-        //uint64_t numberOfRounds = static_cast<uint64_t>(std::log2(nprocs));
-        //for (size_t i = 0; i < numberOfRounds; ++i) {
+        // measuringTool.stop("splitter_shuffle_Barrier");
+        //}
+        // measuringTool.start("Splitter_shuffle");
+        // measuringTool.stop("Splitter_shuffle");
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_sortLocally_Barrier");
+        // measuringTool.stop("Splitter_sortLocally_Barrier");
+        //}
+        // measuringTool.start("Splitter_sortLocally");
+        // measuringTool.stop("Splitter_sortLocally");
+        // uint64_t numberOfRounds = static_cast<uint64_t>(std::log2(nprocs));
+        // for (size_t i = 0; i < numberOfRounds; ++i) {
 
-        //measuringTool.setRound(i);
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_median_select_Barrier");
-        //measuringTool.stop("Splitter_median_select_Barrier");
-	//}
-        //measuringTool.start("Splitter_median_select");
-        //measuringTool.stop("Splitter_median_select");
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_partition_Barrier");
-        //measuringTool.stop("Splitter_partition_Barrier");
-	//}
-        //measuringTool.start("Splitter_partition");
-        //measuringTool.stop("Splitter_partition");
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_exchange_Barrier");
-        //measuringTool.stop("Splitter_exchange_Barrier");
-	//}
-        //measuringTool.start("Splitter_exchange");
-        //measuringTool.stop("Splitter_exchange");
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_merge_Barrier");
-        //measuringTool.stop("Splitter_merge_Barrier");
-	//}
-        //measuringTool.start("Splitter_merge");
-        //measuringTool.stop("Splitter_merge");
-        //if (i + 1 < numberOfRounds) {
-	//if constexpr (barrierActive) {
-        //measuringTool.start("Splitter_split_Barrier");
-        //measuringTool.stop("Splitter_split_Barrier");
-	//}
-        //measuringTool.start("Splitter_split");
-        //measuringTool.stop("Splitter_split");
+        // measuringTool.setRound(i);
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_median_select_Barrier");
+        // measuringTool.stop("Splitter_median_select_Barrier");
+        //}
+        // measuringTool.start("Splitter_median_select");
+        // measuringTool.stop("Splitter_median_select");
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_partition_Barrier");
+        // measuringTool.stop("Splitter_partition_Barrier");
+        //}
+        // measuringTool.start("Splitter_partition");
+        // measuringTool.stop("Splitter_partition");
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_exchange_Barrier");
+        // measuringTool.stop("Splitter_exchange_Barrier");
+        //}
+        // measuringTool.start("Splitter_exchange");
+        // measuringTool.stop("Splitter_exchange");
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_merge_Barrier");
+        // measuringTool.stop("Splitter_merge_Barrier");
+        //}
+        // measuringTool.start("Splitter_merge");
+        // measuringTool.stop("Splitter_merge");
+        // if (i + 1 < numberOfRounds) {
+        // if constexpr (barrierActive) {
+        // measuringTool.start("Splitter_split_Barrier");
+        // measuringTool.stop("Splitter_split_Barrier");
+        //}
+        // measuringTool.start("Splitter_split");
+        // measuringTool.stop("Splitter_split");
         //}
 
         //}
-        //measuringTool.setRound(0);
-        //measuringTool.disableBarrier(false);
+        // measuringTool.setRound(0);
+        // measuringTool.disableBarrier(false);
 
         return StringContainer();
     }
@@ -967,18 +978,18 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
 
     StringContainer container = data.moveToContainer();
     data.clear();
-    //measuringTool.stop("Splitter_move_to_pow_of_two_t");
+    // measuringTool.stop("Splitter_move_to_pow_of_two_t");
     tracker.move_to_pow_of_two_t.stop();
 
     assert(tlx::is_power_of_two(nprocs));
 
-    //if constexpr (barrierActive) {
+    // if constexpr (barrierActive) {
     //    measuringTool.start("splitter_shuffle_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("splitter_shuffle_Barrier");
     //}
     tracker.parallel_shuffle_t.start(comm);
-    //measuringTool.start("Splitter_shuffle");
+    // measuringTool.start("Splitter_shuffle");
 
     //    using StringIndexPEIndex = std::pair<uint64_t, uint64_t>;
     //    std::vector<StringIndexPEIndex> stringIndicesPEIndices(
@@ -1052,19 +1063,19 @@ typename Data::StringContainer sort(std::mt19937_64& async_gen, Data&& data,
     ///<< "----------" << std::endl;
     //}
 
-    //measuringTool.stop("Splitter_shuffle");
+    // measuringTool.stop("Splitter_shuffle");
     tracker.parallel_shuffle_t.stop();
 
-    //if constexpr (barrierActive) {
+    // if constexpr (barrierActive) {
     //    measuringTool.start("Splitter_sortLocally_Barrier");
     //    MPI_Barrier(comm);
     //    measuringTool.stop("Splitter_sortLocally_Barrier");
     //}
-    //measuringTool.start("Splitter_sortLocally");
+    // measuringTool.start("Splitter_sortLocally");
     tracker.local_sort_t.start(comm);
     sortLocally(container);
     tracker.local_sort_t.stop();
-    //measuringTool.stop("Splitter_sortLocally");
+    // measuringTool.stop("Splitter_sortLocally");
     // std::vector<unsigned char> matthiasTmp;
     // auto ss = container.make_string_set();
     // for (size_t i = 0; i < ss.size(); ++i) {

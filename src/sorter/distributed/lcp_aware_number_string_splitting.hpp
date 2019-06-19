@@ -201,6 +201,7 @@ public:
         //using Char = typename StringSet::Char;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+        measuringTool.setPhase("local_sorting");
 
         const StringSet& ss = local_string_ptr.active();
         const size_t lcpSummand = 5u;
@@ -230,6 +231,7 @@ public:
             return dss_schimek::StringLcpContainer<StringSet>(
                 std::move(local_string_container));
 
+        measuringTool.setPhase("bucket_computation");
         measuringTool.start("avg_lcp");
         const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
         measuringTool.stop("avg_lcp");
