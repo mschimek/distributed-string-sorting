@@ -203,7 +203,7 @@ public:
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
         const StringSet& ss = local_string_ptr.active();
-        const size_t lcpSummand = 250000u;
+        const size_t lcpSummand = 5u;
 
         size_t charactersInSet = 0;
         for (const auto& str : ss) {
