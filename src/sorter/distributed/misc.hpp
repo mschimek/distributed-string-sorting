@@ -542,7 +542,6 @@ computePartition(
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
     auto ss = stringptr.active();
-    measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
     auto sampleIndices = Sampler::sample_splitters(
         stringptr.active(), 2 * globalLcpAvg, samplingFactor);
@@ -599,7 +598,6 @@ computePartitionSequentialSort(
 
     auto ss = stringptr.active();
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
-    measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
     std::vector<unsigned char> raw_splitters =
         Sampler::sample_splitters(ss, globalLcpAvg, samplingFactor);
@@ -636,7 +634,6 @@ computePartitionSequentialSort(
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
     auto ss = stringptr.active();
-    measuringTool.setPhase("splitter");
     measuringTool.start("sample_splitters");
     auto sampleIndices = Sampler::sample_splitters(
         stringptr.active(), 2 * globalLcpAvg, samplingFactor);
