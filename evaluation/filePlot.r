@@ -5,6 +5,11 @@ library(jsonlite)
 library(latex2exp)
 library(cowplot)
 library(gridExtra)
+library(xtable)
+library(ggpubr)
+
+
+source("legendSettings.r")
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -14,44 +19,90 @@ if (length(args) < 1) {
 }
 
 colTypeSpec = cols(numberProcessors = col_integer(),
-       iteration = col_integer(),
-       size = col_double(),
-       operation = col_character(),
-       type = col_character(),
-       value = col_double())
+                   iteration = col_integer(),
+                   size = col_double(),
+                   operation = col_character(),
+                   type = col_character(),
+                   value = col_double())
 
 
 
 pathToJSON = args[[1]]
 pdfTitle = args[[2]]
-jsonMetaObject <- read_json(pathToJSON, simplifyDataFrame=TRUE)
-jsonObject <- jsonMetaObject["data"][[1]]
-title <- jsonMetaObject["title"]
-isD2N <- TRUE == (jsonMetaObject["isDToN"])
-print(str(jsonObject))
-length <- length(jsonObject)
-data <- vector("list", length)
-filters <- vector("list", length)
-print(paste("number datasets: ", length))
-for (i in c(1:length)){
-  print(i)
-  curPath = jsonObject[[i]]$path
-  filename = paste(curPath, "/data.txt", sep="")
-  data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
-  data[[i]] <- filter(data[[i]], iteration != 0)
-  filters[[i]] <- jsonObject[[i]]$filter
-  print(filters[[i]])
-}
-numberExpandedDatasets <- function() {
-  counter <- 0
-  for (i in c(1:length(datasets))) {
-    numberFilters <- nrow(filters[[i]][[1]])
-    counter <- counter + numberFilters
+plots <- read_json(pathToJSON, simplifyDataFrame=TRUE)
+
+numberPlots <- length(plots)
+print(str(plots))
+plots.data <- vector("list", numberPlots)
+plots.filters <- vector("list", numberPlots)
+plots.title <- vector("list", numberPlots)
+
+for (k in c(1:numberPlots)) {
+  jsonMetaObject <- plots[[k]]
+  print(str(jsonMetaObject))
+  jsonObject <- jsonMetaObject["data"][[1]]
+  plots.title[[k]] <- jsonMetaObject["title"]
+  print(str(jsonObject))
+  length <- length(jsonObject)
+  data <- vector("list", length)
+  filters <- vector("list", length)
+  print(paste("number datasets: ", length))
+  for (i in c(1:length)){
+    print(i)
+    curPath = jsonObject[[i]]$path
+    filename = paste(curPath, "/data.txt", sep="")
+    data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+    data[[i]] <- filter(data[[i]], iteration != 0)
+    filters[[i]] <- jsonObject[[i]]$filter
+    print(filters[[i]])
   }
-  return(counter)
+  #jsonMetaObject <- plots["CommonCrawlUnique"][[1]]
+  print(str(jsonMetaObject))
+  jsonObject <- jsonMetaObject["data"][[1]]
+  title <- jsonMetaObject["title"]
+  isD2N <- TRUE == (jsonMetaObject["isDToN"])
+  print(str(jsonObject))
+  length <- length(jsonObject)
+  data <- vector("list", length)
+  filters <- vector("list", length)
+  print(paste("number datasets: ", length))
+  for (i in c(1:length)){
+    print(i)
+    curPath = jsonObject[[i]]$path
+    filename = paste(curPath, "/data.txt", sep="")
+    print(filename)
+    data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+    data[[i]] <- filter(data[[i]], iteration != 0)
+    filters[[i]] <- jsonObject[[i]]$filter
+    print(filters[[i]])
+  }
+  plots.data[[k]] <- data
+  plots.filters[[k]] <- filters
 }
 
-lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
+
+
+#jsonMetaObject <- plots["CommonCrawlUnique"][[1]]
+#print(str(jsonMetaObject))
+#jsonObject <- jsonMetaObject["data"][[1]]
+#title <- jsonMetaObject["title"]
+#isD2N <- TRUE == (jsonMetaObject["isDToN"])
+#print(str(jsonObject))
+#length <- length(jsonObject)
+#data <- vector("list", length)
+#filters <- vector("list", length)
+#print(paste("number datasets: ", length))
+#for (i in c(1:length)){
+#  print(i)
+#  curPath = jsonObject[[i]]$path
+#  filename = paste(curPath, "/data.txt", sep="")
+#  data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+#  data[[i]] <- filter(data[[i]], iteration != 0)
+#  filters[[i]] <- jsonObject[[i]]$filter
+#  print(filters[[i]])
+#}
+
+lineplot <- function(data, filters, datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
   print(paste("length data set: ", length(datasets)))
   counter <- 0
@@ -94,12 +145,16 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work 
     set$value <- set$value / 10^9
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
     valueMean <- summarise(groupByIterations, sd = sd(value), value = mean(value, rm.na = TRUE))
+    print(xtable(valueMean, type = "latex"), file = "filename2.tex")
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
   plot <- plot + ylab("time [sec]")
   plot <- plot + xlab("PEs")
   plot <- plot + theme_light()
   plot <- plot + geom_point(position=position_dodge(width=0.1))
   plot <- plot + geom_line(position=position_dodge(width=0.1))
+
+  #plot <- plot + theme(legend.direction = "horizontal")
+plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
   #plot <- plot + geom_errorbar(aes(ymin=value-sd, ymax=value+sd), width=.2,
   #                 position=position_dodge(.1))
 
@@ -110,15 +165,11 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work 
   plot <- plot + theme(strip.text = element_text(colour = 'black'))
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   #plot <- plot + theme(legend.position = "none")
-  if (isD2N) {
-  plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
-  } 
   plot <- plot + ggtitle(title)
   return (plot)
 
 }
-
-stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime", title = " ", work = FALSE) {
+stackedBarPlot <- function(data, filters, datasets, dToNRatio_, operations_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
   print(paste("length data set: ", length(datasets)))
   counter <- 0
@@ -138,6 +189,7 @@ stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime",
       df = filters[[i]][[1]]
       names <- colnames(df)
       #print(data[[i]])
+      isD2N <- FALSE
       if (isD2N) {
         localSets[[counter]] <- filter(data[[i]], operation %in% operations_, type == type_, dToNRatio == dToNRatio_)
       } else {
@@ -161,6 +213,7 @@ stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime",
     }
     counter <- counter + 1
     }
+    print(set)
     set$numberProcessors <- as.factor(set$numberProcessors)
     set$value <- set$value / 10^9
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
@@ -183,6 +236,7 @@ stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime",
   return (plot)
 
 }
+
 get_legend<-function(myggplot){
   tmp <- ggplot_gtable(ggplot_build(myggplot))
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
@@ -190,26 +244,45 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("evaluation/", pdfTitle, ".pdf",sep=""), width=10, height=5)
+pdf(paste("./plots/", pdfTitle, ".pdf",sep=""), width=10, height=15)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
-l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
-s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
-l
-l <- l + theme(legend.direction = "horizontal")
-l <- l + theme(legend.box.background = element_rect(colour = "black"))
-l <- l + theme(legend.title = element_blank()) 
+bar <- stackedBarPlot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), dToNRatio_ = 0.5, operations_ = operations,  "maxTime", plots.title[[4]])
+bar
+plot.1 <- lineplot(plots.data[[1]], plots.filters[[1]],  c(1:length(plots.data[[1]])), "sorting_overall", "maxTime", plots.title[[1]])
+plot.2 <- lineplot(plots.data[[2]], plots.filters[[2]],  c(1:length(plots.data[[2]])), "sorting_overall", "maxTime", plots.title[[2]])
+plot.3 <- lineplot(plots.data[[3]], plots.filters[[3]],  c(1:length(plots.data[[3]])), "sorting_overall", "maxTime", plots.title[[3]])
+plot.4 <- lineplot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), "sorting_overall", "maxTime", plots.title[[4]])
+#plot.5 <- lineplot(plots.data[[5]], plots.filters[[5]],  c(1:length(plots.data[[5]])), "sorting_overall", "maxTime", plots.title[[5]])
+#plot.6 <- lineplot(plots.data[[6]], plots.filters[[6]],  c(1:length(plots.data[[6]])), "sorting_overall", "maxTime", plots.title[[6]])
 
-s
-legend <- get_legend(l)
-s <- s + theme(legend.position = "none")
-l <- l + theme(legend.position = "none")
-#plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
+plot.1 <- addSettings(plot.1)
+#plot.1
+plot.2 <- addSettings(plot.2)
+#plot.2
+plot.3 <- addSettings(plot.3)
+#plot.3
+plot.4 <- addSettings(plot.4)
+#plot.4
+#plot.5 <- addSettings(plot.5)
+#plot.5
+#plot.6 <- addSettings(plot.6)
+#plot.6
+
+plot.3 <- plot.3 + guides(shape = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+plot.3 <- plot.3 + guides(colour = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+plot.3 <- plot.3 + guides(linetype = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+legend <- getLegend(plot.3)
+plot.1 <- plot.1 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
+plot.2 <- plot.2 + theme(legend.position = "none", axis.title.x = element_blank()) + expand_limits(y=0)
+plot.3 <- plot.3 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
+plot.4 <- plot.4 + theme(legend.position = "none") + expand_limits(y=0)
+#plot.5 <- plot.5 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
+#plot.6 <- plot.6 + theme(legend.position = "none") + expand_limits(y=0)
+top <- plot_grid(plot.1, plot.2, ncol = 2)
+middle <- plot_grid(plot.3, plot.4, ncol=2)
+#bottom <- plot_grid(plot.5, plot.6, ncol=2)
+legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
+plot_grid(top, middle,   legend, nrow = 3, rel_heights = c(1, 1, 0.2))
+#ggarrange(plot.1, plot.2, ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
 #grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
 #widths = c(2.7, 2.7), heights = c(2.2, 0.4))
-if (isD2N) {
-  for (d in unique(data[[i]]$dToNRatio)) {
-    print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
-  }
-} 
-
-

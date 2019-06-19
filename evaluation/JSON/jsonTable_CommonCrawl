@@ -1,0 +1,24 @@
+{
+    "isDToN":"FALSE",
+      "title":"CommonCrawl",
+      "data":[
+        [{
+          "path":"File_commonCrawl200/ms",
+          "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_commonCrawl200/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_commonCrawl200/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
+  }

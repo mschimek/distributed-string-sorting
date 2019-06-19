@@ -354,7 +354,7 @@ barPlotWhitelist <- function(data_, operations_, type_, title = " ", work = FALS
   plot <- ggplot(data = valueMean)
   plot <- plot + geom_bar(mapping = aes(x = numberProcessors, y = value, fill = operation), stat="identity")
   if (isD2N) {
-  plot <- plot + facet_wrap(dToNRatio ~ ByteEncoder, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(dToNRatio ~ samplePolicy, labeller = label_both, nrow=1)
   } else {
   plot <- plot + facet_wrap(samplePolicy ~ ByteEncoder, labeller = label_both, nrow=1)
   }
@@ -392,7 +392,7 @@ pdf(paste(pureDirName, "_plots_prefixCompression.pdf",sep=""), width=10, height=
 
 samplePolicyFilter="NumStrings"
 allDataSave <- allData
-allData <- filter(allData, samplePolicy=="IndexedNumStrings")
+allData <- filter(allData, ByteEncoder=="EmptyByteEncoderMemCpy")
 communicationVolume(allData, "communication volume ")
 if(!isD2N)
 allData <- allDataSave

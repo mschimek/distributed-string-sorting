@@ -1,0 +1,24 @@
+{
+  "isDToN":"FALSE",
+    "title":"Suffix 100GB",
+    "data":[
+      [{
+        "path":"Suffix_suffix100GB/ms",
+        "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"MS_LCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+       ]
+      }],
+    [{
+      "path":"Suffix_suffix100GB/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+    }],
+    [{
+      "path":"Suffix_suffix100GB/hquick",
+      "filter":[{"name":"hQuick"}
+      ]
+    }]
+    ]
+}

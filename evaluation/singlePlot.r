@@ -5,6 +5,8 @@ library(jsonlite)
 library(latex2exp)
 library(cowplot)
 library(gridExtra)
+library(xtable)
+source("legendSettings.r")
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -23,7 +25,7 @@ colTypeSpec = cols(numberProcessors = col_integer(),
 
 
 pathToJSON = args[[1]]
-pdfTitle = args[[2]]
+pdfname = args[[2]]
 jsonMetaObject <- read_json(pathToJSON, simplifyDataFrame=TRUE)
 jsonObject <- jsonMetaObject["data"][[1]]
 title <- jsonMetaObject["title"]
@@ -94,12 +96,17 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work 
     set$value <- set$value / 10^9
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
     valueMean <- summarise(groupByIterations, sd = sd(value), value = mean(value, rm.na = TRUE))
+    
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
   plot <- plot + ylab("time [sec]")
   plot <- plot + xlab("PEs")
   plot <- plot + theme_light()
   plot <- plot + geom_point(position=position_dodge(width=0.1))
   plot <- plot + geom_line(position=position_dodge(width=0.1))
+
+  #plot <- plot + theme(legend.direction = "horizontal")
+plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
+plot <- plot + theme(legend.position = "bottom")
   #plot <- plot + geom_errorbar(aes(ymin=value-sd, ymax=value+sd), width=.2,
   #                 position=position_dodge(.1))
 
@@ -190,15 +197,16 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("evaluation/", pdfTitle, ".pdf",sep=""), width=10, height=5)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=5)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
-l
+l <- addSettings(l)
 l <- l + theme(legend.direction = "horizontal")
 l <- l + theme(legend.box.background = element_rect(colour = "black"))
 l <- l + theme(legend.title = element_blank()) 
 
+l
 s
 legend <- get_legend(l)
 s <- s + theme(legend.position = "none")

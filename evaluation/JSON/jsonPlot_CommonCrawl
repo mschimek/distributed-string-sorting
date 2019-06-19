@@ -1,0 +1,88 @@
+{
+  "CommonCrawl":{
+    "isDToN":"FALSE",
+      "title":"CommonCrawl",
+      "data":[
+        [{
+          "path":"File_commonCrawl200/ms",
+          "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_LCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_commonCrawl200/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_commonCrawl200/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
+  },
+  "CommonCrawl":{
+    "isDToN":"FALSE",
+      "title":"CommonCrawl",
+      "data":[
+        [{
+          "path":"File_commonCrawl200/ms",
+          "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_LCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_commonCrawl200/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }]
+      ]
+  }, 
+    "CommonCrawlReduced":{
+      "isDToN":"FALSE",
+      "title":"CommonCrawlReduced",
+      "data":[
+        [{
+          "path":"File_commonCrawlReduced/ms",
+          "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+          ]
+        }],
+      [{
+        "path":"File_commonCrawlReduced/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_commonCrawlReduced/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
+    },
+    "CommonCrawlReduced":{
+      "isDToN":"FALSE",
+      "title":"CommonCrawlReduced",
+      "data":[
+        [{
+          "path":"File_commonCrawlReduced/ms",
+          "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_LCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+          ]
+        }],
+      [{
+        "path":"File_commonCrawlReduced/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }]
+      ]
+    }
+}
