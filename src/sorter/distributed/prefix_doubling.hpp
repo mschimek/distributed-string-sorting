@@ -61,7 +61,7 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
     std::vector<size_t> candidates_tracker;
     const size_t startDepth = 4u;
 
-    BloomFilter<StringSet, FindDuplicates,
+    BloomFilter<StringSet, FindDuplicates<AllToAllHashesNaive>,
         SendOnlyHashesToFilter<AllToAllHashesNaive>, SipHasher>
         bloomFilter(ss.size(), startDepth);
     ExcatDistinguishingPrefix<StringSet> exactDistinguishingPrefixAlgo;
@@ -167,7 +167,7 @@ std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr) {
     measuringTool.disable();
     measuringTool.start(std::string("bloomfilter_init"));
     StringSet ss = local_string_ptr.active();
-    BloomFilter<StringSet, FindDuplicates, SendOnlyHashesToFilter<GolombPolicy>,
+    BloomFilter<StringSet, FindDuplicates<GolombPolicy>, SendOnlyHashesToFilter<GolombPolicy>,
         Hasher>
         bloomFilter(ss.size(), startDepth);
     std::vector<size_t> results(ss.size(), 0);

@@ -139,22 +139,23 @@ struct HashPEIndex {
 };
 
 struct AllToAllHashesNaive {
+
+    template <typename DataType>
+    static inline std::vector<DataType> alltoallv(
+        std::vector<DataType>& sendData,
+        const std::vector<size_t>& intervalSizes, 
+        const std::vector<size_t>&) {
+        return alltoallv(sendData, intervalSizes);
+    }
+
     template <typename DataType>
     static inline std::vector<DataType> alltoallv(
         std::vector<DataType>& sendData,
         const std::vector<size_t>& intervalSizes) {
         using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
             dss_schimek::mpi::AllToAllvSmall>;
-        using namespace dss_schimek::measurement;
-        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
 
-        measuringTool.start("bloomfilter_sendEncodedValues");
         auto result = AllToAllv::alltoallv(sendData.data(), intervalSizes);
-        measuringTool.stop("bloomfilter_sendEncodedValues");
-        measuringTool.add(std::accumulate(intervalSizes.begin(),
-                              intervalSizes.end(), static_cast<uint64_t>(0)) *
-                              sizeof(DataType),
-            "bloomfilter_sentEncodedValues", false);
         return result;
     }
     static std::string getName() { return "noGolombEncoding"; }
@@ -226,7 +227,8 @@ struct AllToAllHashesGolomb {
         decodedValues.reserve(recvEncodedValues.size());
         auto curDecodeIt = recvEncodedValues.begin();
 
-        for (size_t i = 0; i < env.size() && curDecodeIt != recvEncodedValues.end(); ++i) {
+        for (size_t i = 0;
+             i < env.size() && curDecodeIt != recvEncodedValues.end(); ++i) {
             const size_t encodedIntervalSizes = *(curDecodeIt++);
             const auto end = curDecodeIt + encodedIntervalSizes;
             const size_t bFromBook = *(curDecodeIt++);
@@ -235,6 +237,67 @@ struct AllToAllHashesGolomb {
             curDecodeIt = end;
         }
         measuringTool.stop("bloomfilter_golombDecoding");
+        return decodedValues;
+    }
+
+    template <typename DataType>
+    static inline std::vector<DataType> alltoallv(
+        std::vector<DataType>& sendData,
+        const std::vector<size_t>& intervalSizes,
+        const std::vector<size_t>& intervalRange) {
+        using AllToAllv = dss_schimek::mpi::AllToAllvCombined<
+            dss_schimek::mpi::AllToAllvSmall>;
+        using namespace dss_schimek::measurement;
+        MeasuringTool& measuringTool = MeasuringTool::measuringTool();
+        dss_schimek::mpi::environment env;
+        std::vector<size_t> encodedValuesSizes;
+        std::vector<size_t> encodedValues;
+        encodedValues.reserve(sendData.size() + 2 + env.size());
+
+        auto begin = sendData.begin();
+
+        if (intervalSizes.size() != env.size()) {
+            std::cout << "not same size" << std::endl;
+            std::abort();
+        }
+        for (size_t j = 0; j < intervalSizes.size(); ++j) {
+            const auto intervalSize = intervalSizes[j];
+            if (intervalSize == 0) {
+                encodedValuesSizes.push_back(0);
+                continue;
+            }
+            const auto end = begin + intervalSize;
+            const auto encodedValuesSize = encodedValues.size();
+            const size_t bFromBook = getB(intervalRange[j], intervalSize);
+            encodedValues.push_back(0); // dummy value
+            auto refToSize = encodedValues.size() - 1;
+            encodedValues.push_back(bFromBook);
+
+            getDeltaEncoding(
+                begin, end, std::back_inserter(encodedValues), bFromBook);
+            const size_t sizeEncodedValues =
+                encodedValues.size() - encodedValuesSize;
+            encodedValues[refToSize] = sizeEncodedValues - 1;
+            encodedValuesSizes.push_back(sizeEncodedValues);
+            begin = end;
+        }
+
+        std::vector<size_t> recvEncodedValues =
+            AllToAllv::alltoallv(encodedValues.data(), encodedValuesSizes);
+        std::vector<size_t> decodedValues;
+
+        decodedValues.reserve(recvEncodedValues.size());
+        auto curDecodeIt = recvEncodedValues.begin();
+
+        for (size_t i = 0;
+             i < env.size() && curDecodeIt != recvEncodedValues.end(); ++i) {
+            const size_t encodedIntervalSizes = *(curDecodeIt++);
+            const auto end = curDecodeIt + encodedIntervalSizes;
+            const size_t bFromBook = *(curDecodeIt++);
+            getDeltaDecoding(
+                curDecodeIt, end, std::back_inserter(decodedValues), bFromBook);
+            curDecodeIt = end;
+        }
         return decodedValues;
     }
     static std::string getName() { return "sequentialGolombEncoding"; }
@@ -583,6 +646,7 @@ struct SendOnlyHashesToFilter : private SendPolicy {
     }
 };
 
+template<typename GolombPolicy>
 struct FindDuplicates {
     using DataType = HashPEIndex;
 
@@ -676,9 +740,13 @@ struct FindDuplicates {
         if (totalNumSendDuplicates > 0) mpiSmallTypes = 1;
         bool dupsToSend = (0 != dss_schimek::mpi::allreduce_max(mpiSmallTypes));
         std::vector<size_t> duplicates;
-        if (dupsToSend)
-            duplicates = dss_schimek::mpi::AllToAllvSmall::alltoallv(
-                sendBuffer.data(), sendCounts_);
+        // if (dupsToSend)
+        //    duplicates = dss_schimek::mpi::AllToAllvSmall::alltoallv(
+        //        sendBuffer.data(), sendCounts_);
+        if (dupsToSend) {
+            duplicates = GolombPolicy::alltoallv(
+                sendBuffer, sendCounts_, recvData.intervalSizes);
+        }
         measuringTool.stop("bloomfilter_findDuplicatesSendDups");
         measuringTool.stop("bloomfilter_findDuplicatesOverallIntern");
 
