@@ -49,8 +49,8 @@ namespace dss_schimek {
         return;
 
       const PointInTime endPoint = Clock::now();
-      if (!disableBarrier)
-      env.barrier();
+      //if (!disableBarrier)
+      //env.barrier();
       const PointInTime endPointAfterBarrier = Clock::now();
       //measurement stopped
 

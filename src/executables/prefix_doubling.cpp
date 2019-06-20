@@ -60,11 +60,11 @@ void execute_sorter(size_t numOfStrings, const bool check,
     //    rand_container.make_string_set().print();
     //    });
     const size_t numGeneratedChars = generatedContainer.char_size();
-    env.barrier();
     if (env.rank() == 0)
         std::cout << "string generation completed " << std::endl;
     const size_t numGeneratedStrings = generatedContainer.size();
 
+    env.barrier();
     measuringTool.start("sorting_overall");
     using AllToAllPolicy =
         dss_schimek::mpi::AllToAllStringImplPrefixDoubling<compressLcps,
