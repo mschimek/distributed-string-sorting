@@ -154,13 +154,12 @@ std::vector<size_t> computeResultsWithChecks(StringPtr local_string_ptr) {
 }
 
 template <typename StringPtr, typename GolombPolicy>
-std::vector<size_t> computeDistinguishingPrefixes(
-    StringPtr local_string_ptr, size_t startDepth) {
+std::vector<size_t> computeDistinguishingPrefixes(StringPtr local_string_ptr) {
     using StringSet = typename StringPtr::StringSet;
     using namespace dss_schimek::measurement;
     using Hasher = XXHasher;
 
-    startDepth = 8;
+    const uint64_t startDepth = 8;
 
     dss_schimek::mpi::environment env;
     MeasuringTool& measuringTool = MeasuringTool::measuringTool();
@@ -212,11 +211,11 @@ public:
         using dss_schimek::measurement::MeasuringTool;
 
         using StringSet = typename StringPtr::StringSet;
-        //using Char = typename StringSet::Char;
+        // using Char = typename StringSet::Char;
 
         MeasuringTool& measuringTool = MeasuringTool::measuringTool();
         const StringSet& ss = local_string_ptr.active();
-        const size_t lcpSummand = 5u;
+        measuringTool.setPhase("local_sorting");
 
         size_t charactersInSet = 0;
         for (const auto& str : ss) {
@@ -229,9 +228,9 @@ public:
         tlx::sort_strings_detail::radixsort_CI3(local_string_ptr, 0, 0);
         measuringTool.stop("sort_locally");
 
-        measuringTool.start("avg_lcp");
-        const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
-        measuringTool.stop("avg_lcp");
+        // measuringTool.start("avg_lcp");
+        // const size_t globalLcpAvg = getAvgLcp(local_string_ptr) + lcpSummand;
+        // measuringTool.stop("avg_lcp");
 
         // There is only one PE, hence there is no need for distributed sorting
         if (env.size() == 1) return std::vector<StringIndexPEIndex>();
@@ -241,13 +240,14 @@ public:
         // measuringTool.disableMeasurement();
         std::vector<size_t> results =
             computeDistinguishingPrefixes<StringPtr, GolombEncoding>(
-                local_string_ptr, globalLcpAvg);
+                local_string_ptr);
         // measuringTool.enableMeasurement();
         measuringTool.stop("bloomfilter_overall");
+        measuringTool.setPhase("bucket_computation");
 
         auto interval_sizes =
             computePartition<SampleSplittersPolicy, StringPtr>(
-                local_string_ptr, globalLcpAvg * 100, 2);
+                local_string_ptr, 2, results);
 
         measuringTool.setPhase("string_exchange");
         measuringTool.start("all_to_all_strings");
