@@ -1,0 +1,31 @@
+{
+  "isDToN":"TRUE",
+  "title":"DToNGeneratorSkewed(200.000.000, 500)",
+  "data":
+[
+[{
+"path":"DToNSkewed/pd",
+"filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+          {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings" }
+         ]
+}],
+[{
+"path":"DToNSkewed/ms",
+"filter":[{"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
+          {"name":"MS_LCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars" },
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars" }
+         ]
+}],
+[{
+"path":"DToNSkewed/kurpicz",
+"filter":[{"name":"kurpicz"}
+         ]
+}],
+[{
+"path":"DToNSkewed/hquick",
+"filter":[{"name":"hQuick"}
+         ]
+}]
+]}
+

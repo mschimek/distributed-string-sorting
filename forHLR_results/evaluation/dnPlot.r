@@ -348,7 +348,7 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=5)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=9)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
@@ -360,21 +360,24 @@ l <- addSettings(l)
 l <- l + theme(legend.direction = "horizontal")
 l <- l + theme(legend.box.background = element_rect(colour = "black"))
 l <- l + theme(legend.title = element_blank()) 
-
 l
-memLine
-m
 legend <- get_legend(l)
-s <- s + theme(legend.position = "none")
 l <- l + theme(legend.position = "none")
+memLine <- memLine + theme(legend.position = "none")
+memLine <- memLine + ggtitle("")
+
+top <- plot_grid(l,ncol = 1)
+middle <- plot_grid(memLine, ncol=1)
+legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
+plot_grid(top, middle,   legend, nrow = 3, rel_heights = c(1, 1, 0.2))
 #plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
 #grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
 #widths = c(2.7, 2.7), heights = c(2.2, 0.4))
-if (isD2N) {
-  for (d in unique(data[[i]]$dToNRatio)) {
-    print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
-    print(stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = d, "number", paste("Communication Volume: ", title, " with D/N-ratio: ", d)))
-  }
-} 
+#if (isD2N) {
+#  for (d in unique(data[[i]]$dToNRatio)) {
+#    print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
+#    print(stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = d, "number", paste("Communication Volume: ", title, " with D/N-ratio: ", d)))
+#  }
+#} 
 
 

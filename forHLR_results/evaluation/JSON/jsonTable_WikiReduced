@@ -1,0 +1,24 @@
+{
+  "isDToN":"FALSE",
+    "title":"WikiReduced",
+    "data":[
+      [{
+        "path":"File_wikiReduced/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+        ]
+      }],
+      [{
+        "path":"File_wikiReduced/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_wikiReduced/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+    ]
+
+}
