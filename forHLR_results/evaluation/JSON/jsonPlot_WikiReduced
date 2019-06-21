@@ -1,9 +1,9 @@
 {
     "isDToN":"FALSE",
-      "title":"Wiki",
+      "title":"WikipediaReduced",
       "data":[
         [{
-          "path":"File_Wiki/ms",
+          "path":"File_WikiReduced/ms",
         "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
@@ -12,12 +12,12 @@
           ]
         }],
       [{
-        "path":"File_Wiki/pd",
+        "path":"File_WikiReduced/pd",
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
       [{
-        "path":"File_Wiki/hquick",
+        "path":"File_WikiReduced/hquick",
         "filter":[{"name":"hQuick"}]
       }]
     ]

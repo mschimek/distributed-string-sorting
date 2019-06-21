@@ -31,19 +31,20 @@ jsonMetaObject <- read_json(pathToJSON, simplifyDataFrame=TRUE)
 jsonObject <- jsonMetaObject["data"][[1]]
 title <- jsonMetaObject["title"]
 isD2N <- TRUE == (jsonMetaObject["isDToN"])
-print(str(jsonObject))
+#print(str(jsonObject))
 length <- length(jsonObject)
 data <- vector("list", length)
 filters <- vector("list", length)
-print(paste("number datasets: ", length))
+#print(paste("number datasets: ", length))
 for (i in c(1:length)){
-  print(i)
+  #print(i)
   curPath = jsonObject[[i]]$path
   filename = paste(curPath, "/data.txt", sep="")
   data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
   data[[i]] <- filter(data[[i]], iteration != 0)
   filters[[i]] <- jsonObject[[i]]$filter
-  print(filters[[i]])
+  
+  #print(filters[[i]])
 }
 numberExpandedDatasets <- function() {
   counter <- 0
@@ -56,19 +57,19 @@ numberExpandedDatasets <- function() {
 
 lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
+  #print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
+  #print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
+    #print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
@@ -128,25 +129,33 @@ plot <- plot + theme(legend.position = "bottom")
 
 lineplotMemory <- function(datasets, type_ = "number", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
+  #print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
+  
+  #print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
+    isStrongScaling = FALSE
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
+    #print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
       names <- colnames(df)
       #print(data[[i]])
       localSets[[counter]] <- filter(data[[i]], type == type_, rawCommunication == 1, phase != "none")
+      if (nrow(localSets[[counter]]) > 0 ) {
+        print(localSets[[counter]]$strongScaling[1])
+        if(localSets[[counter]]$strongScaling[1] == 1)
+          isStrongScaling <- TRUE
+        print(isStrongScaling)
+      }
       #print(localSets[[counter]])
       if (length(names) > 1) {
         for (j in c(2:length(names))){
@@ -165,7 +174,13 @@ lineplotMemory <- function(datasets, type_ = "number", title = " ", work = FALSE
     }
     counter <- counter + 1
     }
-    set$value <- set$value / (set$size * set$numberProcessors) 
+    divisor <- set$size[1]
+    if (!isStrongScaling)
+      divisor <- divisor * set$numberProcessors
+    if (!isD2N)
+      divisor <- as.double(args[[3]])
+    print(isStrongScaling)
+    set$value <- set$value / divisor
     set$numberProcessors <- as.factor(set$numberProcessors)
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  name, phase)
     valueMean <- summarise(groupByIterations,  value = mean(value, rm.na = TRUE))
@@ -204,19 +219,19 @@ plot <- plot + theme(legend.position = "bottom")
 
 stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
+  #print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
+  #print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
+    #print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
@@ -269,19 +284,19 @@ stackedBarPlot <- function(datasets, dToNRatio_, operations_, type_ = "maxTime",
 }
 stackedBarPlotMemory <- function(datasets, dToNRatio_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
+  #print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
+  #print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
+    #print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
@@ -312,16 +327,16 @@ stackedBarPlotMemory <- function(datasets, dToNRatio_, type_ = "maxTime", title 
     }
     set$numberProcessors <- as.factor(set$numberProcessors)
     set$value <- set$value / 10^9
-    print(set)
+    #print(set)
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  name, phase)
     valueMean <- summarise(groupByIterations , value = mean(value))
     valueMean <- ungroup(valueMean)
     valueMean <- select(valueMean, numberProcessors, dToNRatio, name, value, phase)
     valueMean <- ungroup(valueMean)
-    print(valueMean, n = 100 )
+    #print(valueMean, n = 100 )
     valueMean <- group_by(valueMean, dToNRatio, numberProcessors,  name)
     valueMean <- summarise(valueMean , value = sum(value))
-    print(valueMean, n = 100 )
+    #print(valueMean, n = 100 )
 
   plot <- ggplot(data = valueMean, mapping = aes(x = name, y = value, fill=name))
   plot <- plot + ylab("sent bytes per string [GB]")
@@ -353,7 +368,7 @@ operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
 m <- stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = 1.0,  "number", title)
-print("memline")
+#print("memline")
 memLine <- lineplotMemory(c(1:length(data)),  "number", title)
 memLine <- addSettings(memLine)
 l <- addSettings(l)
@@ -370,6 +385,8 @@ top <- plot_grid(l,ncol = 1)
 middle <- plot_grid(memLine, ncol=1)
 legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
 plot_grid(top, middle,   legend, nrow = 3, rel_heights = c(1, 1, 0.2))
+
+s
 #plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
 #grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
 #widths = c(2.7, 2.7), heights = c(2.2, 0.4))

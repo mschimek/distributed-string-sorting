@@ -1,9 +1,9 @@
 {
     "isDToN":"FALSE",
-      "title":"CommonCrawl",
+      "title":"CommonCrawlReduced",
       "data":[
         [{
-          "path":"File_CommonCrawl/ms",
+          "path":"File_CommonCrawlReduced/ms",
           "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
           {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
           {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
@@ -12,12 +12,12 @@
           ]
         }],
       [{
-        "path":"File_CommonCrawl/pd",
+        "path":"File_CommonCrawlReduced/pd",
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
       [{
-        "path":"File_CommonCrawl/hquick",
+        "path":"File_CommonCrawlReduced/hquick",
         "filter":[{"name":"hQuick"}]
       }]
       ]
