@@ -118,7 +118,7 @@ static inline std::vector<DataType> allgatherv_small(
         receiving_sizes.back() + receiving_offsets.back());
 
     measuringTool.addRawCommunication(
-        send_data.size() * sizeof(DataType), "allgatherv_small");
+        send_data.size() * sizeof(DataType) * env.size(), "allgatherv_small");
 
     data_type_mapper<DataType> dtm;
     MPI_Allgatherv(send_data.data(), local_size, dtm.get_mpi_type(),
@@ -151,7 +151,7 @@ static inline std::vector<DataType> allgatherv(
     else {
 
         measuringTool.addRawCommunication(
-            send_data.size() * sizeof(DataType), "allgatherv_small");
+            send_data.size() * sizeof(DataType) * env.size(), "allgatherv_small");
 
         std::vector<MPI_Request> mpi_requests(2 * env.size());
         std::vector<DataType> receiving_data(

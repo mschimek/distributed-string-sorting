@@ -336,6 +336,7 @@ void sort(SorterArgs sorterArgs) {
         rawStrings = generatedContainer.raw_strings();
     }
 
+    measuringTool.setPhase("sorting");
     measuringTool.start("sorting_overall");
 
     /* Setup */
@@ -355,6 +356,7 @@ void sort(SorterArgs sorterArgs) {
         tag, commInput, SortingComparator(), isRobust);
 
     measuringTool.stop("sorting_overall");
+    measuringTool.setPhase("none");
     if (sorterArgs.check) {
         if (sortedContainer.size() > 0) {
             auto prevString = sortedContainer.strings()[0];
