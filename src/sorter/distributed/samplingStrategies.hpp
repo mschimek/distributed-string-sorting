@@ -249,16 +249,19 @@ public:
 
         SampleIndices sampleIndices;
         uint64_t localOffset = getLocalOffset(ss.size());
-        const size_t num_chars =
-            std::accumulate(ss.begin(), ss.end(), static_cast<size_t>(0u),
-                [&ss](const size_t& sum, const String& str) {
-                    return sum + ss.get_length(str);
-                });
+        //const size_t num_chars =
+        //    std::accumulate(ss.begin(), ss.end(), static_cast<size_t>(0u),
+        //        [&ss](const size_t& sum, const String& str) {
+        //            return sum + ss.get_length(str);
+        //        });
+           const size_t num_distPref =
+            std::accumulate(dist.begin(), dist.end(), static_cast<size_t>(0u));
+     
 
         const size_t local_num_strings = ss.size();
         const size_t nr_splitters =
             getNumberSplitter(env.size(), local_num_strings, samplingFactor);
-        const size_t splitter_dist = num_chars / (nr_splitters + 1);
+        const size_t splitter_dist = num_distPref / (nr_splitters + 1);
 
         std::vector<Char>& raw_splitters = sampleIndices.sample;
         //raw_splitters.reserve(nr_splitters * (maxLength + 1u));
@@ -272,7 +275,7 @@ public:
             size_t num_chars_seen = 0;
             while (num_chars_seen < splitter_dist &&
                    string_index < local_num_strings) {
-                num_chars_seen += ss.get_length(ss[ss.begin() + string_index]);
+                num_chars_seen += dist[string_index];
                 ++string_index;
             }
             splitterIndices[i - 1] += string_index - 1;
