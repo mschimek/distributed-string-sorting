@@ -456,7 +456,7 @@ class SkewedDNRatioGenerator : public StringLcpContainer<StringSet> {
         size_t numGenStrings = 0;
         size_t curOffset = 0;
         const size_t longStringMaxIndex = 0.2 * numStrings;
-        const size_t longStringLength = stringLength * 4;
+        const size_t longStringLength = stringLength * 3;
         for (size_t i = 0; i < numStrings; ++i) {
             size_t PEIndex = dist(randGen);
             if (PEIndex == env.rank()) {

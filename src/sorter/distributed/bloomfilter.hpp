@@ -191,8 +191,10 @@ struct AllToAllHashesGolomb {
             }
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
-            const size_t bFromBook =
+            size_t bFromBook =
                 getB(bloomFilterSize / env.size(), intervalSize);
+	    if (bFromBook == 1)
+		bFromBook = 20000000000;
             encodedValues.push_back(0); // dummy value
             auto refToSize = encodedValues.size() - 1;
             encodedValues.push_back(bFromBook);
@@ -262,13 +264,17 @@ struct AllToAllHashesGolomb {
         }
         for (size_t j = 0; j < intervalSizes.size(); ++j) {
             const auto intervalSize = intervalSizes[j];
+            const auto intervalMax = intervalRange[j];
             if (intervalSize == 0) {
                 encodedValuesSizes.push_back(0);
                 continue;
             }
             const auto end = begin + intervalSize;
             const auto encodedValuesSize = encodedValues.size();
-            const size_t bFromBook = getB(intervalRange[j], intervalSize);
+	    
+            size_t bFromBook = getB(intervalMax, intervalSize);
+	    if (bFromBook < 8)
+	        bFromBook = 8;
             encodedValues.push_back(0); // dummy value
             auto refToSize = encodedValues.size() - 1;
             encodedValues.push_back(bFromBook);
@@ -277,6 +283,7 @@ struct AllToAllHashesGolomb {
                 begin, end, std::back_inserter(encodedValues), bFromBook);
             const size_t sizeEncodedValues =
                 encodedValues.size() - encodedValuesSize;
+	    //std::cout << "rank: " << env.rank() << "intevalMax: " << intervalMax << " intervalSize: " << intervalSize << " b = " << bFromBook << " encodedValues.size() " << sizeEncodedValues << std::endl;
             encodedValues[refToSize] = sizeEncodedValues - 1;
             encodedValuesSizes.push_back(sizeEncodedValues);
             begin = end;
@@ -296,8 +303,10 @@ struct AllToAllHashesGolomb {
             const size_t bFromBook = *(curDecodeIt++);
             getDeltaDecoding(
                 curDecodeIt, end, std::back_inserter(decodedValues), bFromBook);
+	    //std::cout << "rank: " << env.rank() << " encodedIntervalSizes " << encodedIntervalSizes << " bFromBook " << bFromBook << std::endl;
             curDecodeIt = end;
         }
+	//std::cout << "rank: " << env.rank() << " finished " << "decodedValues: " << decodedValues.size() << std::endl;
         return decodedValues;
     }
     static std::string getName() { return "sequentialGolombEncoding"; }
@@ -746,6 +755,8 @@ struct FindDuplicates {
         if (dupsToSend) {
             duplicates = GolombPolicy::alltoallv(
                 sendBuffer, sendCounts_, recvData.intervalSizes);
+            //duplicates = dss_schimek::mpi::AllToAllvSmall::alltoallv(
+            //    sendBuffer.data(), sendCounts_);
         }
         measuringTool.stop("bloomfilter_findDuplicatesSendDups");
         measuringTool.stop("bloomfilter_findDuplicatesOverallIntern");
