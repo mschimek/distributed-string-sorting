@@ -7,7 +7,7 @@ do
 	reduced="${jobIdsFile##*/}"	
 	echo "reduced: $reduced"
 	echo "completePath: $completePath"
-	../move.sh $completePath $reduced >> writtenResults
+	../moveIntern.sh $completePath $reduced >> writtenResults
 done
 
 

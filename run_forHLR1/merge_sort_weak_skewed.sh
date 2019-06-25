@@ -5,7 +5,7 @@ module load mpi/impi/2018
 
 executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
 numOfStrings=500000
-numOfIterations=6
+numOfIterations=11
 generator=3
 stringLength=500
 MPIRoutine=2
@@ -13,12 +13,12 @@ sampler=2
 
 for dToNRatio in 0.0 0.25 0.5 0.75 1.0
 do
-	for byteEncoder in 1 5 
+	for byteEncoder in 1 5 6
 	do
 		for sampler in 2 3
 		do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
-                mpiexec.hydra -bootstrap slurm  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps --check
+                mpiexec.hydra -bootstrap slurm  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps
 		#mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps
 		done
 	done

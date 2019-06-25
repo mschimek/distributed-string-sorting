@@ -6,7 +6,7 @@ module load mpi/impi/2018
 path=DummyPath
 executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/prefix_doubling"
 numOfStrings=5000000
-numOfIterations=5
+numOfIterations=16
 byteEncoder=5
 generator=2
 MPIRoutine=2

@@ -22,15 +22,16 @@ touch jobIdsMultinodeFull.txt
 #sbatch --partition develop  --ntasks=2    --time=00:05:00 $1  >> jobIdsMultinodeFull.txt
 #sbatch --partition singlenode  --ntasks=4    --time=00:05:00 $1  >> jobIdsMultinodeFull.txt
 #sbatch --partition singlenode  --ntasks=8    --time=00:05:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition singlenode  --ntasks=20   --time=00:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=40   --time=04:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=80   --time=00:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=160  --time=00:25:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=320  --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=480  --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=640  --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
-#sbatch --partition multinode   --ntasks=960  --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
-sbatch --partition multinode   --ntasks=1280  --time=02:35:00 $1  >> jobIdsMultinodeFull.txt
+#sbatch --partition singlenode  --ntasks=20   --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
+#sbatch --partition multinode   --ntasks=40   --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
+#sbatch --partition multinode   --ntasks=80   --time=02:15:00 $1  >> jobIdsMultinodeFull.txt
+
+sbatch --partition multinode   --ntasks=160  --time=08:25:00 $1  >> jobIdsMultinodeFull.txt
+sbatch --partition multinode   --ntasks=320  --time=07:15:00 $1  >> jobIdsMultinodeFull.txt
+sbatch --partition multinode   --ntasks=480  --time=07:15:00 $1  >> jobIdsMultinodeFull.txt
+sbatch --partition multinode   --ntasks=640  --time=05:45:00 $1  >> jobIdsMultinodeFull.txt
+sbatch --partition multinode   --ntasks=960  --time=05:54:00 $1  >> jobIdsMultinodeFull.txt
+sbatch --partition multinode   --ntasks=1280  --time=04:45:00 $1  >> jobIdsMultinodeFull.txt
 #sbatch --partition multinode   --ntasks=2560  --time=02:35:00 $1  >> jobIdsMultinodeFull.txt
 #
 

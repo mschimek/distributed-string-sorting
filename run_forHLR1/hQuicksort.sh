@@ -7,7 +7,7 @@ module load mpi/impi/2018
 executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/hQuicksort"
 size=200000000
 stringLength=500
-numberOfIterations=6
+numberOfIterations=16
 samplingFactor=2
 dToNRatio=0.5
 generator=1

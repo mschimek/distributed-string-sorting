@@ -5,7 +5,7 @@ module load mpi/impi/2018
 
 executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/prefix_doubling"
 numOfStrings=200000000
-numOfIterations=6
+numOfIterations=16
 sampler=2
 byteEncoder=5
 MPIRoutine=2

@@ -3,26 +3,25 @@
 module load mpi/impi/2018
 #export I_MPI_HYDRA_BRANCH_COUNT=-1
 
-executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/distributed_sorter"
-numOfStrings=500000
-numOfIterations=16
-generator=1
-stringLength=500
+path=/work/fh1-project-kalb/gw1960/data/numOfStrings=5000000
+executable="/home/fh1-project-kalb/gw1960/distributed-string-sorting/build/src/executables/prefix_doubling"
+numOfStrings=5000000
+numOfIterations=3
+byteEncoder=5
+generator=2
 MPIRoutine=2
-sampler=2
-
-for dToNRatio in 0.0 0.25 0.5 0.75 1.0
+dToNRatio=0.5
+stringLength=1000
+for sampler in 2
 do
-	for byteEncoder in 1 5 6
+	for golombEncoding in 0 1
 	do
-		for sampler in 2 3
-		do
 		#mpirun --mca coll_tuned_use_dynamic_rules 1 --mca coll_tuned_allgatherv_algorithm 1 --bind-to core --map-by core -report-bindings $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling
-                mpiexec.hydra -bootstrap slurm  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps --check
-		#mpirun --bind-to core --map-by core  $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling  --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine --compressLcps
-		done
+		#mpirun --bind-to core --map-by core $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --golombEncodingPolicy $golombEncoding --path $path --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
+		mpiexec.hydra -bootstrap slurm $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength --strongScaling --golombEncodingPolicy $golombEncoding --path $path --sampleStringsPolicy $sampler --MPIRoutineAllToAll $MPIRoutine
 	done
 done
+
 #mpirun -np 2 $executable --size $numOfStrings --numberOfIterations $numOfIterations --byteEncoder $byteEncoder --generator $generator --dToNRatio $dToNRatio --stringLength $stringLength
 #
 #dToNRatio=0.4

@@ -5,7 +5,7 @@ module load mpi/impi/2018
 
 executable="/home/fh1-project-kalb/gw1960/kurpiczModified/build/benchmark/dss"
 numOfStrings=200000000
-numOfIterations=6
+numOfIterations=11
 generator=3
 stringLength=500
 
