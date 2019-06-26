@@ -156,7 +156,7 @@ createDataMemory <- function(datasets) {
   divisor <- set$size
   if (!isStrongScaling)
     divisor <- divisor * set$numberProcessors
-  set$value <- set$value / (set$size * set$numberProcessors)
+  set$value <- set$value / (divisor)
   set$numberProcessors <- as.factor(set$numberProcessors)
   groupByIterations <- group_by(set, numberProcessors, dToNRatio,  phase, name)
   valueMean <- summarise(groupByIterations , value = mean(value, rm.na = TRUE))

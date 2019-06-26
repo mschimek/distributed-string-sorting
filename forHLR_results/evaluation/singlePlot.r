@@ -370,11 +370,11 @@ l <- l + theme(legend.position = "none")
 #plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
 #grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
 #widths = c(2.7, 2.7), heights = c(2.2, 0.4))
-if (isD2N) {
-  for (d in unique(data[[i]]$dToNRatio)) {
-    print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
-    print(stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = d, "number", paste("Communication Volume: ", title, " with D/N-ratio: ", d)))
-  }
-} 
+#if (isD2N) {
+#  for (d in unique(data[[i]]$dToNRatio)) {
+#    print(stackedBarPlot(c(1:length(data)), dToNRatio_ = d, operations_ = operations, "maxTime", paste(title, " with D/N-ratio: ", d)))
+#    print(stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = d, "number", paste("Communication Volume: ", title, " with D/N-ratio: ", d)))
+#  }
+#} 
 
 

@@ -22,6 +22,11 @@
 "path":"DToNSkewedWeak/kurpicz",
 "filter":[{"name":"kurpicz"}
          ]
+}],
+[{
+"path":"DToNSkewedWeak/hquick",
+"filter":[{"name":"hQuick"}
+         ]
 }]
 ]}
 

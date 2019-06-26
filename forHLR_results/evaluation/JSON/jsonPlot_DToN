@@ -11,7 +11,7 @@
 "path":"DToN/ms",
         "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-        {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrigns"}]
+        {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}]
 }],
 [{
 "path":"DToN/kurpicz",

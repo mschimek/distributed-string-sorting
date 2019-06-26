@@ -3,7 +3,7 @@
       "title":"CommonCrawl",
       "data":[
         [{
-          "path":"File_commonCrawlReduced/ms",
+          "path":"File_CommonCrawlReduced/ms",
           "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
           {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
           {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
@@ -12,12 +12,12 @@
           ]
         }],
       [{
-        "path":"File_commonCrawlReduced/pd",
+        "path":"File_CommonCrawlReduced/pd",
         "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
       [{
-        "path":"File_commonCrawlReduced/hquick",
+        "path":"File_CommonCrawlReduced/hquick",
         "filter":[{"name":"hQuick"}]
       }]
       ]

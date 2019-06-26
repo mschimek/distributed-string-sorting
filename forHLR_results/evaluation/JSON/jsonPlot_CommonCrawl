@@ -1,4 +1,5 @@
 {
+  "CommonCrawl":{
     "isDToN":"FALSE",
       "title":"CommonCrawl",
       "data":[
@@ -21,4 +22,29 @@
         "filter":[{"name":"hQuick"}]
       }]
       ]
+  },
+  "CommonCrawlReduced":{
+    "isDToN":"FALSE",
+      "title":"CommonCrawlReduced",
+      "data":[
+        [{
+          "path":"File_CommonCrawlReduced/ms",
+          "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"MS_NoLCP_C", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_LCP_C", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_CommonCrawlReduced/pd",
+        "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_CommonCrawlReduced/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
   }
+}

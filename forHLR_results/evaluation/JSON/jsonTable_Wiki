@@ -3,20 +3,21 @@
       "title":"Wiki",
       "data":[
         [{
-          "path":"File_wiki/ms",
+          "path":"File_Wiki/ms",
         "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
-        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"}
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+{"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
           ]
         }],
       [{
-        "path":"File_wiki/pd",
+        "path":"File_Wiki/pd",
         "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
       [{
-        "path":"File_wiki/hquick",
+        "path":"File_Wiki/hquick",
         "filter":[{"name":"hQuick"}]
       }]
     ]

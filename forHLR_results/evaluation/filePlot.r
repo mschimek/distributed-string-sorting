@@ -26,6 +26,8 @@ colTypeSpec = cols(numberProcessors = col_integer(),
                    value = col_double())
 
 
+limit1 <- as.numeric(args[[5]])
+limit2 <- as.numeric(args[[6]])
 
 pathToJSON = args[[1]]
 pdfTitle = args[[2]]
@@ -81,6 +83,13 @@ for (k in c(1:numberPlots)) {
 }
 
 
+divideByPE320 <- function(vec) {
+    valueBase <- filter(vec, numberProcessors == 320)$value
+  vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
+    vec$value <- (valueBase / vec$value) 
+  print(vec)
+    return(vec)
+}
 
 #jsonMetaObject <- plots["CommonCrawlUnique"][[1]]
 #print(str(jsonMetaObject))
@@ -101,7 +110,77 @@ for (k in c(1:numberPlots)) {
 #  filters[[i]] <- jsonObject[[i]]$filter
 #  print(filters[[i]])
 #}
+lineplotSpeedup <- function(data, filters, datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
+  set <- "dummy"
+  print(paste("length data set: ", length(datasets)))
+  counter <- 0
+  for (i in c(1:length(datasets))) {
+    numberFilters <- nrow(filters[[i]][[1]])
+    counter <- counter + numberFilters
+  }
+  print(paste("counter: ", counter))
+  localSets <- vector("list", counter)
+  counter <- 1
+  for (i in c(1:length(datasets))) {
+    j <- ncol(filters[[i]][[1]]) 
+    numberFilters <- nrow(filters[[i]][[1]])
+    print(paste("numberFilters: ", numberFilters))
+    for (k in c(1:numberFilters)){
 
+      df = filters[[i]][[1]]
+      names <- colnames(df)
+      #print(data[[i]])
+      localSets[[counter]] <- filter(data[[i]], operation == operation_, type == type_)
+      #print(localSets[[counter]])
+      if (length(names) > 1) {
+        for (j in c(2:length(names))){
+          localSets[[counter]] <- filter(localSets[[counter]], UQ(as.name(names[j])) == df[k,j])
+        }
+      }
+      #print(localSets[[counter]])
+      localSets[[counter]] <- mutate(localSets[[counter]], name = df[k, 1])
+      localSets[[counter]] <- select(localSets[[counter]], numberProcessors, dToNRatio,  operation, type, name, iteration, value)
+      if (k == 1 && i == 1){
+        set <- localSets[[counter]]
+      }
+      else {
+        set <- rbind(set, localSets[[counter]])
+      }
+    }
+    counter <- counter + 1
+    }
+    set$numberProcessors <- as.factor(set$numberProcessors)
+    set$value <- set$value / 10^9
+    groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
+    valueMean <- summarise(groupByIterations, value = mean(value, rm.na = TRUE))
+    valueMean <- ungroup(valueMean)
+    valueMean <- group_by(valueMean, name)
+    speedup <- do(valueMean, divideByPE320(.))
+    speedup$numberProcessors <- as.factor(speedup$numberProcessors)
+
+  plot <- ggplot(data = speedup, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
+  plot <- plot + ylab("speed up")
+  plot <- plot + xlab("PEs")
+  plot <- plot + theme_light()
+  plot <- plot + geom_point(position=position_dodge(width=0.1))
+  plot <- plot + geom_line(position=position_dodge(width=0.1))
+
+  #plot <- plot + theme(legend.direction = "horizontal")
+plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
+  #plot <- plot + geom_errorbar(aes(ymin=value-sd, ymax=value+sd), width=.2,
+  #                 position=position_dodge(.1))
+
+  #plot <- plot + scale_y_continuous(trans='log2')
+  plot <- plot + theme(panel.spacing = unit(1.25, "lines"))
+  plot <- plot + theme(plot.title = element_text(hjust = 0.5))
+  plot <- plot + theme(strip.background =element_rect(fill="white"))
+  plot <- plot + theme(strip.text = element_text(colour = 'black'))
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  #plot <- plot + theme(legend.position = "none")
+  plot <- plot + ggtitle(title)
+  return (plot)
+
+}
 lineplot <- function(data, filters, datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
   print(paste("length data set: ", length(datasets)))
@@ -237,6 +316,85 @@ stackedBarPlot <- function(data, filters, datasets, dToNRatio_, operations_, typ
 
 }
 
+lineplotMemory <- function(data, filters, datasets, title = " ", size) {
+  set <- "dummy"
+  print(paste("length data set: ", length(datasets)))
+  counter <- 0
+  for (i in c(1:length(datasets))) {
+    numberFilters <- nrow(filters[[i]][[1]])
+    counter <- counter + numberFilters
+  }
+  print(paste("counter: ", counter))
+  localSets <- vector("list", counter)
+  counter <- 1
+  for (i in c(1:length(datasets))) {
+    j <- ncol(filters[[i]][[1]]) 
+    numberFilters <- nrow(filters[[i]][[1]])
+    print(paste("numberFilters: ", numberFilters))
+    for (k in c(1:numberFilters)){
+
+      df = filters[[i]][[1]]
+      names <- colnames(df)
+      #print(data[[i]])
+      localSets[[counter]] <- filter(data[[i]], type == "number", rawCommunication == 1, phase != "none")
+      print(localSets[[counter]])
+      #print(localSets[[counter]])
+      if (length(names) > 1) {
+        for (j in c(2:length(names))){
+          localSets[[counter]] <- filter(localSets[[counter]], UQ(as.name(names[j])) == df[k,j])
+        }
+      }
+      #print(localSets[[counter]])
+      localSets[[counter]] <- mutate(localSets[[counter]], name = df[k, 1])
+      localSets[[counter]] <- select(localSets[[counter]], numberProcessors, dToNRatio,  phase, name, iteration, value, size)
+      if (k == 1 && i == 1){
+        set <- localSets[[counter]]
+      }
+      else {
+        set <- rbind(set, localSets[[counter]])
+      }
+    }
+    counter <- counter + 1
+    }
+    #set$value <- set$value / (set$size * set$numberProcessors) 
+    set$numberProcessors <- as.factor(set$numberProcessors)
+    groupByIterations <- group_by(set, numberProcessors, dToNRatio,  name, phase)
+    valueMean <- summarise(groupByIterations,  value = mean(value, rm.na = TRUE))
+    value <- ungroup(valueMean)
+    valueMean <- group_by(valueMean, numberProcessors, dToNRatio,  name)
+    valueMean <- summarise(valueMean, value = sum(value)) 
+    print(valueMean,n = 50)
+    divisor <- as.double(size)
+  valueMean$value <- valueMean$value / divisor
+    
+  plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
+  plot <- plot + ylab("sent bytes per string")
+  plot <- plot + xlab("PEs")
+  plot <- plot + theme_light()
+  plot <- plot + geom_point(position=position_dodge(width=0.1))
+  plot <- plot + geom_line(position=position_dodge(width=0.1))
+
+  #plot <- plot + theme(legend.direction = "horizontal")
+plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
+plot <- plot + theme(legend.position = "bottom")
+  #plot <- plot + geom_errorbar(aes(ymin=value-sd, ymax=value+sd), width=.2,
+  #                 position=position_dodge(.1))
+
+  #plot <- plot + scale_y_continuous(trans='log2')
+  plot <- plot + theme(panel.spacing = unit(1.25, "lines"))
+  plot <- plot + theme(plot.title = element_text(hjust = 0.5))
+  plot <- plot + theme(strip.background =element_rect(fill="white"))
+  plot <- plot + theme(strip.text = element_text(colour = 'black'))
+  plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  #plot <- plot + theme(legend.position = "none")
+  if (isD2N) {
+  plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
+  } 
+  plot <- plot + ggtitle(title)
+  return (plot)
+
+}
+
 get_legend<-function(myggplot){
   tmp <- ggplot_gtable(ggplot_build(myggplot))
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
@@ -244,38 +402,50 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfTitle, ".pdf",sep=""), width=10, height=15)
+pdf(paste("./plots/", pdfTitle, ".pdf",sep=""), width=8, height=8)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
-bar <- stackedBarPlot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), dToNRatio_ = 0.5, operations_ = operations,  "maxTime", plots.title[[4]])
-bar
+#bar <- stackedBarPlot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), dToNRatio_ = 0.5, operations_ = operations,  "maxTime", plots.title[[4]])
+
 plot.1 <- lineplot(plots.data[[1]], plots.filters[[1]],  c(1:length(plots.data[[1]])), "sorting_overall", "maxTime", plots.title[[1]])
 plot.2 <- lineplot(plots.data[[2]], plots.filters[[2]],  c(1:length(plots.data[[2]])), "sorting_overall", "maxTime", plots.title[[2]])
-plot.3 <- lineplot(plots.data[[3]], plots.filters[[3]],  c(1:length(plots.data[[3]])), "sorting_overall", "maxTime", plots.title[[3]])
-plot.4 <- lineplot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), "sorting_overall", "maxTime", plots.title[[4]])
+plot.3 <- lineplotMemory(plots.data[[1]], plots.filters[[1]], c(1:length(plots.data[[1]])), plots.title[[1]], as.double(args[[3]]))
+plot.4 <- lineplotMemory(plots.data[[2]], plots.filters[[2]], c(1:length(plots.data[[2]])), plots.title[[2]], as.double(args[[4]]))
+plot.5 <- lineplotSpeedup(plots.data[[1]], plots.filters[[1]],  c(1:length(plots.data[[1]])), "sorting_overall", "maxTime", plots.title[[1]])
+plot.6 <- lineplotSpeedup(plots.data[[2]], plots.filters[[2]],  c(1:length(plots.data[[2]])), "sorting_overall", "maxTime", plots.title[[2]])
 #plot.5 <- lineplot(plots.data[[5]], plots.filters[[5]],  c(1:length(plots.data[[5]])), "sorting_overall", "maxTime", plots.title[[5]])
 #plot.6 <- lineplot(plots.data[[6]], plots.filters[[6]],  c(1:length(plots.data[[6]])), "sorting_overall", "maxTime", plots.title[[6]])
 
+
 plot.1 <- addSettings(plot.1)
+plot.1 <- plot.1 + theme(legend.direction = "horizontal")
+plot.1 <- plot.1 + theme(legend.box.background = element_rect(colour = "black"))
+plot.1 <- plot.1 + theme(legend.title = element_blank()) 
 #plot.1
 plot.2 <- addSettings(plot.2)
 #plot.2
 plot.3 <- addSettings(plot.3)
 #plot.3
 plot.4 <- addSettings(plot.4)
+plot.5 <- addSettings(plot.5)
+plot.6 <- addSettings(plot.6)
 #plot.4
 #plot.5 <- addSettings(plot.5)
 #plot.5
 #plot.6 <- addSettings(plot.6)
 #plot.6
 
-plot.3 <- plot.3 + guides(shape = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
-plot.3 <- plot.3 + guides(colour = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
-plot.3 <- plot.3 + guides(linetype = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
-legend <- getLegend(plot.3)
-plot.1 <- plot.1 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
-plot.2 <- plot.2 + theme(legend.position = "none", axis.title.x = element_blank()) + expand_limits(y=0)
-plot.3 <- plot.3 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
-plot.4 <- plot.4 + theme(legend.position = "none") + expand_limits(y=0)
+#plot.3 <- plot.3 + guides(shape = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+#plot.3 <- plot.3 + guides(colour = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+#plot.3 <- plot.3 + guides(linetype = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
+legend <- getLegend(plot.1)
+plot.1 <- plot.1 + theme(legend.position = "none") + expand_limits(y=c(0, limit1))
+plot.2 <- plot.2 + theme(legend.position = "none") + expand_limits(y=c(0, limit1))
+plot.3 <- plot.3 + theme(legend.position = "none") + expand_limits(y=c(0,limit2))
+plot.4 <- plot.4 + theme(legend.position = "none") + expand_limits(y=c(0, limit2))
+#plot.1 <- plotk1 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
+#plot.2 <- plot.2 + theme(legend.position = "none", axis.title.x = element_blank()) + expand_limits(y=0)
+#plot.3 <- plot.3 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
+#plot.4 <- plot.4 + theme(legend.position = "none") + expand_limits(y=0)
 #plot.5 <- plot.5 + theme(legend.position = "none") + expand_limits(y=c(0, 40))
 #plot.6 <- plot.6 + theme(legend.position = "none") + expand_limits(y=0)
 top <- plot_grid(plot.1, plot.2, ncol = 2)
@@ -286,3 +456,5 @@ plot_grid(top, middle,   legend, nrow = 3, rel_heights = c(1, 1, 0.2))
 #ggarrange(plot.1, plot.2, ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
 #grid.arrange(s,l, legend, ncol=2, nrow = 2,layout_matrix = rbind(c(1,2), c(3,3)),
 #widths = c(2.7, 2.7), heights = c(2.2, 0.4))
+plot.5 
+plot.6 

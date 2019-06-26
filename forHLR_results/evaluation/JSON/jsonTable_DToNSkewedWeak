@@ -1,5 +1,5 @@
 {
-    "isDToN":"FALSE",
+    "isDToN":"TRUE",
       "title":"DToNWeak",
       "data":[
         [{
@@ -19,6 +19,11 @@
       [{
         "path":"DToNSkewedWeak/kurpicz",
         "filter":[{"name":"kurpiz"}]
-      }]
+      }],
+[{
+"path":"DToNSkewedWeak/hquick",
+"filter":[{"name":"hQuick"}
+         ]
+}]
       ]
   }

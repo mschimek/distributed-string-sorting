@@ -3,7 +3,7 @@
     "title":"DToN",
     "data":[
       [{
-        "path":"DToN/ms",
+        "path":"DToNSkewed/ms",
         "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
         {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
@@ -12,16 +12,16 @@
         ]
       }],
     [{
-      "path":"DToN/hquick",
+      "path":"DToNSkewed/hquick",
       "filter":[{"name":"hQuick"}]
     }],
     [{
-      "path":"DToN/pd",
+      "path":"DToNSkewed/pd",
       "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
       {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
     }], 
     [{
-      "path":"DToN/kurpicz",
+      "path":"DToNSkewed/kurpicz",
       "filter":[{"name":"kurpiz"}]
     }]
 
