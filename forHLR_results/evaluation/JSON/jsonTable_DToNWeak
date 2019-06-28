@@ -23,7 +23,7 @@
 ,
       [{
         "path":"DToNWeak/kurpicz",
-        "filter":[{"name":"kurpiz"}]
+        "filter":[{"name":"kurpicz"}]
       }]
       ]
   }

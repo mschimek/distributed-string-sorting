@@ -180,16 +180,16 @@ createSingleTable <-function(tablename, inputData, communicationData) {
   PEs <- unique(inputData$numberProcessors)
   numberPEs <- length(PEs)
 
-  sink(paste("./tables/", tablename, ".tex", sep=""))
+  sink(paste("./tables/", tablename,"_speedup", ".tex", sep=""))
   header <- paste("\\begin{tabular}{@{}l")
   for (i in c(1:numberPEs)) {
-    header <- paste(header, "@{\\hskip 1em}ll", sep="") 
+    header <- paste(header, "l", sep="") 
   }
   header <- paste(header, "@{}}\n",sep="")
   toprule <- paste("\\toprule\n")
   columNames <- paste("PEs")
   for (p in PEs) {
-    columNames <- paste(columNames," & \\multicolumn{2}{c}{", p, "}", sep="" )
+    columNames <- paste(columNames," & \\multicolumn{1}{c}{", p, "}", sep="" )
   }
   columNames <- paste(columNames, "\\\\\n")
   bottomRule <- paste("\\bottomrule\\\\\n")
@@ -198,14 +198,15 @@ createSingleTable <-function(tablename, inputData, communicationData) {
   cat(toprule)
   cat(columNames)
   for (i in c(1:length(data))) {
-    multicolumn <- paste("& \\multicolumn{", 2*numberPEs, "}{l}{\\textbf{r = ", dToN[i], "}}\\\\\n", sep="") 
+    multicolumn <- paste("& \\multicolumn{", numberPEs, "}{l}{\\textbf{r = ", dToN[i], "}}\\\\\n", sep="") 
     names <- unique(inputData$name) 
     cat("\\hline\n")
     cat(multicolumn)
     cat("\\hline\n")
     minValues <- rep(100000, numberPEs) 
     minValuesC <- rep(100000, numberPEs) 
-    for (name_ in names) {
+    competitors <- names[names %in% c("kurpicz", "hQuick")]
+    for (name_ in competitors) {
       for (k in c(1:numberPEs)) {
         f <- filter(inputData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
         c <- filter(communicationData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
@@ -215,7 +216,6 @@ createSingleTable <-function(tablename, inputData, communicationData) {
           minValuesC[k] <- min(minValuesC[k], c$value)
       }
     }
-    names <- sort(names)
     for (name_ in names) {
         line <- ""
         line <- paste(line, name_)
@@ -227,36 +227,22 @@ createSingleTable <-function(tablename, inputData, communicationData) {
       }
       for (k in c(1:numberPEs)) {
         f <- filter(inputData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
-        c <- filter(communicationData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
 
-        value <- format(round(f$value, 2), nsmall = 2)
-        commValue <- format(round(c$value, 0), nsmall = 0)
+        value <- format(round(minValues[k]/f$value, 1), nsmall = 1)
         if (nrow(f) == 0) {
 
-          line <- paste(line, " & ", value, " & ", commValue, sep="")
+          line <- paste(line, " & ", value, sep="")
         }else {
           if (f$value >= 10.0)
-        value <- format(round(f$value, 1), nsmall = 1)
-        commValue <- format(round(c$value, 0), nsmall = 0)
+        value <- format(round(minValues[k]/f$value, 1), nsmall = 1)
           runtime <- paste(" & ")
-          comm <- ""
           if (minValues[k] == f$value) {
-            runtime <- paste(runtime, " \\textbf{", value, "} & ", sep="")
+            runtime <- paste(runtime, " \\textbf{", value, "}", sep="")
           } else {
-            runtime <- paste(runtime, value, " & ", sep="")
+            runtime <- paste(runtime, value , sep="")
           }
 
-          if (nrow(c) == 0) {
-            comm <- paste(comm, commValue, " ", sep="")
-          }
-          else {
-            if (minValuesC[k] == c$value) {
-              comm <- paste(comm, " \\textbf{", commValue, "}", sep="")
-            } else {
-              comm <- paste(comm, commValue, " ", sep="")
-            }
-          }
-          line <- paste(line, runtime, comm, sep="")   
+          line <- paste(line, runtime, sep="")   
 
         }
       }

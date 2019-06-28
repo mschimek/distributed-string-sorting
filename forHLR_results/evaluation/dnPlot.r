@@ -140,7 +140,7 @@ plot <- plot + theme(legend.position = "bottom")
 
 }
 
-lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
+lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", blacklist = c()) {
   set <- "dummy"
   #print(paste("length data set: ", length(datasets)))
   counter <- 0
@@ -179,10 +179,14 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", work 
     }
     counter <- counter + 1
     }
+    for (name_ in blacklist) {
+      set <- filter(set, name != name_)
+    }
     set$numberProcessors <- as.factor(set$numberProcessors)
     set$value <- set$value / 10^9
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
     valueMean <- summarise(groupByIterations, sd = sd(value), value = mean(value, rm.na = TRUE))
+    valueMean <- rename(valueMean, r = dToNRatio)
     
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
   plot <- plot + ylab("time [sec]")
@@ -205,7 +209,7 @@ plot <- plot + theme(legend.position = "bottom")
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   #plot <- plot + theme(legend.position = "none")
   if (isD2N) {
-  plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(~r, labeller = label_both, nrow=1)
   } 
   plot <- plot + ggtitle(title)
   return (plot)
@@ -273,6 +277,7 @@ lineplotMemory <- function(datasets, type_ = "number", title = " ", work = FALSE
     valueMean <- group_by(valueMean, numberProcessors, dToNRatio,  name)
     valueMean <- summarise(valueMean, value = sum(value)) 
     print(valueMean,n = 50)
+    valueMean <- rename(valueMean, r = dToNRatio)
     
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
   plot <- plot + ylab("sent bytes per string")
@@ -295,7 +300,7 @@ plot <- plot + theme(legend.position = "bottom")
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   #plot <- plot + theme(legend.position = "none")
   if (isD2N) {
-  plot <- plot + facet_wrap(~dToNRatio, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(~r, labeller = label_both, nrow=1)
   } 
   plot <- plot + ggtitle(title)
   return (plot)
@@ -448,15 +453,17 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=9)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=11)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
+myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "kurpicz"))
 #speedup <- lineplotSpeedup(c(1:length(data)), "sorting_overall", "maxTime", title)
 s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
 m <- stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = 1.0,  "number", title)
 #print("memline")
 memLine <- lineplotMemory(c(1:length(data)),  "number", title)
 memLine <- addSettings(memLine)
+myAlgos <- addSettings(myAlgos)
 #speedup <- addSettings(speedup)
 l <- addSettings(l)
 l <- l + theme(legend.direction = "horizontal")
@@ -465,14 +472,17 @@ l <- l + theme(legend.title = element_blank())
 l
 legend <- get_legend(l)
 l <- l + theme(legend.position = "none")
+myAlgos <- myAlgos + theme(legend.position = "none")
+myAlgos <- myAlgos + ggtitle("")
 memLine <- memLine + theme(legend.position = "none")
 memLine <- memLine + ggtitle("")
 #speedup
 
 top <- plot_grid(l,ncol = 1)
-middle <- plot_grid(memLine, ncol=1)
+middle <- plot_grid(myAlgos, ncol = 1)
+bottom <- plot_grid(memLine, ncol=1)
 legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
-plot_grid(top, middle,   legend, nrow = 3, rel_heights = c(1, 1, 0.2))
+plot_grid(top, middle, bottom, legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
 
 s
 #plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)

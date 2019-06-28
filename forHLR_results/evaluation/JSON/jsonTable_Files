@@ -1,0 +1,128 @@
+{
+"CommonCrawl":{
+    "isDToN":"FALSE",
+      "title":"CommonCrawl",
+      "numStrings":2074964317,
+      "data":[
+        [{
+          "path":"File_CommonCrawl/ms",
+          "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_CommonCrawl/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_CommonCrawl/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
+},
+"commonCrawlReduced":{
+    "isDToN":"FALSE",
+      "title":"CommonCrawlReduced",
+"numStrings":1790850388,
+      "data":[
+        [{
+          "path":"File_CommonCrawlReduced/ms",
+          "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_CommonCrawlReduced/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_CommonCrawlReduced/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+      ]
+  },
+ "Wiki":{
+    "isDToN":"FALSE",
+      "title":"Wikipedia",
+      "numStrings":1092633438,
+      "data":[
+        [{
+          "path":"File_Wiki/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+{"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_Wiki/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_Wiki/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+    ]
+  },
+  "WikiReduced":{
+    "isDToN":"FALSE",
+      "title":"WikipediaReduced",
+"numStrings":875259655,
+      "data":[
+        [{
+          "path":"File_WikiReduced/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+	{"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"File_WikiReduced/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"File_WikiReduced/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+    ]
+},
+  "Suffix":{
+  "isDToN":"FALSE",
+    "title":"Suffixes",
+    "numStrings":447723,
+    "data":[
+      [{
+        "path":"Suffix_suffix100GB/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+       ]
+      }],
+    [{
+      "path":"Suffix_suffix100GB/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+    }],
+    [{
+      "path":"Suffix_suffix100GB/hquick",
+      "filter":[{"name":"hQuick"}
+      ]
+    }]
+    ]
+}
+}

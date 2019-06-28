@@ -5,6 +5,7 @@ library(jsonlite)
 library(latex2exp)
 library(cowplot)
 library(gridExtra)
+library(scales)
 library(xtable)
 source("legendSettings.r")
 
@@ -26,23 +27,45 @@ colTypeSpec = cols(numberProcessors = col_integer(),
 
 pathToJSON = args[[1]]
 tablename = args[[2]]
-jsonMetaObject <- read_json(pathToJSON, simplifyDataFrame=TRUE)
-jsonObject <- jsonMetaObject["data"][[1]]
-title <- jsonMetaObject["title"]
-isD2N <- TRUE == (jsonMetaObject["isDToN"])
-print(str(jsonObject))
-length <- length(jsonObject)
-data <- vector("list", length)
-filters <- vector("list", length)
-print(paste("number datasets: ", length))
-for (i in c(1:length)){
-  print(i)
-  curPath = jsonObject[[i]]$path
-  filename = paste(curPath, "/data.txt", sep="")
-  data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
-  data[[i]] <- filter(data[[i]], iteration != 0)
-  filters[[i]] <- jsonObject[[i]]$filter
-  print(filters[[i]])
+plots <- read_json(pathToJSON, simplifyDataFrame=TRUE)
+
+numberPlots <- length(plots)
+plots.data <- vector("list", numberPlots)
+plots.filters <- vector("list", numberPlots)
+plots.title <- vector("list", numberPlots)
+plots.size <- vector("list", numberPlots)
+
+for (k in c(1:numberPlots)) {
+  jsonMetaObject <- plots[[k]]
+  jsonObject <- jsonMetaObject["data"][[1]]
+  plots.title[[k]] <- jsonMetaObject["title"]
+  plots.size[[k]] <- as.numeric(jsonMetaObject["numStrings"])
+  length <- length(jsonObject)
+  data <- vector("list", length)
+  filters <- vector("list", length)
+  for (i in c(1:length)){
+    curPath = jsonObject[[i]]$path
+    filename = paste(curPath, "/data.txt", sep="")
+    data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+    data[[i]] <- filter(data[[i]], iteration != 0)
+    filters[[i]] <- jsonObject[[i]]$filter
+  }
+  #jsonMetaObject <- plots["CommonCrawlUnique"][[1]]
+  jsonObject <- jsonMetaObject["data"][[1]]
+  title <- jsonMetaObject["title"]
+  isD2N <- TRUE == (jsonMetaObject["isDToN"])
+  length <- length(jsonObject)
+  data <- vector("list", length)
+  filters <- vector("list", length)
+  for (i in c(1:length)){
+    curPath = jsonObject[[i]]$path
+    filename = paste(curPath, "/data.txt", sep="")
+    data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
+    data[[i]] <- filter(data[[i]], iteration != 0)
+    filters[[i]] <- jsonObject[[i]]$filter
+  }
+  plots.data[[k]] <- data
+  plots.filters[[k]] <- filters
 }
 numberExpandedDatasets <- function() {
   counter <- 0
@@ -53,37 +76,31 @@ numberExpandedDatasets <- function() {
   return(counter)
 }
 
-createData <- function(datasets, operations_, type_ = "maxTime", title = " ", work = FALSE) {
+createData <- function(datasets, filters,  operations_, type_ = "maxTime", title = " ") {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
       names <- colnames(df)
-      #print(data[[i]])
       isD2N <-FALSE
 
-      localSets[[counter]] <- filter(data[[i]], operation %in% operations_, type == type_)
+      localSets[[counter]] <- filter(datasets[[i]], operation %in% operations_, type == type_)
 
-      #print(localSets[[counter]])
       if (length(names) > 1) {
         for (j in c(2:length(names))){
           localSets[[counter]] <- filter(localSets[[counter]], UQ(as.name(names[j])) == df[k,j])
         }
       }
-      #print(localSets[[counter]])
       localSets[[counter]] <- mutate(localSets[[counter]], name = df[k, 1])
       localSets[[counter]] <- select(localSets[[counter]], numberProcessors, dToNRatio,  operation, type, name, iteration, value)
       if (k == 1 && i == 1){
@@ -104,30 +121,26 @@ createData <- function(datasets, operations_, type_ = "maxTime", title = " ", wo
   reduced <- select(valueMean, dToNRatio, value, name, numberProcessors) 
   return(reduced)
 }
-createDataMemory <- function(datasets) {
+createDataMemory <- function(datasets, filters, numStrings) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   isStrongScaling <- FALSE
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
       names <- colnames(df)
-      #print(data[[i]])
       isD2N <-FALSE
 
-      localSets[[counter]] <- filter(data[[i]], type == "number", rawCommunication == 1, phase != "none")
+      localSets[[counter]] <- filter(datasets[[i]], type == "number", rawCommunication == 1, phase != "none")
       if (nrow(localSets[[counter]]) > 0) {
         if (localSets[[counter]]$strongScaling[1] == 1) {
           isStrongScaling <- TRUE
@@ -135,13 +148,11 @@ createDataMemory <- function(datasets) {
       }
 
 
-      #print(localSets[[counter]])
       if (length(names) > 1) {
         for (j in c(2:length(names))){
           localSets[[counter]] <- filter(localSets[[counter]], UQ(as.name(names[j])) == df[k,j])
         }
       }
-      #print(localSets[[counter]])
       localSets[[counter]] <- mutate(localSets[[counter]], name = df[k, 1])
       localSets[[counter]] <- select(localSets[[counter]], size, numberProcessors, dToNRatio,  phase, name, iteration, value)
       if (k == 1 && i == 1){
@@ -157,7 +168,7 @@ createDataMemory <- function(datasets) {
   if (!isStrongScaling) {
     divisor <- set$size * set$numberProcessors
   }else {
-  divisor <- as.numeric(args[[3]])
+  divisor <- numStrings 
   }
   set$value <- set$value / (divisor)
   set$numberProcessors <- as.factor(set$numberProcessors)
@@ -170,14 +181,8 @@ createDataMemory <- function(datasets) {
   reduced <- select(valueMean, dToNRatio, value, numberProcessors, name) 
   return(reduced)
 }
-createSingleTable <-function(tablename, inputData, communicationData) {
-  dToN <- unique(inputData$dToNRatio)
-  print(dToN)
-  data <- vector("list", length(dToN))
-  for (i in c(1:length(dToN))) {
-    data[[i]] <- filter(inputData, dToNRatio == dToN[i])
-  }
-  PEs <- unique(inputData$numberProcessors)
+createSingleTable <-function(tablename, inputData, communicationData, titles) {
+  PEs <- unique(inputData[[1]]$numberProcessors)
   numberPEs <- length(PEs)
 
   sink(paste("./tables/", tablename, ".tex", sep=""))
@@ -197,9 +202,11 @@ createSingleTable <-function(tablename, inputData, communicationData) {
   cat(header)
   cat(toprule)
   cat(columNames)
-  for (i in c(1:length(data))) {
-    multicolumn <- paste("& \\multicolumn{", 2*numberPEs, "}{l}{\\textbf{r = ", dToN[i], "}}\\\\\n", sep="") 
-    names <- unique(inputData$name) 
+  for (i in c(1:length(inputData))) {
+    curInputData <- inputData[[i]]
+    curCommunicationData <- communicationData[[i]]
+    multicolumn <- paste("& \\multicolumn{", 2*numberPEs, "}{l}{\\textbf{", titles[[i]], "}}\\\\\n", sep="") 
+    names <- unique(curInputData$name) 
     cat("\\hline\n")
     cat(multicolumn)
     cat("\\hline\n")
@@ -207,8 +214,8 @@ createSingleTable <-function(tablename, inputData, communicationData) {
     minValuesC <- rep(100000, numberPEs) 
     for (name_ in names) {
       for (k in c(1:numberPEs)) {
-        f <- filter(inputData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
-        c <- filter(communicationData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
+        f <- filter(curInputData, name == name_, numberProcessors == PEs[k])
+        c <- filter(curCommunicationData, name == name_, numberProcessors == PEs[k])
         if (nrow(f) > 0)
           minValues[k] <- min(minValues[k], f$value)
         if (nrow(c) > 0)
@@ -221,13 +228,13 @@ createSingleTable <-function(tablename, inputData, communicationData) {
         line <- paste(line, name_)
       minValue <- 100000
       for (p in PEs) {
-        f <- filter(inputData, name == name_, numberProcessors == p, dToNRatio == dToN[i])
+        f <- filter(curInputData, name == name_, numberProcessors == p)
         if (nrow(f) > 0)
           minValue <- min(minValue, f$value)
       }
       for (k in c(1:numberPEs)) {
-        f <- filter(inputData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
-        c <- filter(communicationData, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
+        f <- filter(curInputData, name == name_, numberProcessors == PEs[k])
+        c <- filter(curCommunicationData, name == name_, numberProcessors == PEs[k])
 
         value <- format(round(f$value, 2), nsmall = 2)
         commValue <- format(round(c$value, 0), nsmall = 0)
@@ -237,7 +244,7 @@ createSingleTable <-function(tablename, inputData, communicationData) {
         }else {
           if (f$value >= 10.0)
         value <- format(round(f$value, 1), nsmall = 1)
-        commValue <- format(round(c$value, 0), nsmall = 0)
+        commValue <- as.numeric(commValue)
           runtime <- paste(" & ")
           comm <- ""
           if (minValues[k] == f$value) {
@@ -268,9 +275,13 @@ createSingleTable <-function(tablename, inputData, communicationData) {
   cat(footer)
 }
 
-l <- createData(c(1:length(data)), c("sorting_overall"), "maxTime", title)
-c <- createDataMemory(c(1:length(data)))
-print(c)
-createSingleTable(tablename, l, c)
+numberPlots <- length(plots.data)
+data.runtime <- vector("list", numberPlots)
+data.communication <- vector("list", numberPlots)
+for (i in c(1:numberPlots)) {
+       data.runtime[[i]] <- createData(plots.data[[i]], plots.filters[[i]], c("sorting_overall"), "maxTime", title)
+       data.communication[[i]] <- createDataMemory(plots.data[[i]], plots.filters[[i]], plots.size[[i]])
+}
+createSingleTable(tablename, data.runtime, data.communication, plots.title)
 
 

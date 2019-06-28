@@ -1,0 +1,57 @@
+{
+"DToN":{
+  "isDToN":"TRUE",
+    "title":"DToN",
+    "data":[
+      [{
+        "path":"DToN/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+        ]
+      }],
+    [{
+      "path":"DToN/hquick",
+      "filter":[{"name":"hQuick"}]
+    }],
+    [{
+      "path":"DToN/pd",
+      "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+      {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+    }], 
+    [{
+      "path":"DToN/kurpicz",
+      "filter":[{"name":"kurpicz"}]
+    }]
+  ]
+},
+"DToNSkewed":{
+  "isDToN":"TRUE",
+    "title":"DToNSkewed",
+    "data":[
+      [{
+        "path":"DToNSkewed/ms",
+        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+        ]
+      }],
+    [{
+      "path":"DToNSkewed/hquick",
+      "filter":[{"name":"hQuick"}]
+    }],
+    [{
+      "path":"DToNSkewed/pd",
+      "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+      {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+    }], 
+    [{
+      "path":"DToNSkewed/kurpicz",
+      "filter":[{"name":"kurpicz"}]
+    }]
+  ]
+}}

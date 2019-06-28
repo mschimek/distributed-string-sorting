@@ -1,0 +1,58 @@
+{"DToNWeak":{
+    "isDToN":"TRUE",
+      "title":"DToN",
+      "data":[
+        [{
+          "path":"DToNWeak/ms",
+          "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"DToNWeak/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"DToNWeak/hquick",
+        "filter":[{"name":"hQuick"}]
+      }]
+,
+      [{
+        "path":"DToNWeak/kurpicz",
+        "filter":[{"name":"kurpicz"}]
+      }]
+      ]
+  },
+"DToNSkewedWeak":{
+    "isDToN":"TRUE",
+      "title":"DToNSkewed",
+      "data":[
+        [{
+          "path":"DToNSkewedWeak/ms",
+          "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+          ]
+        }],
+      [{
+        "path":"DToNSkewedWeak/pd",
+        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+      [{
+        "path":"DToNSkewedWeak/kurpicz",
+        "filter":[{"name":"kurpicz"}]
+      }],
+[{
+"path":"DToNSkewedWeak/hquick",
+"filter":[{"name":"hQuick"}
+         ]
+}]
+      ]
+  }}

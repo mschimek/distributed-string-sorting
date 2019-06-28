@@ -22,7 +22,7 @@
     }], 
     [{
       "path":"DToN/kurpicz",
-      "filter":[{"name":"kurpiz"}]
+      "filter":[{"name":"kurpicz"}]
     }]
 
   ]
