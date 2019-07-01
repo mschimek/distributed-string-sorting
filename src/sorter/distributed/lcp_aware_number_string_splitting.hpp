@@ -246,6 +246,7 @@ public:
         }
 
         measuringTool.setPhase("string_exchange");
+        env.barrier();
         measuringTool.start("all_to_all_strings");
         std::vector<std::size_t> receiving_interval_sizes =
             dss_schimek::mpi::alltoall(interval_sizes);
