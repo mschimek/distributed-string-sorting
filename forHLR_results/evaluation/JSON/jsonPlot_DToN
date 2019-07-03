@@ -7,6 +7,10 @@
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
 }],
+[{"path":"DToN_PD/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+}],
 [{
 "path":"DToN/ms",
         "filter":[{"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},

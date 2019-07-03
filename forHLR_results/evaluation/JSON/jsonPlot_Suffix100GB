@@ -16,6 +16,11 @@
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
     }],
+[{
+      "path":"Suffix_suffix100GB_PDChar/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+    }],
     [{
       "path":"Suffix_suffix100GB/hquick",
       "filter":[{"name":"hQuick"}

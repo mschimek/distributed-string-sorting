@@ -16,6 +16,11 @@
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
+[{
+        "path":"File_Wiki_PDChar/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+      }],
       [{
         "path":"File_Wiki/hquick",
         "filter":[{"name":"hQuick"}]
@@ -39,6 +44,11 @@
         "path":"File_WikiReduced/pd",
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+[{
+        "path":"File_WikiReduced_PDChar/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_WikiReduced/hquick",

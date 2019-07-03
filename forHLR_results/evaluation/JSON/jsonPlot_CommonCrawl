@@ -17,6 +17,11 @@
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
+	[{
+        "path":"File_CommonCrawl_PDChar/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+      }],
       [{
         "path":"File_CommonCrawl/hquick",
         "filter":[{"name":"hQuick"}]
@@ -40,6 +45,11 @@
         "path":"File_CommonCrawlReduced/pd",
         "filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+	[{
+        "path":"File_CommonCrawlReduced_PDChar/pd",
+        "filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_CommonCrawlReduced/hquick",

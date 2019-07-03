@@ -17,6 +17,12 @@
          ]
 }],
 [{
+"path":"DToNWeak_PD/pd",
+"filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+          {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}
+         ]
+}],
+[{
 "path":"DToNWeak/kurpicz",
 "filter":[{"name":"kurpicz"}
          ]

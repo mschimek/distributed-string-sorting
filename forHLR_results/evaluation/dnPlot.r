@@ -453,7 +453,7 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=11)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=12)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "kurpicz"))
@@ -469,10 +469,10 @@ l <- addSettings(l)
 l <- l + theme(legend.direction = "horizontal")
 l <- l + theme(legend.box.background = element_rect(colour = "black"))
 l <- l + theme(legend.title = element_blank()) 
-l
+l <- l + ggtitle("")
 legend <- get_legend(l)
 l <- l + theme(legend.position = "none")
-myAlgos <- myAlgos + theme(legend.position = "none")
+myAlgos <- myAlgos + theme(legend.position = "none")+expand_limits(y=0)
 myAlgos <- myAlgos + ggtitle("")
 memLine <- memLine + theme(legend.position = "none")
 memLine <- memLine + ggtitle("")
