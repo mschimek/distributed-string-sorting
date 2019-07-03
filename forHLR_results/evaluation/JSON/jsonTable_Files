@@ -15,8 +15,13 @@
         }],
       [{
         "path":"File_CommonCrawl/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+[{
+        "path":"File_CommonCrawl_PDChar/pd",
+        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_CommonCrawl/hquick",
@@ -40,8 +45,13 @@
         }],
       [{
         "path":"File_CommonCrawlReduced/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+[{
+        "path":"File_CommonCrawlReduced_PDChar/pd",
+        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_CommonCrawlReduced/hquick",
@@ -65,8 +75,13 @@
         }],
       [{
         "path":"File_Wiki/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+[{
+        "path":"File_Wiki_PDChar/pd",
+        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_Wiki/hquick",
@@ -90,8 +105,13 @@
         }],
       [{
         "path":"File_WikiReduced/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+      }],
+[{
+        "path":"File_WikiReduced_PDChar/pd",
+        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_WikiReduced/hquick",
@@ -115,8 +135,13 @@
       }],
     [{
       "path":"Suffix_suffix100GB/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+    }],
+[{
+      "path":"Suffix_suffix100GB_PDChar/pd",
+        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
     }],
     [{
       "path":"Suffix_suffix100GB/hquick",

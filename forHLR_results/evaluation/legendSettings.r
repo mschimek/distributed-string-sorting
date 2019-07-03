@@ -1,9 +1,9 @@
 
-colours = c("kurpicz" = "coral3", "hQuick" = "burlywood4", "MS_LCP_S" = "cornflowerblue", "MS_NoLCP_S" = "black", "PD_NoGolomb" = "darkolivegreen4","PD_NoGolombC" = "deeppink", "PD_SeqGolombC"="deepskyblue3", "MS_LCP_C" = "darkorange2", "MS_NoLCP_C" = "darkgoldenrod3", "PD_SeqGolomb" = "cyan4", "MS_Simple_S" = "aquamarine4")
-shapes = c("kurpicz" = 1, "hQuick" = 2, "MS_LCP_S" = 3, "MS_NoLCP_S" = 4, "PD_NoGolomb" = 5, 
-                                                   "MS_LCP_C" = 6, "MS_NoLCP_C" = 7, "PD_SeqGolomb" = 2, "MS_Simple_S" = 1, "PD_SeqGolombC"=2, "PD_NoGolombC" = 3)
-linetypes = c("kurpicz" = "solid", "hQuick" = "twodash", "MS_LCP_S" = "dotted", "MS_NoLCP_S" = "dashed", "PD_NoGolomb" = "longdash",
-              "MS_LCP_C" = "dotdash", "MS_NoLCP_C" = "dotted", "PD_SeqGolomb" = "twodash", "MS_Simple_S" = "solid", "PD_NoGolombC" = "solid", "PD_SeqGolombC" = "dotted")
+colours = c("kurpicz" = "coral3", "hQuick" = "burlywood4", "msLCPS" = "cornflowerblue", "msNoLCPS" = "black", "pdNoGolombC" = "darkolivegreen4","pdGolombC" = "deeppink", "pdNoGolombS"="deepskyblue3", "msLCPC" = "darkorange2", "msNoLCPC" = "darkgoldenrod3", "pdGolombS" = "cyan4", "msSimpleS" = "aquamarine4")
+shapes = c("kurpicz" = 1, "hQuick" = 2, "msLCPS" = 3, "msNoLCPS" = 4, "pdNoGolombS" = 5, 
+                                                   "msLCPC" = 6, "msNoLCPC" = 7, "pdGolombS" = 2, "msSimpleS" = 1, "pdGolombC"=2, "pdNoGolombC" = 3)
+linetypes = c("kurpicz" = "solid", "hQuick" = "twodash", "msLCPS" = "dotted", "msNoLCPS" = "dashed", "pdNoGolombS" = "longdash",
+              "msLCPC" = "dotdash", "msNoLCPC" = "dotted", "pdGolombS" = "twodash", "msSimpleS" = "solid", "pdNoGolombC" = "solid", "pdGolombC" = "dotted")
 
 
 addSettings <- function(plot) {

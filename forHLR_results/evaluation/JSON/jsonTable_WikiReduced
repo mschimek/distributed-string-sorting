@@ -13,8 +13,8 @@
       }],
       [{
         "path":"File_WikiReduced/pd",
-        "filter":[{"name":"pdNoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
       [{
         "path":"File_WikiReduced/hquick",

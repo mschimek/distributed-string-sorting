@@ -5,21 +5,15 @@
 [
 [{
 "path":"DToNWeak/ms",
-"filter":[{"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-          {"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
-          {"name":"MS_Simple_S", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings" }
+"filter":[{"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
+          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings" }
          ]
 }],
 [{
 "path":"DToNWeak/pd",
-"filter":[{"name":"PD_NoGolomb", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-          {"name":"PD_SeqGolomb", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
-         ]
-}],
-[{
-"path":"DToNWeak_PD/pd",
-"filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
-          {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}
+"filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
+          {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
          ]
 }],
 [{
@@ -32,4 +26,5 @@
 "filter":[{"name":"hQuick"}
          ]
 }]
+
 ]}

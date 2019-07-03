@@ -1,0 +1,13 @@
+{
+  "isDToN":"FALSE",
+  "title":"Different Variants to communicate Strings/LCP-Values",
+  "data": [
+[{
+"path":"implementationAlltoall",
+        "filter":[{"name":"2Calls", "ByteEncoder":"EmptyByteEncoderMemCpy"},
+{"name":"Sequential", "ByteEncoder":"SequentialByteEncoder"},
+{"name":"Interleaved", "ByteEncoder":"InterleavedByteEncoder"},
+{"name":"NoLcps", "ByteEncoder":"NoLcps"}]
+}]
+]}
+
