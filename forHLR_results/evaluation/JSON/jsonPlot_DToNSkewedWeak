@@ -10,6 +10,12 @@
          ]
 }],
 [{
+"path":"DToNSkewedWeak_PD/pd",
+"filter":[{"name":"PD_NoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
+          {"name":"PD_SeqGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars" }
+         ]
+}],
+[{
 "path":"DToNSkewedWeak/ms",
 "filter":[{"name":"MS_LCP_S", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
           {"name":"MS_NoLCP_S", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
