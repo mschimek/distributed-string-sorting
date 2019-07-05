@@ -6,7 +6,7 @@
 "path":"DToN/pd",
         "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
         {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
-}]
+}],
 [{
 "path":"DToN/ms",
         "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},

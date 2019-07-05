@@ -195,6 +195,7 @@ getMin <- function(data, competitors) {
     }
   return(minValues)
 }
+
 createSingleTable <-function(tablename, inputData, communicationData, titles) {
   PEs <- unique(inputData[[1]]$numberProcessors)
   numberPEs <- length(PEs)
@@ -202,11 +203,11 @@ createSingleTable <-function(tablename, inputData, communicationData, titles) {
   sink(paste("./tables/", tablename, ".tex", sep=""))
   header <- paste("\\begin{tabular}{@{}l")
   for (i in c(1:numberPEs)) {
-    header <- paste(header, "l", sep="") 
+    header <- paste(header, "ll", sep="") 
   }
   header <- paste(header, "@{}}\n",sep="")
   toprule <- paste("\\toprule\n")
-  columNames <- paste("PEs")
+  columNames <- paste("PEs & $\\varnothing$ ")
   for (p in PEs) {
     columNames <- paste(columNames," & \\multicolumn{1}{c}{", p, "}", sep="" )
   }
@@ -242,11 +243,34 @@ createSingleTable <-function(tablename, inputData, communicationData, titles) {
         line <- paste(line, name_)
         competitors <- c("kurpicz", "hQuick")
       minValues <- getMin(curInputData, competitors) 
+      avg <- 0
+      counter <- 0
+      #avg
+      for (k in c(1:numberPEs)) {
+        f <- filter(curInputData, name == name_, numberProcessors == PEs[k])
+
+        value <- format(round(f$value, 1), nsmall = 2)
+        if (nrow(f) == 0) {
+
+        }else {
+
+          if( minValues[k] < 10000){
+          value <- minValues[k] / f$value
+          avg <- avg + value
+          counter <- counter + 1
+          }
+
+
+        }
+      }
+      avg <- avg / counter
+      avg <- format(round(avg, 1), nsmall=1)
+        line <- paste(line, " & ",  avg)
       for (k in c(1:numberPEs)) {
         f <- filter(curInputData, name == name_, numberProcessors == PEs[k])
         c <- filter(curCommunicationData, name == name_, numberProcessors == PEs[k])
 
-        value <- format(round(f$value, 2), nsmall = 2)
+        value <- format(round(f$value, 1), nsmall = 2)
         commValue <- format(round(c$value, 0), nsmall = 0)
         if (nrow(f) == 0) {
 
@@ -255,7 +279,7 @@ createSingleTable <-function(tablename, inputData, communicationData, titles) {
 
           runtime <- paste(" & ")
           if( minValues[k] >= 10000)
-            runtime <- paste(runtime, "$\\infty$")
+            runtime <- paste(runtime, "$-$")
           else {
           value <- minValues[k] / f$value
         value <- format(round(value, 1), nsmall = 1)

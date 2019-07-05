@@ -169,23 +169,27 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
   numberPEs <- length(PEs)
 
   sink(paste("./tables/", tablename, ".tex", sep=""))
-  header <- paste("\\begin{tabular}{@{}l")
+  header <- paste("\\begin{tabular}{@{}ll")
   for (i in c(1:numberPEs)) {
     header <- paste(header, "c", sep="")
   }
   header <- paste(header, "@{\\hskip 1cm}", sep="")
+  header <- paste(header, "l", sep="")
   for (i in c(1:numberPEs)) {
     header <- paste(header, "c", sep="")
   }
   header <- paste(header, "@{}}\n")
-  subheader <- paste("& \\multicolumn{", numberPEs, "}{c}{\\textbf{", title1,"}} & \\multicolumn{", numberPEs, "}{c}{\\textbf{", title2, "}}\\\\\n",sep="")
+  subheader <- "& $\\varnothing$"
+  subheader <- paste("& \\multicolumn{", numberPEs, "}{c}{\\textbf{", title1,"}} & & \\multicolumn{", numberPEs, "}{c}{\\textbf{", title2, "}}\\\\\n",sep="")
 
   toprule <- paste("\\toprule\n")
 
   columNames <- paste("PEs")
+  columNames <- paste(" & $\\varnothing$ ")
   for (p in PEs) {
     columNames <- paste(columNames," & ", p )
   }
+  columNames <- paste(columNames, "& $\\varnothing$ ")
   for (p in PEs) {
     columNames <- paste(columNames," & ", p )
   }
@@ -209,6 +213,24 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
       minValue <- 100000
       competitors <- c("kurpicz", "hQuick")
       minValues <- getMin(inputData1, competitors, dToN[i])
+#speedup
+      counter <- 0
+      sum <- 0
+for (k in c(1:numberPEs)) {
+        f <- filter(inputData1, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
+        if (nrow(f) == 0) {
+        }else {
+            if (minValues[k] <=  100000){
+            value <- minValues[k] / f$value 
+            sum <- sum + value
+            counter <- counter + 1
+          }
+          
+        }
+      }
+      avg <- format(round(sum / counter, 1), nsmall = 1)
+      line <- paste(line, " & ",  avg)
+
       for (k in c(1:numberPEs)) {
         f <- filter(inputData1, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
         if (nrow(f) == 0) {
@@ -217,7 +239,7 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
           line <- paste(line, " & ", value, sep="")
         }else {
             if (minValues[k] > 100000){
-          line <- paste(line, " & $\\infty$", sep="")}
+          line <- paste(line, " & -", sep="")}
           else {
             value <- minValues[k] / f$value 
             value <- format(round(value, 2), nsmall = 2)
@@ -227,6 +249,26 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
         }
       }
       minValues <- getMin(inputData2, competitors, dToN[i])
+
+      counter <- 0
+      sum <- 0
+for (k in c(1:numberPEs)) {
+        f <- filter(inputData2, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
+        if (nrow(f) == 0) {
+        }else {
+            if (minValues[k] <=  100000){
+            value <- minValues[k] / f$value 
+            sum <- sum + value
+            counter <- counter + 1
+          }
+          
+        }
+      }
+      avg <- format(round(sum / counter, 1), nsmall = 1)
+      line <- paste(line, " & ",  avg)
+
+
+
       for (k in c(1:numberPEs)) {
         f <- filter(inputData2, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
         if (nrow(f) == 0) {
@@ -235,7 +277,7 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
           line <- paste(line, " & ", value, sep="")
         }else {
             if (minValues[k] > 100000){
-          line <- paste(line, " & $\\infty$", sep="")}
+          line <- paste(line, " & - ", sep="")}
           else {
             value <- minValues[k] / f$value 
             value <- format(round(value, 2), nsmall = 2)
