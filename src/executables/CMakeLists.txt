@@ -6,3 +6,6 @@ target_link_libraries(prefix_doubling ${MPI_LIBRARIES} tlx)
 
 add_executable(hQuicksort HQuicksort.cpp ../mpi/environment.cpp)
 target_link_libraries(hQuicksort ${MPI_LIBRARIES} tlx)
+
+add_executable(writeSuffixes writeSuffixesToFile.cpp ../mpi/environment.cpp)
+target_link_libraries(writeSuffixes ${MPI_LIBRARIES} tlx)
