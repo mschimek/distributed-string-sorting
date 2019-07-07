@@ -211,7 +211,7 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
       line <- ""
       line <- paste(line, name_)
       minValue <- 100000
-      competitors <- c("kurpicz", "hQuick")
+      competitors <- c("fkss", "hQuick")
       minValues <- getMin(inputData1, competitors, dToN[i])
 #speedup
       counter <- 0

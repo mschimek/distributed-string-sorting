@@ -456,7 +456,7 @@ get_legend<-function(myggplot){
 pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=12)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
-myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "kurpicz"))
+myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "fkss"))
 #speedup <- lineplotSpeedup(c(1:length(data)), "sorting_overall", "maxTime", title)
 s <- stackedBarPlot(c(1:length(data)), dToNRatio_ = 0.5, operations_ = operations, "maxTime", title)
 m <- stackedBarPlotMemory(c(1:length(data)), dToNRatio_ = 1.0,  "number", title)
