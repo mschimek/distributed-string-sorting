@@ -235,14 +235,14 @@ for (k in c(1:numberPEs)) {
         f <- filter(inputData1, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
         if (nrow(f) == 0) {
 
-          value <- format(round(f$value, 2), nsmall = 2)
+          value <- format(round(f$value, 1), nsmall = 1)
           line <- paste(line, " & ", value, sep="")
         }else {
             if (minValues[k] > 100000){
           line <- paste(line, " & -", sep="")}
           else {
             value <- minValues[k] / f$value 
-            value <- format(round(value, 2), nsmall = 2)
+            value <- format(round(value, 1), nsmall = 1)
             line <- paste(line, " & ", value, sep="")
           }
           
@@ -273,14 +273,14 @@ for (k in c(1:numberPEs)) {
         f <- filter(inputData2, name == name_, numberProcessors == PEs[k], dToNRatio == dToN[i])
         if (nrow(f) == 0) {
 
-          value <- format(round(f$value, 2), nsmall = 2)
+          value <- format(round(f$value, 1), nsmall = 1)
           line <- paste(line, " & ", value, sep="")
         }else {
             if (minValues[k] > 100000){
           line <- paste(line, " & - ", sep="")}
           else {
             value <- minValues[k] / f$value 
-            value <- format(round(value, 2), nsmall = 2)
+            value <- format(round(value, 1), nsmall = 1)
             line <- paste(line, " & ", value, sep="")
           }
           

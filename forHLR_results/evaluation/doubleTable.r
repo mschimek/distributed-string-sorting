@@ -203,14 +203,14 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
         f <- filter(inputData1, name == name_, numberProcessors == p, dToNRatio == dToN[i])
         if (nrow(f) == 0) {
 
-          value <- format(round(f$value, 2), nsmall = 2)
+          value <- format(round(f$value, 1), nsmall = 1)
           line <- paste(line, " & ", value, sep="")
         }else {
           if (minValue == f$value) {
-            value <- format(round(f$value, 2), nsmall = 2)
+            value <- format(round(f$value, 1), nsmall = 1)
             line <- paste(line, " & \\textbf{", value,"}", sep="")
           }else {
-            value <- format(round(f$value, 2), nsmall = 2)
+            value <- format(round(f$value, 1), nsmall = 1)
             line <- paste(line, " & ", value, sep="")
           }
         }
@@ -225,14 +225,14 @@ createSingleTable <-function(tablename, inputData1, inputData2, title1, title2) 
         f <- filter(inputData2, name == name_, numberProcessors == p, dToNRatio == dToN[i])
         if (nrow(f) == 0) {
 
-          value <- format(round(f$value, 2), nsmall = 2)
+          value <- format(round(f$value, 1), nsmall = 1)
           line <- paste(line, " & ", value, sep="")
         }else {
           if (minValue == f$value) {
-            value <- format(round(f$value, 2), nsmall = 2)
+            value <- format(round(f$value, 1), nsmall = 1)
             line <- paste(line, " & \\textbf{", value,"}", sep="")
           }else {
-            value <- format(round(f$value, 2), nsmall = 2)
+            value <- format(round(f$value, 1), nsmall = 1)
             line <- paste(line, " & ", value, sep="")
           }
         }

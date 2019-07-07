@@ -140,6 +140,9 @@ plot <- plot + theme(legend.position = "bottom")
 
 }
 
+hospital_labeller <- function(variable,value){
+    return("strings per PE")
+}
 lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", blacklist = c()) {
   set <- "dummy"
   #print(paste("length data set: ", length(datasets)))
@@ -187,13 +190,14 @@ lineplot <- function(datasets, operation_, type_ = "maxTime", title = " ", black
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name, size)
     valueMean <- summarise(groupByIterations, sd = sd(value), value = mean(value, rm.na = TRUE))
     valueMean <- rename(valueMean, r = dToNRatio)
-    
-  plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
-  plot <- plot + ylab("time per string [nano sec]")
-  plot <- plot + xlab("PEs")
-  plot <- plot + theme_light()
-  plot <- plot + geom_point(position=position_dodge(width=0.1))
-  plot <- plot + geom_line(position=position_dodge(width=0.1))
+
+    valueMean$size <- as.factor(valueMean$size) 
+    plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
+    plot <- plot + ylab("time per string [nano sec]")
+    plot <- plot + xlab("PEs")
+    plot <- plot + theme_light()
+    plot <- plot + geom_point(position=position_dodge(width=0.1))
+    plot <- plot + geom_line(position=position_dodge(width=0.1))
 
   #plot <- plot + theme(legend.direction = "horizontal")
 plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
@@ -201,6 +205,13 @@ plot <- plot + theme(legend.position = "bottom")
   #plot <- plot + geom_errorbar(aes(ymin=value-sd, ymax=value+sd), width=.2,
   #                 position=position_dodge(.1))
 
+
+hospital_names <- c(
+                  `size#1` = "Some Hospital",
+                  `size#2` = "Another Hospital",
+                  `size#3` = "Hospital Number 3",
+                  `size#4` = "The Other Hospital"
+)
   #plot <- plot + scale_y_continuous(trans='log2')
   plot <- plot + theme(panel.spacing = unit(1.25, "lines"))
   plot <- plot + theme(plot.title = element_text(hjust = 0.5))
@@ -208,7 +219,11 @@ plot <- plot + theme(legend.position = "bottom")
   plot <- plot + theme(strip.text = element_text(colour = 'black'))
   plot <- plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
   #plot <- plot + theme(legend.position = "none")
-  plot <- plot + facet_wrap(~size, labeller = label_both, nrow=1)
+  plot <- plot + facet_wrap(~size, nrow=1) + 
+    theme(
+            strip.background = element_blank(),
+              strip.text.x = element_blank()
+            )
   plot <- plot + ggtitle(title)
   return (plot)
 
@@ -457,6 +472,7 @@ l <- l + theme(legend.direction = "horizontal")
 l <- l + theme(legend.box.background = element_rect(colour = "black"))
 l <- l + theme(legend.title = element_blank()) 
 l <- l + expand_limits(y=0)
+l <- l + ggtitle("")
 l
 legend <- get_legend(l)
 #myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "kurpicz"))
