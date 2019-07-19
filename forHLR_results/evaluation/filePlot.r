@@ -367,7 +367,7 @@ lineplotMemory <- function(data, filters, datasets, title = " ", size, blacklist
   valueMean <- filter(valueMean, !(name %in% blacklist))
     
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
-  plot <- plot + ylab("sent bytes per string")
+  plot <- plot + ylab("bytes sent per string")
   plot <- plot + xlab("PEs")
   plot <- plot + theme_light()
   plot <- plot + geom_point(position=position_dodge(width=0.1))
@@ -401,7 +401,7 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfTitle, ".pdf",sep=""), width=8, height=11)
+pdf(paste("./plots/", pdfTitle, ".pdf",sep=""), width=14, height=8)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 #bar <- stackedBarPlot(plots.data[[4]], plots.filters[[4]],  c(1:length(plots.data[[4]])), dToNRatio_ = 0.5, operations_ = operations,  "maxTime", plots.title[[4]])
 
@@ -458,6 +458,7 @@ middle <- plot_grid(plot.7, plot.8, ncol = 2)
 bottom <- plot_grid(plot.3, plot.4, ncol=2)
 
 legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
-plot_grid(top, middle, bottom,  legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
+#plot_grid(top, middle, bottom,  legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
+plot_grid(top, middle,  legend, nrow = 3, rel_heights = c(1, 1, 0.2))
 plot.5 
 plot.6 

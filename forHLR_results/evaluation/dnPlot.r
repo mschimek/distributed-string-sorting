@@ -280,7 +280,7 @@ lineplotMemory <- function(datasets, type_ = "number", title = " ", work = FALSE
     valueMean <- rename(valueMean, r = dToNRatio)
     
   plot <- ggplot(data = valueMean, mapping = aes(x = numberProcessors, y = value, group = name, colour = name, shape = name, linetype = name))
-  plot <- plot + ylab("sent bytes per string")
+  plot <- plot + ylab("bytes sent per string")
   plot <- plot + xlab("PEs")
   plot <- plot + theme_light()
   plot <- plot + geom_point(position=position_dodge(width=0.1))
@@ -453,7 +453,7 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=10, height=12)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=14, height=9)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "fkss"))
@@ -466,7 +466,7 @@ memLine <- addSettings(memLine)
 myAlgos <- addSettings(myAlgos)
 #speedup <- addSettings(speedup)
 l <- addSettings(l)
-l <- l + theme(legend.direction = "horizontal")
+l <- l + theme(legend.direction = "vertical")
 l <- l + theme(legend.box.background = element_rect(colour = "black"))
 l <- l + theme(legend.title = element_blank()) 
 l <- l + ggtitle("")
@@ -480,9 +480,12 @@ memLine <- memLine + ggtitle("")
 
 top <- plot_grid(l,ncol = 1)
 middle <- plot_grid(myAlgos, ncol = 1)
-bottom <- plot_grid(memLine, ncol=1)
-legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
-plot_grid(top, middle, bottom, legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
+#bottom <- plot_grid(memLine, ncol=1)
+legend <- plot_grid(NULL, legend, NULL, nrow=3, rel_heights=c(0.25, 0.5, 0.25))
+plots <- plot_grid(top, nrow=1, rel_heights=c(1))
+#plots <- plot_grid(top, middle, nrow=2, rel_heights=c(0.5, 0.5))
+#plot_grid(top, middle, bottom, legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
+plot_grid(plots, legend, ncol = 2, rel_widths = c(1, 0.1))
 
 s
 #plot_grid(s, l, labels = c("s", "l"), ncol = 2, nrow = 1)
