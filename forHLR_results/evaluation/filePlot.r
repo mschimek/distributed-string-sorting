@@ -35,49 +35,37 @@ pdfTitle = args[[2]]
 plots <- read_json(pathToJSON, simplifyDataFrame=TRUE)
 
 numberPlots <- length(plots)
-print(str(plots))
 plots.data <- vector("list", numberPlots)
 plots.filters <- vector("list", numberPlots)
 plots.title <- vector("list", numberPlots)
 
 for (k in c(1:numberPlots)) {
   jsonMetaObject <- plots[[k]]
-  print(str(jsonMetaObject))
   jsonObject <- jsonMetaObject["data"][[1]]
   plots.title[[k]] <- jsonMetaObject["title"]
-  print(str(jsonObject))
   length <- length(jsonObject)
   data <- vector("list", length)
   filters <- vector("list", length)
-  print(paste("number datasets: ", length))
   for (i in c(1:length)){
-    print(i)
     curPath = jsonObject[[i]]$path
     filename = paste(curPath, "/data.txt", sep="")
     data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
     data[[i]] <- filter(data[[i]], iteration != 0)
     filters[[i]] <- jsonObject[[i]]$filter
-    print(filters[[i]])
   }
   #jsonMetaObject <- plots["CommonCrawlUnique"][[1]]
-  print(str(jsonMetaObject))
   jsonObject <- jsonMetaObject["data"][[1]]
   title <- jsonMetaObject["title"]
   isD2N <- TRUE == (jsonMetaObject["isDToN"])
-  print(str(jsonObject))
   length <- length(jsonObject)
   data <- vector("list", length)
   filters <- vector("list", length)
-  print(paste("number datasets: ", length))
   for (i in c(1:length)){
-    print(i)
     curPath = jsonObject[[i]]$path
     filename = paste(curPath, "/data.txt", sep="")
-    print(filename)
     data[[i]] <- read_delim(file = filename, delim = "|", col_types = colTypeSpec, comment="-")
     data[[i]] <- filter(data[[i]], iteration != 0)
     filters[[i]] <- jsonObject[[i]]$filter
-    print(filters[[i]])
   }
   plots.data[[k]] <- data
   plots.filters[[k]] <- filters
@@ -88,7 +76,6 @@ divideByPE320 <- function(vec) {
     valueBase <- filter(vec, numberProcessors == 320)$value
   vec$numberProcessors <- as.numeric(as.character(vec$numberProcessors))
     vec$value <- (valueBase / vec$value) 
-  print(vec)
     return(vec)
 }
 
@@ -113,19 +100,16 @@ divideByPE320 <- function(vec) {
 #}
 lineplotSpeedup <- function(data, filters, datasets, operation_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
@@ -184,19 +168,16 @@ plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
 }
 lineplot <- function(data, filters, datasets, operation_, type_ = "maxTime", title = " ", blacklist = c()) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
     counter <- counter + numberFilters
   }
-  print(paste("counter: ", counter))
   localSets <- vector("list", counter)
   counter <- 1
   for (i in c(1:length(datasets))) {
     j <- ncol(filters[[i]][[1]]) 
     numberFilters <- nrow(filters[[i]][[1]])
-    print(paste("numberFilters: ", numberFilters))
     for (k in c(1:numberFilters)){
 
       df = filters[[i]][[1]]
@@ -251,7 +232,6 @@ plot <- plot + theme(legend.box.background = element_rect(colour = "black"))
 }
 stackedBarPlot <- function(data, filters, datasets, dToNRatio_, operations_, type_ = "maxTime", title = " ", work = FALSE) {
   set <- "dummy"
-  print(paste("length data set: ", length(datasets)))
   counter <- 0
   for (i in c(1:length(datasets))) {
     numberFilters <- nrow(filters[[i]][[1]])
@@ -293,7 +273,6 @@ stackedBarPlot <- function(data, filters, datasets, dToNRatio_, operations_, typ
     }
     counter <- counter + 1
     }
-    print(set)
     set$numberProcessors <- as.factor(set$numberProcessors)
     set$value <- set$value / 10^9
     groupByIterations <- group_by(set, numberProcessors, dToNRatio,  operation, type, name)
@@ -335,7 +314,6 @@ lineplotMemory <- function(data, filters, datasets, title = " ", size, blacklist
       names <- colnames(df)
       #print(data[[i]])
       localSets[[counter]] <- filter(data[[i]], type == "number", rawCommunication == 1, phase != "none")
-      print(localSets[[counter]])
       #print(localSets[[counter]])
       if (length(names) > 1) {
         for (j in c(2:length(names))){
@@ -361,7 +339,6 @@ lineplotMemory <- function(data, filters, datasets, title = " ", size, blacklist
     value <- ungroup(valueMean)
     valueMean <- group_by(valueMean, numberProcessors, dToNRatio,  name)
     valueMean <- summarise(valueMean, value = sum(value)) 
-    print(valueMean,n = 50)
     divisor <- as.double(size)
   valueMean$value <- valueMean$value / divisor
   valueMean <- filter(valueMean, !(name %in% blacklist))
@@ -418,7 +395,7 @@ plot.6 <- lineplotSpeedup(plots.data[[2]], plots.filters[[2]],  c(1:length(plots
 
 
 plot.1 <- addSettings(plot.1)
-plot.1 <- plot.1 + theme(legend.direction = "horizontal")
+plot.1 <- plot.1 + theme(legend.direction = "vertical")
 plot.1 <- plot.1 + theme(legend.box.background = element_rect(colour = "black"))
 plot.1 <- plot.1 + theme(legend.title = element_blank()) 
 #plot.1
@@ -441,8 +418,8 @@ plot.8 <- addSettings(plot.8)
 #plot.3 <- plot.3 + guides(colour = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
 #plot.3 <- plot.3 + guides(linetype = guide_legend(title = "algorithm", title.position = "top", ncol = 4, nrow = 2)) 
 legend <- getLegend(plot.1)
-plot.1 <- plot.1 + theme(legend.position = "none") + expand_limits(y=c(0, limit1)) + ggtitle("")
-plot.2 <- plot.2 + theme(legend.position = "none") + expand_limits(y=c(0, limit1))+ ggtitle("")
+plot.1 <- plot.1 + theme(legend.position = "none") + expand_limits(y=c(0, limit1)) 
+plot.2 <- plot.2 + theme(legend.position = "none") + expand_limits(y=c(0, limit1))
 plot.3 <- plot.3 + theme(legend.position = "none") + expand_limits(y=c(0,limit2)) + ggtitle("")
 plot.4 <- plot.4 + theme(legend.position = "none")+ expand_limits(y=c(0, limit2)) + ggtitle("")
 plot.7 <- plot.7 + theme(legend.position = "none") +expand_limits(y=c(0, limit3)) + ggtitle("")
@@ -459,6 +436,7 @@ bottom <- plot_grid(plot.3, plot.4, ncol=2)
 
 legend <- plot_grid(NULL, legend, NULL, ncol=3, rel_widths=c(0.25, 0.5, 0.25))
 #plot_grid(top, middle, bottom,  legend, nrow = 4, rel_heights = c(1, 1, 1, 0.2))
-plot_grid(top, middle,  legend, nrow = 3, rel_heights = c(1, 1, 0.2))
+#plot_grid(top, middle,  legend, nrow = 3, rel_heights = c(1, 1, 0.2))
+plot_grid(top,  legend, ncol = 2, rel_widths = c(1, 0.1))
 plot.5 
 plot.6 

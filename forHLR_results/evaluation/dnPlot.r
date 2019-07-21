@@ -453,7 +453,7 @@ get_legend<-function(myggplot){
   return(legend)
 }
 
-pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=14, height=9)
+pdf(paste("./plots/", pdfname, ".pdf",sep=""), width=16, height=9)
 operations = c("sort_splitter","prefix_decompression", "merge_ranges", "compute_ranges", "all_to_all_strings", "compute_interval_sizes", "choose_splitters", "allgather_splitters", "sample_splitters", "sort_locally", "bloomfilter_overall")
 l <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title)
 myAlgos <- lineplot(c(1:length(data)), "sorting_overall", "maxTime", title, c("hQuick", "fkss"))

@@ -28,7 +28,7 @@
 ,
       [{
         "path":"DToNWeak/kurpicz",
-        "filter":[{"name":"kurpicz"}]
+        "filter":[{"name":"fkss"}]
       }]
       ]
   }

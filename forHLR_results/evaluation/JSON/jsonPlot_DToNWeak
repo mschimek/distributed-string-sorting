@@ -5,20 +5,19 @@
 [
 [{
 "path":"DToNWeak/ms",
-"filter":[{"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-          {"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
-          {"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings" }
+"filter":[{"name":"ms2LCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+          {"name":"msLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings" },
+          {"name":"msBase", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings" }
          ]
 }],
 [{
 "path":"DToNWeak/pd",
-"filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-          {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
+"filter":[{"name":"pdS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}
          ]
 }],
 [{
 "path":"DToNWeak/kurpicz",
-"filter":[{"name":"kurpicz"}
+"filter":[{"name":"fkss"}
          ]
 }],
 [{

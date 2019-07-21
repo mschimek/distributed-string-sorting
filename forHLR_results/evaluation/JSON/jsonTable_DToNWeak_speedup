@@ -28,7 +28,7 @@
 ,
       [{
         "path":"DToNWeak/kurpicz",
-        "filter":[{"name":"kurpicz"}]
+        "filter":[{"name":"fkss"}]
       }]
       ]
   },
@@ -57,7 +57,7 @@
       }],
       [{
         "path":"DToNSkewedWeak/kurpicz",
-        "filter":[{"name":"kurpicz"}]
+        "filter":[{"name":"fkss"}]
       }],
 [{
 "path":"DToNSkewedWeak/hquick",

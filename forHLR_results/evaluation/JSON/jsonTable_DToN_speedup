@@ -28,7 +28,7 @@
     }], 
     [{
       "path":"DToN/kurpicz",
-      "filter":[{"name":"kurpicz"}]
+      "filter":[{"name":"fkss"}]
     }]
   ]
 },
@@ -61,7 +61,7 @@
     }], 
     [{
       "path":"DToNSkewed/kurpicz",
-      "filter":[{"name":"kurpicz"}]
+      "filter":[{"name":"fkss"}]
     }]
   ]
 }}

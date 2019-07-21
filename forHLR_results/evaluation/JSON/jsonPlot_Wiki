@@ -4,22 +4,20 @@
       "data":[
         [{
           "path":"File_Wiki/ms",
-        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
-        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
-	{"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+        "filter":[{"name":"msLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"ms2LCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"ms2LCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+	{"name":"msBase", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
           ]
         }],
       [{
         "path":"File_Wiki/pd",
-        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
 [{
         "path":"File_Wiki_PDChar/pd",
-        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
-        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+        "filter":[{"name":"pdC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_Wiki/hquick",
@@ -33,22 +31,20 @@
       "data":[
         [{
           "path":"File_WikiReduced/ms",
-        "filter":[{"name":"msNoLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-        {"name":"msLCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
-        {"name":"msNoLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
-        {"name":"msLCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
-	{"name":"msSimpleS", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
+        "filter":[{"name":"msLCPS", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"ms2LCPS", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumStrings"},
+        {"name":"msLCPC", "ByteEncoder":"EmptyByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+        {"name":"ms2LCPC", "ByteEncoder":"EmptyLcpByteEncoderMemCpy", "samplePolicy":"IndexedNumChars"},
+	{"name":"msBase", "ByteEncoder":"NoLcps", "samplePolicy":"IndexedNumStrings"}
           ]
         }],
       [{
         "path":"File_WikiReduced/pd",
-        "filter":[{"name":"pdNoGolombS", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumStrings"},
-        {"name":"pdGolombS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
+        "filter":[{"name":"pdS", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumStrings"}]
       }],
 [{
         "path":"File_WikiReduced_PDChar/pd",
-        "filter":[{"name":"pdNoGolombC", "GolombEncoding":"noGolombEncoding", "samplePolicy":"IndexedNumChars"},
-        {"name":"pdGolombC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
+        "filter":[{"name":"pdC", "GolombEncoding":"sequentialGolombEncoding", "samplePolicy":"IndexedNumChars"}]
       }],
       [{
         "path":"File_WikiReduced/hquick",
