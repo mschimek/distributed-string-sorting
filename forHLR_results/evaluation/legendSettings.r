@@ -1,9 +1,10 @@
 
-colours = c("fkss" = "coral3", "hQuick" = "burlywood4", "msLCPS" = "cornflowerblue", "msNoLCPS" = "black", "pdNoGolombC" = "darkolivegreen4","pdGolombC" = "deeppink", "pdNoGolombS"="deepskyblue3", "msLCPC" = "darkorange2", "msNoLCPC" = "darkgoldenrod3", "pdGolombS" = "cyan4", "msSimpleS" = "aquamarine4")
-shapes = c("fkss" = 1, "hQuick" = 2, "msLCPS" = 3, "msNoLCPS" = 4, "pdNoGolombS" = 5, 
-                                                   "msLCPC" = 6, "msNoLCPC" = 7, "pdGolombS" = 2, "msSimpleS" = 1, "pdGolombC"=2, "pdNoGolombC" = 3)
-linetypes = c("fkss" = "solid", "hQuick" = "twodash", "msLCPS" = "dotted", "msNoLCPS" = "dashed", "pdNoGolombS" = "longdash",
-              "msLCPC" = "dotdash", "msNoLCPC" = "dotted", "pdGolombS" = "twodash", "msSimpleS" = "solid", "pdNoGolombC" = "solid", "pdGolombC" = "dotted")
+colours = c("fkss" = "red", "hQuick" = "burlywood4", "ms2LCPS" = "blue", "msLCPS" = "black", "pdNoGolombC" = "darkolivegreen4","pdC" = "deeppink", "pdNoGolombS"="deepskyblue3", "ms2LCPC" = "darkorange1", "msLCPC" = "darkgoldenrod3", "pdS" = "purple", "msBase" = "darkgreen")
+#colours = c("fkss" = "coral3", "hQuick" = "burlywood4", "ms2LCPS" = "blue", "msLCPS" = "black", "pdNoGolombC" = "darkolivegreen4","pdC" = "deeppink", "pdNoGolombS"="deepskyblue3", "ms2LCPC" = "darkorange2", "msLCPC" = "darkgoldenrod3", "pdS" = "cyan4", "msBase" = "darkgreen")
+shapes = c("fkss" = 1, "hQuick" = 2, "ms2LCPS" = 3, "msLCPS" = 4, "pdNoGolombS" = 5, 
+                                                   "ms2LCPC" = 6, "msLCPC" = 7, "pdS" = 2, "msBase" = 1, "pdC"=2, "pdNoGolombC" = 3)
+linetypes = c("fkss" = "solid", "hQuick" = "twodash", "ms2LCPS" = "solid", "msLCPS" = "dashed", "pdNoGolombS" = "longdash",
+              "ms2LCPC" = "dotdash", "msLCPC" = "solid", "pdS" = "twodash", "msBase" = "solid", "pdNoGolombC" = "solid", "pdC" = "longdash")
 
 
 addSettings <- function(plot) {
